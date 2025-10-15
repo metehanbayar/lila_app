@@ -3,6 +3,11 @@ import { getConnection, sql } from '../config/database.js';
 
 const router = express.Router();
 
+// OTP sistemini devre dışı bırakma kontrolü
+const isOTPEnabled = () => {
+  return process.env.OTP_ENABLED !== 'false';
+};
+
 // Customer authentication middleware
 export const customerAuth = async (req, res, next) => {
   try {
@@ -63,42 +68,47 @@ router.post('/register', async (req, res) => {
     const cleanPhone = phone.replace(/\s/g, '');
     const pool = await getConnection();
 
-    // OTP doğrulaması
-    const otpResult = await pool
-      .request()
-      .input('phone', sql.NVarChar, cleanPhone)
-      .input('otpCode', sql.NVarChar, otp)
-      .input('purpose', sql.NVarChar, 'register')
-      .query(`
-        SELECT TOP 1 Id, ExpiresAt, IsVerified
-        FROM OTPVerification
-        WHERE Phone = @phone 
-          AND OTPCode = @otpCode 
-          AND Purpose = @purpose
-        ORDER BY CreatedAt DESC
-      `);
+    // OTP devre dışıysa, doğrulama kontrolünü atla
+    if (!isOTPEnabled()) {
+      console.log('⚠️ OTP DEVRE DIŞI - Kayıt işlemi OTP olmadan devam ediyor');
+    } else {
+      // OTP doğrulaması
+      const otpResult = await pool
+        .request()
+        .input('phone', sql.NVarChar, cleanPhone)
+        .input('otpCode', sql.NVarChar, otp)
+        .input('purpose', sql.NVarChar, 'register')
+        .query(`
+          SELECT TOP 1 Id, ExpiresAt, IsVerified
+          FROM OTPVerification
+          WHERE Phone = @phone 
+            AND OTPCode = @otpCode 
+            AND Purpose = @purpose
+          ORDER BY CreatedAt DESC
+        `);
 
-    if (otpResult.recordset.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Geçersiz doğrulama kodu',
-      });
-    }
+      if (otpResult.recordset.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Geçersiz doğrulama kodu',
+        });
+      }
 
-    const otpRecord = otpResult.recordset[0];
+      const otpRecord = otpResult.recordset[0];
 
-    if (!otpRecord.IsVerified) {
-      return res.status(400).json({
-        success: false,
-        message: 'Doğrulama kodu henüz doğrulanmamış',
-      });
-    }
+      if (!otpRecord.IsVerified) {
+        return res.status(400).json({
+          success: false,
+          message: 'Doğrulama kodu henüz doğrulanmamış',
+        });
+      }
 
-    if (new Date() > new Date(otpRecord.ExpiresAt)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Doğrulama kodunun süresi dolmuş',
-      });
+      if (new Date() > new Date(otpRecord.ExpiresAt)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Doğrulama kodunun süresi dolmuş',
+        });
+      }
     }
 
     // Telefon zaten kayıtlı mı?
@@ -189,42 +199,47 @@ router.post('/login', async (req, res) => {
     const cleanPhone = phone.replace(/\s/g, '');
     const pool = await getConnection();
 
-    // OTP doğrulaması
-    const otpResult = await pool
-      .request()
-      .input('phone', sql.NVarChar, cleanPhone)
-      .input('otpCode', sql.NVarChar, otp)
-      .input('purpose', sql.NVarChar, 'login')
-      .query(`
-        SELECT TOP 1 Id, ExpiresAt, IsVerified
-        FROM OTPVerification
-        WHERE Phone = @phone 
-          AND OTPCode = @otpCode 
-          AND Purpose = @purpose
-        ORDER BY CreatedAt DESC
-      `);
+    // OTP devre dışıysa, doğrulama kontrolünü atla
+    if (!isOTPEnabled()) {
+      console.log('⚠️ OTP DEVRE DIŞI - Giriş işlemi OTP olmadan devam ediyor');
+    } else {
+      // OTP doğrulaması
+      const otpResult = await pool
+        .request()
+        .input('phone', sql.NVarChar, cleanPhone)
+        .input('otpCode', sql.NVarChar, otp)
+        .input('purpose', sql.NVarChar, 'login')
+        .query(`
+          SELECT TOP 1 Id, ExpiresAt, IsVerified
+          FROM OTPVerification
+          WHERE Phone = @phone 
+            AND OTPCode = @otpCode 
+            AND Purpose = @purpose
+          ORDER BY CreatedAt DESC
+        `);
 
-    if (otpResult.recordset.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Geçersiz doğrulama kodu',
-      });
-    }
+      if (otpResult.recordset.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Geçersiz doğrulama kodu',
+        });
+      }
 
-    const otpRecord = otpResult.recordset[0];
+      const otpRecord = otpResult.recordset[0];
 
-    if (!otpRecord.IsVerified) {
-      return res.status(400).json({
-        success: false,
-        message: 'Doğrulama kodu henüz doğrulanmamış',
-      });
-    }
+      if (!otpRecord.IsVerified) {
+        return res.status(400).json({
+          success: false,
+          message: 'Doğrulama kodu henüz doğrulanmamış',
+        });
+      }
 
-    if (new Date() > new Date(otpRecord.ExpiresAt)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Doğrulama kodunun süresi dolmuş',
-      });
+      if (new Date() > new Date(otpRecord.ExpiresAt)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Doğrulama kodunun süresi dolmuş',
+        });
+      }
     }
 
     // Müşteri bilgilerini getir

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
 import DataTable from '../../components/admin/DataTable';
 import Modal from '../../components/admin/Modal';
@@ -13,6 +14,7 @@ import {
 } from '../../services/adminApi';
 
 function Restaurants() {
+  const navigate = useNavigate();
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -142,6 +144,17 @@ function Restaurants() {
         >
           {row.IsActive ? 'Aktif' : 'Pasif'}
         </span>
+      ),
+    },
+    {
+      header: 'Fiş Template',
+      render: (row) => (
+        <button
+          onClick={() => navigate(`/admin/restaurants/${row.Id}/receipt-template`)}
+          className="px-3 py-1.5 bg-purple-100 text-purple-700 rounded-md hover:bg-purple-200 text-sm font-medium"
+        >
+          🎨 Düzenle
+        </button>
       ),
     },
   ];

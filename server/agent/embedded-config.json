@@ -1,0 +1,13 @@
+{
+  "token": "TEMPLATE-TOKEN",
+  "restaurantId": 0,
+  "restaurantName": "Template Restaurant",
+  "restaurantSlug": "template",
+  "serverUrl": "http://localhost:3000",
+  "version": "1.0.0",
+  "autoConnect": true,
+  "autoPrint": true,
+  "useDefaultPrinter": true,
+  "buildDate": "2024-01-01T00:00:00.000Z"
+}
+

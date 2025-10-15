@@ -324,5 +324,19 @@ export const getCouponStats = async (id) => {
   return response.data;
 };
 
+// ==================== RECEIPT TEMPLATES ====================
+
+export const getReceiptTemplate = async (restaurantId) => {
+  const response = await adminApi.get(`/receipt-templates/restaurants/${restaurantId}/receipt-template`);
+  return response.data;
+};
+
+export const updateReceiptTemplate = async (restaurantId, template) => {
+  const response = await adminApi.put(`/receipt-templates/restaurants/${restaurantId}/receipt-template`, {
+    template,
+  });
+  return response.data;
+};
+
 export default adminApi;
 

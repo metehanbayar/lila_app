@@ -1,0 +1,12 @@
+{
+  "token": "LG-A974-1F31-8E3E",
+  "restaurantId": 5,
+  "restaurantName": "Lila Gusto",
+  "restaurantSlug": "gusto",
+  "serverUrl": "http://localhost:3000",
+  "version": "1.0.0",
+  "autoConnect": true,
+  "autoPrint": true,
+  "useDefaultPrinter": true,
+  "buildDate": "2025-10-15T15:09:29.751Z"
+}

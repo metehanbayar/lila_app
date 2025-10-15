@@ -1,7 +1,7 @@
 import express from 'express';
 import { getConnection, sql } from '../config/database.js';
 import { sendOrderEmail } from '../config/email.js';
-import { emitNewOrder } from '../config/websocket.js';
+import { notifyNewOrder } from '../services/socket-service.js';
 
 const router = express.Router();
 
@@ -45,18 +45,20 @@ router.post('/', async (req, res) => {
 
     const orderNumber = generateOrderNumber();
 
-    // Toplam tutarı hesapla (subtotal)
+    // Toplam tutarı hesapla (subtotal) ve restoranlar bazında grupla
     let subtotal = 0;
     const orderItems = [];
+    const restaurantGroups = new Map(); // restaurantId -> { items: [], subtotal: 0 }
 
     // Her ürün için veritabanından güncel fiyatı al
     for (const item of items) {
       const productResult = await new sql.Request(transaction)
         .input('productId', sql.Int, item.productId)
         .query(`
-          SELECT Id, Name, Price
-          FROM Products
-          WHERE Id = @productId AND IsActive = 1
+          SELECT p.Id, p.Name, p.Price, p.RestaurantId, r.Name as RestaurantName
+          FROM Products p
+          INNER JOIN Restaurants r ON p.RestaurantId = r.Id
+          WHERE p.Id = @productId AND p.IsActive = 1
         `);
 
       if (productResult.recordset.length === 0) {
@@ -94,7 +96,7 @@ router.post('/', async (req, res) => {
       const itemSubtotal = price * item.quantity;
       subtotal += itemSubtotal;
 
-      orderItems.push({
+      const orderItem = {
         productId: product.Id,
         productName: product.Name,
         productPrice: price,
@@ -102,7 +104,25 @@ router.post('/', async (req, res) => {
         subtotal: itemSubtotal,
         variantId,
         variantName,
-      });
+        restaurantId: product.RestaurantId,
+        restaurantName: product.RestaurantName,
+      };
+
+      orderItems.push(orderItem);
+
+      // Restoran bazında grupla
+      if (!restaurantGroups.has(product.RestaurantId)) {
+        restaurantGroups.set(product.RestaurantId, {
+          restaurantId: product.RestaurantId,
+          restaurantName: product.RestaurantName,
+          items: [],
+          subtotal: 0,
+        });
+      }
+
+      const restaurantGroup = restaurantGroups.get(product.RestaurantId);
+      restaurantGroup.items.push(orderItem);
+      restaurantGroup.subtotal += itemSubtotal;
     }
 
     // Kupon kontrolü ve indirim hesaplama
@@ -193,9 +213,10 @@ router.post('/', async (req, res) => {
         .input('subtotal', sql.Decimal(10, 2), item.subtotal)
         .input('variantId', sql.Int, item.variantId || null)
         .input('variantName', sql.NVarChar, item.variantName || null)
+        .input('restaurantId', sql.Int, item.restaurantId)
         .query(`
-          INSERT INTO OrderItems (OrderId, ProductId, ProductName, ProductPrice, Quantity, Subtotal, VariantId, VariantName)
-          VALUES (@orderId, @productId, @productName, @productPrice, @quantity, @subtotal, @variantId, @variantName)
+          INSERT INTO OrderItems (OrderId, ProductId, ProductName, ProductPrice, Quantity, Subtotal, VariantId, VariantName, RestaurantId)
+          VALUES (@orderId, @productId, @productName, @productPrice, @quantity, @subtotal, @variantId, @variantName, @restaurantId)
         `);
     }
 
@@ -212,52 +233,20 @@ router.post('/', async (req, res) => {
         `);
     }
 
-    await transaction.commit();
-
-    // Restoran bilgilerini çek ve siparişi restoranlara göre grupla
-    const restaurantMap = new Map();
-    
-    for (const item of orderItems) {
-      const restaurantResult = await pool
-        .request()
-        .input('productId', sql.Int, item.productId)
+    // OrderRestaurants tablosuna her restoran için kayıt ekle
+    for (const [restaurantId, restaurantData] of restaurantGroups) {
+      await new sql.Request(transaction)
+        .input('orderId', sql.Int, orderId)
+        .input('restaurantId', sql.Int, restaurantId)
+        .input('subtotal', sql.Decimal(10, 2), restaurantData.subtotal)
+        .input('itemCount', sql.Int, restaurantData.items.length)
         .query(`
-          SELECT r.Id, r.Name, r.Slug, r.Color
-          FROM Restaurants r
-          INNER JOIN Products p ON p.RestaurantId = r.Id
-          WHERE p.Id = @productId
+          INSERT INTO OrderRestaurants (OrderId, RestaurantId, Subtotal, ItemCount)
+          VALUES (@orderId, @restaurantId, @subtotal, @itemCount)
         `);
-
-      if (restaurantResult.recordset.length > 0) {
-        const restaurant = restaurantResult.recordset[0];
-        const restaurantId = restaurant.Id;
-
-        if (!restaurantMap.has(restaurantId)) {
-          restaurantMap.set(restaurantId, {
-            restaurantId,
-            restaurantName: restaurant.Name,
-            restaurantSlug: restaurant.Slug,
-            restaurantColor: restaurant.Color,
-            items: [],
-            subtotal: 0,
-          });
-        }
-
-        const restaurantOrder = restaurantMap.get(restaurantId);
-        restaurantOrder.items.push({
-          productId: item.productId,
-          productName: item.productName,
-          productPrice: item.productPrice,
-          quantity: item.quantity,
-          subtotal: item.subtotal,
-          variantId: item.variantId,
-          variantName: item.variantName,
-        });
-        restaurantOrder.subtotal += item.subtotal;
-      }
     }
 
-    const restaurantOrders = Array.from(restaurantMap.values());
+    await transaction.commit();
 
     // E-posta gönder (arka planda, hata olsa bile sipariş kaydedilmiş olur)
     const order = {
@@ -284,25 +273,11 @@ router.post('/', async (req, res) => {
       console.error('E-posta gönderimi başarısız:', err)
     );
 
-    // WebSocket üzerinden sipariş bildirimi gönder
-    try {
-      emitNewOrder({
-        orderId,
-        orderNumber,
-        customerName,
-        customerPhone,
-        customerAddress,
-        notes,
-        subtotal,
-        discountAmount,
-        totalAmount,
-        couponCode,
-        createdAt,
-        restaurantOrders, // Her restoran için ayrı bilgi
-      });
-    } catch (wsError) {
-      console.error('WebSocket bildirimi başarısız:', wsError);
-    }
+    // Socket.io ile yazıcı agent'larına bildirim gönder
+    const restaurantOrdersForNotification = Array.from(restaurantGroups.values());
+    notifyNewOrder(orderId, restaurantOrdersForNotification).catch((err) =>
+      console.error('Yazıcı bildirimi başarısız:', err)
+    );
 
     res.status(201).json({
       success: true,
@@ -314,6 +289,12 @@ router.post('/', async (req, res) => {
         discountAmount,
         totalAmount,
         createdAt,
+        restaurants: restaurantOrdersForNotification.map(r => ({
+          restaurantId: r.restaurantId,
+          restaurantName: r.restaurantName,
+          itemCount: r.items.length,
+          subtotal: r.subtotal,
+        })),
       },
     });
   } catch (error) {

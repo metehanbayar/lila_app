@@ -26,6 +26,7 @@ import Orders from './pages/admin/Orders';
 import Coupons from './pages/admin/Coupons';
 import Media from './pages/admin/Media';
 import Import from './pages/admin/Import';
+import ReceiptTemplateEditor from './pages/admin/ReceiptTemplateEditor';
 
 // Customer
 import CustomerProtectedRoute from './components/customer/CustomerProtectedRoute';
@@ -56,6 +57,7 @@ const router = createBrowserRouter([
   // Admin
   { path: '/admin/login', element: <AdminLogin /> },
   { path: '/admin', element: <ProtectedRoute><Dashboard /></ProtectedRoute> },
+  { path: '/admin/restaurants/:id/receipt-template', element: <ProtectedRoute><ReceiptTemplateEditor /></ProtectedRoute> },
   { path: '/admin/restaurants', element: <ProtectedRoute><Restaurants /></ProtectedRoute> },
   { path: '/admin/categories', element: <ProtectedRoute><Categories /></ProtectedRoute> },
   { path: '/admin/products', element: <ProtectedRoute><Products /></ProtectedRoute> },

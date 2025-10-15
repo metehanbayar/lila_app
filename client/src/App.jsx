@@ -20,6 +20,7 @@ import Coupons from './pages/admin/Coupons';
 import CouponsTest from './pages/admin/CouponsTest';
 import Media from './pages/admin/Media';
 import Import from './pages/admin/Import';
+import ReceiptTemplateEditor from './pages/admin/ReceiptTemplateEditor';
 
 // Customer imports
 import CustomerProtectedRoute from './components/customer/CustomerProtectedRoute';
@@ -91,6 +92,15 @@ function App() {
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      {/* Nested routes ÖNCE gelmeli (daha spesifik) */}
+      <Route
+        path="/admin/restaurants/:id/receipt-template"
+        element={
+          <ProtectedRoute>
+            <ReceiptTemplateEditor />
           </ProtectedRoute>
         }
       />

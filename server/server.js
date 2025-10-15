@@ -5,7 +5,6 @@ import { rateLimit } from 'express-rate-limit';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { getConnection, closeConnection } from './config/database.js';
-import { initializeWebSocket } from './config/websocket.js';
 import restaurantsRouter from './routes/restaurants.js';
 import productsRouter from './routes/products.js';
 import ordersRouter from './routes/orders.js';
@@ -18,12 +17,14 @@ import adminMediaRouter from './routes/admin-media.js';
 import adminProductVariantsRouter from './routes/admin-product-variants.js';
 import adminImportRouter from './routes/admin-import.js';
 import adminCouponsRouter from './routes/admin-coupons.js';
+import adminReceiptTemplatesRouter from './routes/admin-receipt-templates.js';
 import customerAuthRouter from './routes/customer-auth.js';
 import customerOrdersRouter from './routes/customer-orders.js';
 import customerAddressesRouter from './routes/customer-addresses.js';
 import couponsRouter from './routes/coupons.js';
 import geocodeRouter from './routes/geocode.js';
 import otpRouter from './routes/otp.js';
+import { initializeSocketIO } from './services/socket-service.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -94,6 +95,7 @@ app.use('/api/admin/orders', adminOrdersRouter);
 app.use('/api/admin/media', adminMediaRouter);
 app.use('/api/admin/import', adminImportRouter);
 app.use('/api/admin/coupons', adminCouponsRouter);
+app.use('/api/admin/receipt-templates', adminReceiptTemplatesRouter);
 
 // Customer API Routes
 app.use('/api/customer', customerAuthRouter);
@@ -130,15 +132,14 @@ async function startServer() {
     // Veritabanı bağlantısını test et
     await getConnection();
 
-    // WebSocket'i başlat
-    initializeWebSocket(httpServer);
+    // Socket.IO'yu başlat
+    initializeSocketIO(httpServer);
 
     server = httpServer.listen(PORT, '0.0.0.0', () => {
       console.log(`\n🚀 Lila Group Menu API çalışıyor`);
       console.log(`📍 Port: ${PORT}`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🌐 Ağdan erişim için: http://<YEREL-IP>:${PORT}`);
-      console.log(`📡 WebSocket: ws://<YEREL-IP>:${PORT}/socket.io/`);
       console.log(`\n📡 Public Endpoints:`);
       console.log(`   GET  /api/health`);
       console.log(`   GET  /api/restaurants`);

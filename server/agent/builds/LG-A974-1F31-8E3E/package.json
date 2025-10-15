@@ -1,0 +1,43 @@
+{
+  "name": "lila-printer-gusto",
+  "version": "1.0.0",
+  "description": "Lila Gusto - Otomatik Sipariş Yazıcı",
+  "main": "src/main.js",
+  "type": "module",
+  "bin": {
+    "lila-printer-agent": "src/main.js"
+  },
+  "scripts": {
+    "start": "node src/main.js",
+    "build": "node build.js",
+    "build:exe": "pkg . --target node18-win-x64 --output dist/LilaGroupPrinterAgent.exe",
+    "test": "node src/main.js --test"
+  },
+  "keywords": [
+    "printer",
+    "thermal",
+    "pos",
+    "restaurant"
+  ],
+  "author": "Lila Group",
+  "license": "MIT",
+  "dependencies": {
+    "escpos": "^3.0.0-alpha.6",
+    "node-windows": "^1.0.0-beta.8",
+    "socket.io-client": "^4.7.2",
+    "windows-default-printer": "^1.0.4"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.1"
+  },
+  "pkg": {
+    "assets": [
+      "embedded-config.json",
+      "src/**/*"
+    ],
+    "targets": [
+      "node18-win-x64"
+    ],
+    "outputPath": "dist"
+  }
+}

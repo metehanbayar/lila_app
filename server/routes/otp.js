@@ -4,10 +4,25 @@ import { sendSMS, generateOTP, createOTPMessage } from '../config/sms.js';
 
 const router = express.Router();
 
+// OTP sistemini devre dışı bırakma kontrolü
+const isOTPEnabled = () => {
+  return process.env.OTP_ENABLED !== 'false';
+};
+
 // OTP gönder
 router.post('/send', async (req, res) => {
   try {
     const { phone, purpose } = req.body; // purpose: 'register' veya 'login'
+
+    // OTP devre dışıysa, demo mod
+    if (!isOTPEnabled()) {
+      console.log('⚠️ OTP DEVRE DIŞI - Demo mod aktif');
+      return res.json({
+        success: true,
+        message: 'OTP devre dışı - Demo mod',
+        otp: '123456', // Demo OTP kodu
+      });
+    }
 
     // Validasyon
     if (!phone || !purpose) {
@@ -76,6 +91,7 @@ router.post('/send', async (req, res) => {
       .request()
       .input('phone', sql.NVarChar, cleanPhone)
       .input('fiveMinutesAgo', sql.DateTime, new Date(Date.now() - 5 * 60 * 1000))
+      .input('purpose', sql.NVarChar, purpose)
       .query(`
         SELECT TOP 1 Id, CreatedAt 
         FROM OTPVerification 
@@ -83,7 +99,7 @@ router.post('/send', async (req, res) => {
           AND CreatedAt > @fiveMinutesAgo
           AND Purpose = @purpose
         ORDER BY CreatedAt DESC
-      `, { purpose });
+      `);
 
     if (recentOTP.recordset.length > 0) {
       const lastSentAt = new Date(recentOTP.recordset[0].CreatedAt);
@@ -142,6 +158,15 @@ router.post('/send', async (req, res) => {
 router.post('/verify', async (req, res) => {
   try {
     const { phone, otp, purpose } = req.body;
+
+    // OTP devre dışıysa, her kodu kabul et
+    if (!isOTPEnabled()) {
+      console.log('⚠️ OTP DEVRE DIŞI - Demo mod aktif - Her kod geçerli');
+      return res.json({
+        success: true,
+        message: 'Doğrulama başarılı (Demo mod)',
+      });
+    }
 
     // Validasyon
     if (!phone || !otp || !purpose) {
