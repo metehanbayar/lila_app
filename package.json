@@ -1,0 +1,25 @@
+{
+  "name": "lila-group-menu",
+  "version": "1.0.0",
+  "description": "Lila Group Restoran Menü Uygulaması",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "client": "cd client && npm run dev",
+    "server": "cd server && npm run dev",
+    "build": "cd client && npm run build",
+    "install-all": "npm install && cd client && npm install && cd ../server && npm install"
+  },
+  "keywords": [
+    "restaurant",
+    "menu",
+    "order"
+  ],
+  "author": "Metehan Bayar",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
+

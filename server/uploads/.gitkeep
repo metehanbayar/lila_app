@@ -1,0 +1,3 @@
+# Bu dosya uploads klasörünü git'te tutmak için var
+# Ancak uploads klasörü içindeki dosyalar .gitignore tarafından ignore edilecek
+

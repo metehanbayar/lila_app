@@ -1,0 +1,12 @@
+{
+  "serverUrl": "http://localhost:3000",
+  "restaurantId": null,
+  "restaurantName": "",
+  "printerName": "",
+  "printerVendorId": null,
+  "printerProductId": null,
+  "encoding": "cp857",
+  "reconnectInterval": 5000,
+  "testMode": false
+}
+

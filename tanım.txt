@@ -1,0 +1,48 @@
+Mobile-first responsive tasarım (öncelik mobil görünüme verilsin, sonra tablet/desktop).
+
+Modern, sade, restoran tarzına uygun UI (white space, clean grid, minimal renk paleti, sade ikonlar).
+
+Üç restoranın her biri için ayrı menü sekmesi veya butonu:
+
+
+
+Her restorana özel ürün listesi (ürün adı, açıklama, fiyat, görsel).
+
+Ürün kartında “+ Sepete Ekle” butonu.
+
+Sepet sayfasında seçilen ürünlerin listesi ve toplam tutar gösterimi.
+
+Son adımda kullanıcıdan şu bilgiler istenir:
+
+Ad Soyad
+
+Telefon
+
+Adres (metin kutusu)
+
+Not (isteğe bağlı)
+
+“Sipariş Gönder” butonuna basınca form verileri kaydedilsin veya e-posta olarak iletilsin.
+
+Üst menüde logo veya site adı: "Lila Group Menü".
+
+Alt kısımda sosyal medya ikonları ve tel/whatsapp iletişim bağlantısı.
+
+Hızlı yüklenen, SEO uyumlu, mobil cihazlarda native app hissi veren tasarım.
+
+Tasarım Dili:
+
+Renk paleti: Beyaz zemin, fuşya/siyah/yeşil vurgular (premium restoran havası).
+
+Font: Sans-serif (örneğin Poppins veya Inter).
+
+UI component örnekleri: Card, Modal, Floating Cart Button, Step Form.
+
+
+Kullanıcı deneyimi sade olmalı.
+Kullanıcı restoran seçimini yaptıktan sonra geri dönüp başka restorana da bakabilsin.
+Sipariş adımı olabildiğince kısa olmalı.
+Geliştirme yönünde prompt’ta “production-quality” ve “clean, semantic, maintainable code” ibareleri geçsin.
+
+plesk centos uyumlu olmalı
+veritabanı MSSQL dış kaynakta olmalı plesk içinde değil
