@@ -154,7 +154,7 @@ function Home() {
       console.error('Veri yüklenemedi:', err);
       setError('Veriler yüklenirken bir hata oluştu');
       setCategories([
-        { id: 'all', name: 'Tümü', icon: Utensils, color: 'bg-purple-500' }
+        { id: 'all', name: 'Tümü', icon: ShoppingBag, color: 'bg-purple-500' }
       ]);
     } finally {
       setLoading(false);
@@ -402,7 +402,7 @@ function Home() {
         ) : (
           <div className="text-center py-24 bg-white rounded-3xl border-2 border-gray-100 shadow-lg">
             <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Utensils className="w-10 h-10 text-purple-600" />
+              <ShoppingBag className="w-10 h-10 text-purple-600" />
             </div>
             <h3 className="text-xl font-black text-gray-700 mb-2">
               Restoran Bulunamadı

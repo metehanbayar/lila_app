@@ -4,7 +4,7 @@ import StatCard from '../../components/admin/StatCard';
 import Loading from '../../components/Loading';
 import { getDashboardStats, getRecentOrders } from '../../services/adminApi';
 import {
-  Utensils,
+  Store,
   Package,
   ShoppingBag,
   TrendingUp,
@@ -101,7 +101,7 @@ function Dashboard() {
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
           <StatCard
-            icon={Utensils}
+            icon={Store}
             title="Toplam Restoran"
             value={stats?.restaurants || 0}
             color="primary"

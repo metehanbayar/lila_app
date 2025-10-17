@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import useAdminStore from '../../store/adminStore';
 import {
   LayoutDashboard,
-  Utensils,
+  Store,
   FolderTree,
   Package,
   ShoppingBag,
@@ -28,7 +28,7 @@ function AdminLayout({ children }) {
 
   const menuItems = [
     { path: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/admin/restaurants', icon: Utensils, label: 'Restoranlar' },
+    { path: '/admin/restaurants', icon: Store, label: 'Restoranlar' },
     { path: '/admin/categories', icon: FolderTree, label: 'Kategoriler' },
     { path: '/admin/products', icon: Package, label: 'Ürünler' },
     { path: '/admin/orders', icon: ShoppingBag, label: 'Siparişler' },
