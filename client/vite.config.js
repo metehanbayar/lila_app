@@ -25,7 +25,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
-    minify: 'terser',
+    minify: 'esbuild', // esbuild daha hızlı ve Vite ile birlikte geliyor
     rollupOptions: {
       output: {
         manualChunks: {
