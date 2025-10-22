@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  lila-group-menu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lila-group-menu-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    env_file:
+      - ./server/.env
+    volumes:
+      # Uploads dizini için volume
+      - ./server/uploads:/app/server/uploads
+      # Logs dizini için volume
+      - ./logs:/app/logs
+      # PM2 ecosystem dosyası (opsiyonel)
+      - ./ecosystem.config.js:/app/ecosystem.config.js:ro
+    networks:
+      - lila-network
+    # Resource limits (VDS için optimize edilmiş)
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    # Health check
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # Security
+    security_opt:
+      - no-new-privileges:true
+    # Read-only root filesystem
+    read_only: true
+    # Temporary filesystem for writable areas
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+      - /var/tmp:noexec,nosuid,size=100m
+
+networks:
+  lila-network:
+    driver: bridge
+    name: lila-group-menu-network
+
+# Named volumes for persistent data
+volumes:
+  lila-uploads:
+    driver: local
+  lila-logs:
+    driver: local

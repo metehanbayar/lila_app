@@ -1,26 +1,26 @@
-# Dependencies
-node_modules
-npm-debug.log*
+# Docker ignore file for Lila Group Menu
+# Multi-hosting VDS için optimize edilmiş
 
-# Environment files
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+# Node modules
+node_modules/
+*/node_modules/
 
 # Logs
-logs
+logs/
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Runtime data
-pids
+pids/
 *.pid
 *.seed
 *.pid.lock
 
 # Coverage directory used by tools like istanbul
-coverage
+coverage/
+*.lcov
 
 # nyc test coverage
 .nyc_output
@@ -30,6 +30,15 @@ jspm_packages/
 
 # Optional npm cache directory
 .npm
+
+# Optional eslint cache
+.eslintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
 
 # Optional REPL history
 .node_repl_history
@@ -42,12 +51,39 @@ jspm_packages/
 
 # dotenv environment variables file
 .env
+.env.test
+.env.local
+.env.production
 
-# IDE files
-.vscode
-.idea
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# Next.js build output
+.next
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Gatsby files
+.cache/
+public
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Temporary folders
+tmp/
+temp/
+
+# Editor directories and files
+.vscode/
+.idea/
 *.swp
 *.swo
+*~
 
 # OS generated files
 .DS_Store
@@ -59,7 +95,7 @@ ehthumbs.db
 Thumbs.db
 
 # Git
-.git
+.git/
 .gitignore
 
 # Docker
@@ -69,8 +105,46 @@ docker-compose*
 
 # Documentation
 *.md
-README*
+!README.md
 
-# Build outputs
-dist
-build
+# Plesk specific
+plesk-nginx.conf
+docker-nginx.conf
+
+# Backup files
+*.backup
+*.bak
+
+# Uploads (will be mounted as volume)
+server/uploads/
+
+# PM2 files
+ecosystem.config.js
+.pm2/
+
+# Build artifacts
+client/dist/
+server/dist/
+
+# Test files
+test/
+tests/
+__tests__/
+*.test.js
+*.spec.js
+
+# LilaPrinterClient (Windows specific)
+LilaPrinterClient/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Certificate files
+*.pem
+*.key
+*.crt
+
+# Configuration examples
+*.example
