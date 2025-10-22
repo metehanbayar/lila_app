@@ -126,7 +126,7 @@ Build dosyaları `client/dist` klasörüne oluşturulur.
 
 Backend için ayrı build gerekmiyor, Node.js doğrudan çalıştırır.
 
-## 🌐 Plesk CentOS Deployment
+## 🌐 Plesk CentOS Kurulum
 
 ### 1. Sunucu Gereksinimleri
 
@@ -161,7 +161,7 @@ pm2 save
 pm2 startup
 ```
 
-### 5. Frontend Build ve Deploy
+### 5. Frontend Build ve Kurulum
 
 ```bash
 cd /var/www/vhosts/yourdomain.com/httpdocs/client

@@ -189,9 +189,9 @@ colors: {
 
 ## 🚀 Sonraki Adımlar
 
-- Production deployment için `DEPLOYMENT.md` dökümanına bakın
+- Production kurulum için `README.md` dökümanına bakın
 - API dökümanları için `README.md` dosyasını inceleyin
-- Plesk CentOS deployment için detaylı rehber: `DEPLOYMENT.md`
+- Plesk CentOS kurulum için detaylı rehber: `README.md`
 
 ---
 

@@ -186,7 +186,7 @@ Uygulama ayarları şurada saklanır:
 2. **Client'ı çalıştır** ve kurulumu tamamla
 3. **Test siparişi gönder** ve yazdırmayı kontrol et
 4. **EXE oluştur** ve diğer bilgisayarlarda test et
-5. **Production deployment** için hazırla
+5. **Production kurulum** için hazırla
 
 ## 📞 DESTEK
 

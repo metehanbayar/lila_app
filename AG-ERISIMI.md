@@ -127,9 +127,9 @@ netstat -an | findstr :3000
 
 Çıktıda `0.0.0.0:3000` görmelisiniz.
 
-## 🌍 Production Deployment
+## 🌍 Production Kurulum
 
-Bu ayarlar sadece geliştirme ortamı içindir. Production deployment için `DEPLOYMENT.md` dosyasına bakın.
+Bu ayarlar sadece geliştirme ortamı içindir. Production kurulum için `README.md` dosyasına bakın.
 
 ## 💡 İpuçları
 
