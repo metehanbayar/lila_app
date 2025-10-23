@@ -54,6 +54,9 @@ COPY --from=backend-builder /app/server ./server
 # Copy root package.json
 COPY package*.json ./
 
+# Copy environment files
+COPY env.example ./server/.env
+
 # Install root dependencies
 RUN npm ci --only=production
 
