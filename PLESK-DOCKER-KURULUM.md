@@ -35,25 +35,28 @@ docker-compose --version
 
 ## 📁 2. Proje Kurulumu
 
-### Plesk'te Domain Oluştur
+### Plesk'te Domain Ayarları
 
-1. **Websites & Domains** > **Add Domain**
-2. Domain adını girin (örn: `lilamenu.yourdomain.com`)
-3. **Hosting Type**: Physical hosting seçin
-4. **Document Root**: `/var/www/vhosts/lilamenu.yourdomain.com/httpdocs`
+1. **Websites & Domains** > **menu.lilaglobal.com.tr**
+2. **Hosting Settings** bölümüne gidin
+3. **Document Root**: `/var/www/vhosts/lilaglobal.com.tr/menu.lilaglobal.com.tr` (zaten mevcut)
+4. **Hosting Type**: Physical hosting olarak ayarlayın
 
-### Proje Dosyalarını Yükle
+### Proje Dosyalarını Kontrol Et
 
 ```bash
-# Domain dizinine git
-cd /var/www/vhosts/lilamenu.yourdomain.com/httpdocs
+# Mevcut proje dizinine git
+cd /var/www/vhosts/lilaglobal.com.tr/menu.lilaglobal.com.tr
 
-# Git ile klonla
-git clone https://github.com/yourusername/globalmenu.git .
+# Mevcut dosyaları kontrol et
+ls -la
+
+# Eğer proje dosyaları yoksa Git ile klonla
+# git clone https://github.com/metehanbayar/lila_app.git .
 
 # Dosya izinlerini ayarla
-chown -R psacln:psacln /var/www/vhosts/lilamenu.yourdomain.com/httpdocs
-chmod -R 755 /var/www/vhosts/lilamenu.yourdomain.com/httpdocs
+chown -R psacln:psacln /var/www/vhosts/lilaglobal.com.tr/menu.lilaglobal.com.tr
+chmod -R 755 /var/www/vhosts/lilaglobal.com.tr/menu.lilaglobal.com.tr
 ```
 
 ## 🗄️ 3. Environment Konfigürasyonu
@@ -61,7 +64,7 @@ chmod -R 755 /var/www/vhosts/lilamenu.yourdomain.com/httpdocs
 ### .env Dosyası Oluştur
 
 ```bash
-cd /var/www/vhosts/lilamenu.yourdomain.com/httpdocs/server
+cd /var/www/vhosts/lilaglobal.com.tr/menu.lilaglobal.com.tr/server
 cp .env.example .env
 nano .env
 ```
@@ -93,7 +96,7 @@ EMAIL_PASSWORD=your-email-password
 # Environment
 NODE_ENV=production
 PORT=3000
-CORS_ORIGIN=https://lilamenu.yourdomain.com
+CORS_ORIGIN=https://menu.lilaglobal.com.tr
 
 # Docker için özel ayarlar
 UPLOAD_PATH=/app/server/uploads
@@ -105,7 +108,7 @@ LOG_PATH=/app/logs
 ### Docker Image Build Et
 
 ```bash
-cd /var/www/vhosts/lilamenu.yourdomain.com/httpdocs
+cd /var/www/vhosts/lilaglobal.com.tr/menu.lilaglobal.com.tr
 
 # Docker image'ı build et
 docker build -t lila-group-menu:latest .
@@ -148,15 +151,15 @@ docker ps | grep lila-group-menu
 
 ### Plesk'te Nginx Ayarları
 
-1. **Websites & Domains** > **lilamenu.yourdomain.com** > **Hosting Settings**
-2. **Document Root**'u `/var/www/vhosts/lilamenu.yourdomain.com/httpdocs/client/dist` olarak ayarlayın
+1. **Websites & Domains** > **menu.lilaglobal.com.tr** > **Hosting Settings**
+2. **Document Root**'u `/var/www/vhosts/lilaglobal.com.tr/menu.lilaglobal.com.tr/client/dist` olarak ayarlayın
 3. **Additional nginx directives** bölümüne `docker-nginx.conf` dosyasının içeriğini ekleyin
 
 ## 🔒 6. SSL Sertifikası
 
 ```bash
 # Plesk Panel'de SSL kurulumu
-# Websites & Domains > lilamenu.yourdomain.com > SSL/TLS Certificates
+# Websites & Domains > menu.lilaglobal.com.tr > SSL/TLS Certificates
 # Let's Encrypt ile ücretsiz sertifika alın
 ```
 
@@ -239,7 +242,7 @@ tail -f /var/www/vhosts/lilamenu.yourdomain.com/httpdocs/logs/app.log
 ### Kod Güncelleme
 
 ```bash
-cd /var/www/vhosts/lilamenu.yourdomain.com/httpdocs
+cd /var/www/vhosts/lilaglobal.com.tr/menu.lilaglobal.com.tr
 
 # Yeni kod çek
 git pull origin main
@@ -269,7 +272,7 @@ nano update.sh
 echo "🔄 Lila Group Menu güncelleniyor..."
 
 # Proje dizinine git
-cd /var/www/vhosts/lilamenu.yourdomain.com/httpdocs
+cd /var/www/vhosts/lilaglobal.com.tr/menu.lilaglobal.com.tr
 
 # Yeni kod çek
 echo "📥 Kod güncelleniyor..."
