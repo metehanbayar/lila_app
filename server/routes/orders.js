@@ -1,7 +1,5 @@
 import express from 'express';
 import { getConnection, sql } from '../config/database.js';
-import { sendOrderEmail } from '../config/email.js';
-import { notifyNewOrder } from '../services/socket-service.js';
 
 const router = express.Router();
 
@@ -31,7 +29,17 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Müşteri kimlik doğrulama kontrolü - Sipariş vermek için üye olma zorunluluğu
+    // Minimum sipariş kontrolü için önce restoran bilgilerini al
+    const poolForCheck = await getConnection();
+    const restaurantCheckResult = await poolForCheck.request().query(`
+      SELECT Id, Name, MinOrder FROM Restaurants WHERE IsActive = 1
+    `);
+    const restaurantMinOrders = new Map();
+    restaurantCheckResult.recordset.forEach(r => {
+      restaurantMinOrders.set(r.Id, { name: r.Name, minOrder: r.MinOrder });
+    });
+
+    // Müşteri kimlik doğrulama kontrolü
     if (!customerId) {
       return res.status(401).json({
         success: false,
@@ -43,12 +51,9 @@ router.post('/', async (req, res) => {
     transaction = new sql.Transaction(pool);
     await transaction.begin();
 
-    const orderNumber = generateOrderNumber();
-
-    // Toplam tutarı hesapla (subtotal) ve restoranlar bazında grupla
-    let subtotal = 0;
-    const orderItems = [];
-    const restaurantGroups = new Map(); // restaurantId -> { items: [], subtotal: 0 }
+    // Restoranlar bazında grupla
+    const restaurantGroups = new Map(); // restaurantId -> { restaurantName, items: [], subtotal: 0 }
+    let totalSubtotal = 0;
 
     // Her ürün için veritabanından güncel fiyatı al
     for (const item of items) {
@@ -94,7 +99,7 @@ router.post('/', async (req, res) => {
       }
 
       const itemSubtotal = price * item.quantity;
-      subtotal += itemSubtotal;
+      totalSubtotal += itemSubtotal;
 
       const orderItem = {
         productId: product.Id,
@@ -107,8 +112,6 @@ router.post('/', async (req, res) => {
         restaurantId: product.RestaurantId,
         restaurantName: product.RestaurantName,
       };
-
-      orderItems.push(orderItem);
 
       // Restoran bazında grupla
       if (!restaurantGroups.has(product.RestaurantId)) {
@@ -125,10 +128,33 @@ router.post('/', async (req, res) => {
       restaurantGroup.subtotal += itemSubtotal;
     }
 
-    // Kupon kontrolü ve indirim hesaplama
+    // Minimum sipariş kontrolü - Her restoran için
+    const minOrderViolations = [];
+    for (const [restaurantId, restaurantData] of restaurantGroups) {
+      const restaurantInfo = restaurantMinOrders.get(restaurantId);
+      if (restaurantInfo && restaurantInfo.minOrder && restaurantInfo.minOrder > 0) {
+        if (restaurantData.subtotal < restaurantInfo.minOrder) {
+          minOrderViolations.push({
+            restaurantName: restaurantInfo.name,
+            required: restaurantInfo.minOrder,
+            current: restaurantData.subtotal,
+          });
+        }
+      }
+    }
+
+    if (minOrderViolations.length > 0) {
+      await transaction.rollback();
+      const violationsText = minOrderViolations.map(v => `${v.restaurantName}: ${v.required.toFixed(2)} ₺`).join(', ');
+      return res.status(400).json({
+        success: false,
+        message: `Minimum sipariş tutarına ulaşılmadı: ${violationsText}`,
+      });
+    }
+
+    // Kupon kontrolü ve toplam indirim hesaplama
     let couponId = null;
-    let discountAmount = 0;
-    let totalAmount = subtotal;
+    let totalDiscountAmount = 0;
 
     if (couponCode) {
       const couponResult = await new sql.Request(transaction)
@@ -147,26 +173,24 @@ router.post('/', async (req, res) => {
         const validUntil = coupon.ValidUntil ? new Date(coupon.ValidUntil) : null;
         const isDateValid = (!validFrom || validFrom <= now) && (!validUntil || validUntil >= now);
         const isLimitValid = coupon.UsageLimit === null || coupon.UsedCount < coupon.UsageLimit;
-        const isMinimumMet = subtotal >= coupon.MinimumAmount;
+        const isMinimumMet = totalSubtotal >= coupon.MinimumAmount;
 
         if (isDateValid && isLimitValid && isMinimumMet) {
           couponId = coupon.Id;
 
-          // İndirim hesapla
+          // Toplam indirimi hesapla
           if (coupon.DiscountType === 'percentage') {
-            discountAmount = (subtotal * coupon.DiscountValue) / 100;
-            if (coupon.MaxDiscount !== null && discountAmount > coupon.MaxDiscount) {
-              discountAmount = coupon.MaxDiscount;
+            totalDiscountAmount = (totalSubtotal * coupon.DiscountValue) / 100;
+            if (coupon.MaxDiscount !== null && totalDiscountAmount > coupon.MaxDiscount) {
+              totalDiscountAmount = coupon.MaxDiscount;
             }
           } else {
-            discountAmount = coupon.DiscountValue;
+            totalDiscountAmount = coupon.DiscountValue;
           }
 
-          if (discountAmount > subtotal) {
-            discountAmount = subtotal;
+          if (totalDiscountAmount > totalSubtotal) {
+            totalDiscountAmount = totalSubtotal;
           }
-
-          totalAmount = subtotal - discountAmount;
 
           // Kupon kullanım sayısını artır
           await new sql.Request(transaction)
@@ -180,121 +204,121 @@ router.post('/', async (req, res) => {
       }
     }
 
-    // Siparişi kaydet
-    const orderResult = await new sql.Request(transaction)
-      .input('orderNumber', sql.NVarChar, orderNumber)
-      .input('customerName', sql.NVarChar, customerName)
-      .input('customerPhone', sql.NVarChar, customerPhone)
-      .input('customerAddress', sql.NVarChar, customerAddress)
-      .input('notes', sql.NVarChar, notes || null)
-      .input('subtotal', sql.Decimal(10, 2), subtotal)
-      .input('discountAmount', sql.Decimal(10, 2), discountAmount)
-      .input('totalAmount', sql.Decimal(10, 2), totalAmount)
-      .input('customerId', sql.Int, customerId || null)
-      .input('couponId', sql.Int, couponId)
-      .input('couponCode', sql.NVarChar, couponCode || null)
-      .query(`
-        INSERT INTO Orders (OrderNumber, CustomerName, CustomerPhone, CustomerAddress, Notes, SubTotal, DiscountAmount, TotalAmount, Status, CustomerId, CouponId, CouponCode)
-        OUTPUT INSERTED.Id, INSERTED.CreatedAt
-        VALUES (@orderNumber, @customerName, @customerPhone, @customerAddress, @notes, @subtotal, @discountAmount, @totalAmount, 'Pending', @customerId, @couponId, @couponCode)
-      `);
+    // Çoklu restoran durumunda grup ID oluştur
+    const hasMultipleRestaurants = restaurantGroups.size > 1;
+    const groupId = hasMultipleRestaurants 
+      ? `GRP_${Date.now()}_${Math.random().toString(36).substring(7)}` 
+      : null;
 
-    const orderId = orderResult.recordset[0].Id;
-    const createdAt = orderResult.recordset[0].CreatedAt;
-
-    // Sipariş detaylarını kaydet
-    for (const item of orderItems) {
-      await new sql.Request(transaction)
-        .input('orderId', sql.Int, orderId)
-        .input('productId', sql.Int, item.productId)
-        .input('productName', sql.NVarChar, item.productName)
-        .input('productPrice', sql.Decimal(10, 2), item.productPrice)
-        .input('quantity', sql.Int, item.quantity)
-        .input('subtotal', sql.Decimal(10, 2), item.subtotal)
-        .input('variantId', sql.Int, item.variantId || null)
-        .input('variantName', sql.NVarChar, item.variantName || null)
-        .input('restaurantId', sql.Int, item.restaurantId)
-        .query(`
-          INSERT INTO OrderItems (OrderId, ProductId, ProductName, ProductPrice, Quantity, Subtotal, VariantId, VariantName, RestaurantId)
-          VALUES (@orderId, @productId, @productName, @productPrice, @quantity, @subtotal, @variantId, @variantName, @restaurantId)
-        `);
-    }
-
-    // Kupon kullanım geçmişini kaydet
-    if (couponId) {
-      await new sql.Request(transaction)
-        .input('couponId', sql.Int, couponId)
-        .input('customerId', sql.Int, customerId || null)
-        .input('orderId', sql.Int, orderId)
-        .input('discountAmount', sql.Decimal(10, 2), discountAmount)
-        .query(`
-          INSERT INTO CouponUsage (CouponId, CustomerId, OrderId, DiscountAmount)
-          VALUES (@couponId, @customerId, @orderId, @discountAmount)
-        `);
-    }
-
-    // OrderRestaurants tablosuna her restoran için kayıt ekle
+    // Her restoran için AYRI SIPARIŞ oluştur
+    const createdOrders = [];
+    
     for (const [restaurantId, restaurantData] of restaurantGroups) {
-      await new sql.Request(transaction)
-        .input('orderId', sql.Int, orderId)
-        .input('restaurantId', sql.Int, restaurantId)
-        .input('subtotal', sql.Decimal(10, 2), restaurantData.subtotal)
-        .input('itemCount', sql.Int, restaurantData.items.length)
+      // Restoran bazlı indirim hesabı (toplam indirimi subtotal'e göre dağıt)
+      const restaurantDiscountRatio = restaurantData.subtotal / totalSubtotal;
+      const restaurantDiscountAmount = totalDiscountAmount * restaurantDiscountRatio;
+      
+      const restaurantSubtotal = restaurantData.subtotal;
+      // Negatif toplam olmaması için clamp: Math.max(0, total)
+      const restaurantTotalAmount = Math.max(0, Number(restaurantSubtotal) - Number(restaurantDiscountAmount || 0));
+      
+      // Her restoran için ayrı sipariş numarası
+      const restaurantOrderNumber = generateOrderNumber();
+      
+      // Siparişi kaydet (GroupId ile)
+      const orderResult = await new sql.Request(transaction)
+        .input('orderNumber', sql.NVarChar, restaurantOrderNumber)
+        .input('customerName', sql.NVarChar, customerName)
+        .input('customerPhone', sql.NVarChar, customerPhone)
+        .input('customerAddress', sql.NVarChar, customerAddress)
+        .input('notes', sql.NVarChar, notes || null)
+        .input('subtotal', sql.Decimal(10, 2), restaurantSubtotal)
+        .input('discountAmount', sql.Decimal(10, 2), restaurantDiscountAmount)
+        .input('totalAmount', sql.Decimal(10, 2), restaurantTotalAmount)
+        .input('customerId', sql.Int, customerId || null)
+        .input('couponId', sql.Int, couponId)
+        .input('couponCode', sql.NVarChar, couponCode || null)
+        .input('groupId', sql.NVarChar, groupId)
         .query(`
-          INSERT INTO OrderRestaurants (OrderId, RestaurantId, Subtotal, ItemCount)
-          VALUES (@orderId, @restaurantId, @subtotal, @itemCount)
+          INSERT INTO Orders (OrderNumber, CustomerName, CustomerPhone, CustomerAddress, Notes, SubTotal, DiscountAmount, TotalAmount, Status, CustomerId, CouponId, CouponCode, PaymentStatus, PaymentMethod, GroupId)
+          OUTPUT INSERTED.Id, INSERTED.CreatedAt
+          VALUES (@orderNumber, @customerName, @customerPhone, @customerAddress, @notes, @subtotal, @discountAmount, @totalAmount, 'Pending', @customerId, @couponId, @couponCode, 'Pending', 'credit_card', @groupId)
         `);
+
+      const orderId = orderResult.recordset[0].Id;
+      const createdAt = orderResult.recordset[0].CreatedAt;
+
+      // Bu restorana ait sipariş detaylarını kaydet
+      for (const item of restaurantData.items) {
+        await new sql.Request(transaction)
+          .input('orderId', sql.Int, orderId)
+          .input('productId', sql.Int, item.productId)
+          .input('productName', sql.NVarChar, item.productName)
+          .input('productPrice', sql.Decimal(10, 2), item.productPrice)
+          .input('quantity', sql.Int, item.quantity)
+          .input('subtotal', sql.Decimal(10, 2), item.subtotal)
+          .input('variantId', sql.Int, item.variantId || null)
+          .input('variantName', sql.NVarChar, item.variantName || null)
+          .input('restaurantId', sql.Int, item.restaurantId)
+          .query(`
+            INSERT INTO OrderItems (OrderId, ProductId, ProductName, ProductPrice, Quantity, Subtotal, VariantId, VariantName, RestaurantId)
+            VALUES (@orderId, @productId, @productName, @productPrice, @quantity, @subtotal, @variantId, @variantName, @restaurantId)
+          `);
+      }
+
+      // Kupon kullanım geçmişini kaydet (sadece ilk restoran için)
+      if (couponId && createdOrders.length === 0) {
+        await new sql.Request(transaction)
+          .input('couponId', sql.Int, couponId)
+          .input('customerId', sql.Int, customerId || null)
+          .input('orderId', sql.Int, orderId)
+          .input('discountAmount', sql.Decimal(10, 2), totalDiscountAmount)
+          .query(`
+            INSERT INTO CouponUsage (CouponId, CustomerId, OrderId, DiscountAmount)
+            VALUES (@couponId, @customerId, @orderId, @discountAmount)
+          `);
+      }
+
+      createdOrders.push({
+        orderId,
+        orderNumber: restaurantOrderNumber,
+        restaurantId,
+        restaurantName: restaurantData.restaurantName,
+        subtotal: restaurantSubtotal,
+        discountAmount: restaurantDiscountAmount,
+        totalAmount: restaurantTotalAmount,
+        itemCount: restaurantData.items.length,
+        createdAt,
+      });
     }
 
     await transaction.commit();
 
-    // E-posta gönder (arka planda, hata olsa bile sipariş kaydedilmiş olur)
-    const order = {
-      OrderNumber: orderNumber,
-      CustomerName: customerName,
-      CustomerPhone: customerPhone,
-      CustomerAddress: customerAddress,
-      Notes: notes,
-      SubTotal: subtotal,
-      DiscountAmount: discountAmount,
-      TotalAmount: totalAmount,
-      CouponCode: couponCode,
-      CreatedAt: createdAt,
-    };
-
-    const orderItemsForEmail = orderItems.map((item) => ({
-      ProductName: item.variantName ? `${item.productName} (${item.variantName})` : item.productName,
-      ProductPrice: item.productPrice,
-      Quantity: item.quantity,
-      Subtotal: item.subtotal,
-    }));
-
-    sendOrderEmail(order, orderItemsForEmail).catch((err) =>
-      console.error('E-posta gönderimi başarısız:', err)
-    );
-
-    // Socket.io ile yazıcı agent'larına bildirim gönder
-    const restaurantOrdersForNotification = Array.from(restaurantGroups.values());
-    notifyNewOrder(orderId, restaurantOrdersForNotification).catch((err) =>
-      console.error('Yazıcı bildirimi başarısız:', err)
-    );
+    // NOT: E-posta ve bildirim gönderimi artık ödeme başarılı olduğunda yapılıyor
+    // Bu sayede sadece ödenmiş siparişler için e-posta ve bildirim gönderilecek
 
     res.status(201).json({
       success: true,
-      message: 'Siparişiniz başarıyla alındı!',
+      message: createdOrders.length > 1 
+        ? `${createdOrders.length} sipariş başarıyla oluşturuldu!` 
+        : 'Siparişiniz başarıyla alındı!',
       data: {
-        orderId,
-        orderNumber,
-        subtotal,
-        discountAmount,
-        totalAmount,
-        createdAt,
-        restaurants: restaurantOrdersForNotification.map(r => ({
-          restaurantId: r.restaurantId,
-          restaurantName: r.restaurantName,
-          itemCount: r.items.length,
-          subtotal: r.subtotal,
+        orderCount: createdOrders.length,
+        groupId: groupId, // Çoklu sipariş için grup ID (null ise tek sipariş)
+        orders: createdOrders.map(o => ({
+          orderId: o.orderId,
+          orderNumber: o.orderNumber,
+          restaurantId: o.restaurantId,
+          restaurantName: o.restaurantName,
+          subtotal: o.subtotal,
+          discountAmount: o.discountAmount,
+          totalAmount: o.totalAmount,
+          itemCount: o.itemCount,
+          createdAt: o.createdAt,
         })),
+        totalSubtotal: totalSubtotal,
+        totalDiscountAmount: totalDiscountAmount,
+        grandTotal: totalSubtotal - totalDiscountAmount,
       },
     });
   } catch (error) {

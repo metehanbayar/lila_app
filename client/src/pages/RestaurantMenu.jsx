@@ -1,60 +1,149 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Filter } from 'lucide-react';
+import { ArrowLeft, Check } from 'lucide-react';
 import { getRestaurantBySlug, getProductsByRestaurant } from '../services/api';
-import ProductCard from '../components/ProductCard';
+import ProductRowCard from '../components/ProductRowCard';
 import ProductDetailModal from '../components/ProductDetailModal';
 import Loading from '../components/Loading';
+
+// Navbar buton aktif/pasif class'ları - DOM API ile yönetilecek
+const ACTIVE_CLASSES = `
+  bg-gradient-to-r from-purple-600 to-pink-500
+  text-white
+  border border-transparent
+  shadow-[0_12px_30px_rgba(168,85,247,0.5)]
+`.trim().replace(/\s+/g, ' ');
+
+const INACTIVE_CLASSES = `
+  bg-gray-100
+  text-gray-700
+  border border-gray-200
+  shadow-sm
+`.trim().replace(/\s+/g, ' ');
 
 function RestaurantMenu() {
   const { slug } = useParams();
   const navigate = useNavigate();
   const [restaurant, setRestaurant] = useState(null);
   const [categories, setCategories] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState(null);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeCategory, setActiveCategory] = useState(null);
+  const [toast, setToast] = useState(null);
   const categoryRefs = useRef({});
   const observerRef = useRef(null);
   const navbarRef = useRef(null);
+  const stickyWrapperRef = useRef(null);
+  const activeCategoryIdRef = useRef(null);
+  const navButtonsRef = useRef(null); // NodeList snapshot
+  const lastActiveBtnRef = useRef(null); // DOM node
 
   useEffect(() => {
     loadRestaurantData();
   }, [slug]);
 
-  // Tüm ürünleri göster, kategorilere göre grupla
-  const productsByCategory = categories.reduce((acc, category) => {
-    acc[category.Id] = products.filter(p => p.CategoryId === category.Id);
-    return acc;
-  }, {});
+  // Tüm ürünleri göster, kategorilere göre grupla - useMemo ile optimize et
+  const productsByCategory = useMemo(() => {
+    return categories.reduce((acc, category) => {
+      acc[category.Id] = products.filter(p => p.CategoryId === category.Id);
+      return acc;
+    }, {});
+  }, [categories, products]);
 
-  // Tüm ürünleri kategorilere göre sırala
-  const allProducts = categories.flatMap(category => productsByCategory[category.Id] || []);
+  // Sadece ürünü olan kategorileri filtrele - useMemo ile optimize et
+  const categoriesWithProducts = useMemo(() => {
+    return categories.filter(category => {
+      const categoryProducts = productsByCategory[category.Id] || [];
+      return categoryProducts.length > 0;
+    });
+  }, [categories, productsByCategory]);
 
-  // Intersection Observer ile kategori takibi
+  // Tüm ürünleri kategorilere göre sırala - useMemo ile optimize et
+  const allProducts = useMemo(() => {
+    return categoriesWithProducts.flatMap(category => productsByCategory[category.Id] || []);
+  }, [categoriesWithProducts, productsByCategory]);
+
+  // Class array'lerini önceden hesapla (observer callback'inde her frame split yapmamak için)
+  const activeClassArray = useMemo(() => ACTIVE_CLASSES.trim().split(/\s+/), []);
+  const inactiveClassArray = useMemo(() => INACTIVE_CLASSES.trim().split(/\s+/), []);
+
+  // Kategorileri çiftlere ayır (content-visibility overhead'ini azaltmak için)
+  const categoryChunks = useMemo(() => {
+    const chunks = [];
+    for (let i = 0; i < categoriesWithProducts.length; i += 2) {
+      chunks.push(categoriesWithProducts.slice(i, i + 2));
+    }
+    return chunks;
+  }, [categoriesWithProducts]);
+
+  // Intersection Observer ile kategori takibi - DOM API ile highlight yönetimi (React re-render yok)
   useEffect(() => {
-    if (categories.length === 0) return;
+    if (categoriesWithProducts.length === 0) return;
 
+    let rafId = null;
     const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const categoryId = parseInt(entry.target.dataset.categoryId);
-            setActiveCategory(categoryId);
+        // RAF ile throttle et - çok fazla callback'i önle
+        if (rafId) return;
+        rafId = requestAnimationFrame(() => {
+          // En üstteki görünen kategoriyi bul
+          const visible = entries
+            .filter(e => e.isIntersecting)
+            .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+
+          if (visible.length > 0) {
+            const newActiveId = visible[0].target.dataset.categoryId;
             
-            // Navbar'da aktif kategori butonunu görünür hale getir
-            scrollToActiveCategory(categoryId);
+            // Gereksiz DOM güncellemelerini önle - aynı kategori aktif kalıyorsa hiçbir şey yapma
+            if (activeCategoryIdRef.current !== newActiveId) {
+              activeCategoryIdRef.current = newActiveId;
+              
+              const btns = navButtonsRef.current;
+              if (btns && btns.length) {
+                // Hangi buton aktif olmalı?
+                let newActiveBtn = null;
+
+                btns.forEach(btn => {
+                  const thisId = btn.getAttribute('data-category-button');
+                  if (thisId === newActiveId) {
+                    newActiveBtn = btn;
+                  }
+                });
+
+                if (newActiveBtn && newActiveBtn !== lastActiveBtnRef.current) {
+                  // 1. Eskiyi pasifleştir
+                  if (lastActiveBtnRef.current) {
+                    lastActiveBtnRef.current.classList.remove(...activeClassArray);
+                    lastActiveBtnRef.current.classList.add(...inactiveClassArray);
+                  }
+
+                  // 2. Yeniyi aktifleştir
+                  newActiveBtn.classList.remove(...inactiveClassArray);
+                  newActiveBtn.classList.add(...activeClassArray);
+
+                  // 3. Navbar'ı bu butona doğru kaydır
+                  newActiveBtn.scrollIntoView({
+                    behavior: 'auto', // smooth olursa her frame animasyon -> jitter yapabilir
+                    block: 'nearest',
+                    inline: 'center'
+                  });
+
+                  // 4. Referansı güncelle
+                  lastActiveBtnRef.current = newActiveBtn;
+                }
+              }
+            }
           }
+
+          rafId = null;
         });
       },
       {
         root: null,
-        rootMargin: '-20% 0px -60% 0px', // Kategori başlığı ekranın üst %20'sinde olduğunda aktif olsun
-        threshold: 0.1
+        rootMargin: '0px 0px -60% 0px', // Daha stabil - jitter azaltır
+        threshold: 0.0 // En basit hesaplama
       }
     );
 
@@ -66,43 +155,88 @@ function RestaurantMenu() {
     });
 
     return () => {
-      if (observerRef.current) {
-        observerRef.current.disconnect();
-      }
+      if (rafId) cancelAnimationFrame(rafId);
+      observer.disconnect();
+      observerRef.current = null;
     };
-  }, [categories, products]);
+  }, [categoriesWithProducts, activeClassArray, inactiveClassArray]);
 
-  // Aktif kategori butonunu navbar'da görünür hale getir
-  const scrollToActiveCategory = (categoryId) => {
+  // Navbar butonlarını cache'le (her frame querySelectorAll yapmamak için)
+  useEffect(() => {
+    if (!navbarRef.current) return;
+    navButtonsRef.current = navbarRef.current.querySelectorAll('[data-role="cat-btn"]');
+  }, [categoriesWithProducts]);
+
+  // Modal açıkken observer'ı durdur (performans için)
+  useEffect(() => {
+    if (!observerRef.current) return;
+    if (isModalOpen) {
+      observerRef.current.disconnect();
+    } else {
+      // Yeniden bağla
+      Object.values(categoryRefs.current).forEach(ref => {
+        if (ref) observerRef.current.observe(ref);
+      });
+    }
+  }, [isModalOpen]);
+
+  // Aktif kategori butonunu navbar'da görünür hale getir - useCallback ile optimize et
+  const scrollToActiveCategory = useCallback((categoryId) => {
     if (!navbarRef.current) return;
     
     const activeButton = navbarRef.current.querySelector(`[data-category-button="${categoryId}"]`);
     if (activeButton) {
       activeButton.scrollIntoView({
-        behavior: 'smooth',
+        behavior: 'auto', // smooth yerine auto - iki smooth animasyon aynı anda jitter yaratabilir
         block: 'nearest',
         inline: 'center'
       });
     }
-  };
+  }, []);
+
+  // Kategoriye scroll et - useCallback ile optimize et
+  const scrollToCategory = useCallback((categoryId) => {
+    const el = categoryRefs.current[categoryId];
+    if (!el) return;
+
+    // Dinamik yükseklik hesapla (header 64px + kategori bar yüksekliği + küçük padding)
+    const headerHeight = 64; // top-[64px] değeri
+    const categoryBarHeight = stickyWrapperRef.current
+      ? stickyWrapperRef.current.getBoundingClientRect().height
+      : 40; // fallback
+    const totalOffset = headerHeight + categoryBarHeight + 4; // 4px ek padding
+
+    const elementTop = el.getBoundingClientRect().top + window.pageYOffset;
+    const targetScroll = elementTop - totalOffset;
+
+    window.scrollTo({
+      top: Math.max(0, targetScroll), // Negatif değerleri önle
+      behavior: 'smooth'
+    });
+  }, []);
 
   const loadRestaurantData = async () => {
     try {
       setLoading(true);
-      const [restaurantResponse, productsResponse] = await Promise.all([
-        getRestaurantBySlug(slug),
-        getRestaurantBySlug(slug).then((res) =>
-          getProductsByRestaurant(res.data.Id)
-        ),
-      ]);
-
+      
+      // Restoran bilgisini al
+      const restaurantResponse = await getRestaurantBySlug(slug);
+      
       if (restaurantResponse.success) {
         setRestaurant(restaurantResponse.data);
-      }
-
-      if (productsResponse.success) {
-        setCategories(productsResponse.data.categories);
-        setProducts(productsResponse.data.allProducts);
+        
+        // Restoran ID'si ile ürünleri al
+        const productsResponse = await getProductsByRestaurant(restaurantResponse.data.Id);
+        
+        if (productsResponse.success) {
+          setCategories(productsResponse.data.categories);
+          // Ürünlere restoran bilgisini ekle
+          const productsWithRestaurant = productsResponse.data.allProducts.map(product => ({
+            ...product,
+            RestaurantName: restaurantResponse.data?.Name || 'Bilinmeyen Restoran'
+          }));
+          setProducts(productsWithRestaurant);
+        }
       }
     } catch (err) {
       console.error('Veri yüklenemedi:', err);
@@ -112,52 +246,47 @@ function RestaurantMenu() {
     }
   };
 
-  const getGradientClass = (color) => {
-    switch (color) {
-      case '#EC4899':
-        return 'from-pink-500 to-pink-700';
-      case '#22C55E':
-        return 'from-green-500 to-green-700';
-      case '#1F2937':
-        return 'from-gray-700 to-gray-900';
-      default:
-        return 'from-primary to-primary-dark';
-    }
-  };
 
-  const handleProductClick = (product) => {
+  const handleProductClick = useCallback((product) => {
     setSelectedProduct(product);
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const handleCloseModal = () => {
+  const handleAddToCartGlobal = useCallback((product) => {
+    setToast({ name: product.Name, quantity: 1 });
+    setTimeout(() => setToast(null), 5000);
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
     setIsModalOpen(false);
     setSelectedProduct(null);
-  };
+  }, []);
 
-  const handlePreviousProduct = () => {
+  const handlePreviousProduct = useCallback(() => {
     const currentIndex = allProducts.findIndex(p => p.Id === selectedProduct?.Id);
     if (currentIndex > 0) {
       setSelectedProduct(allProducts[currentIndex - 1]);
     }
-  };
+  }, [allProducts, selectedProduct?.Id]);
 
-  const handleNextProduct = () => {
+  const handleNextProduct = useCallback(() => {
     const currentIndex = allProducts.findIndex(p => p.Id === selectedProduct?.Id);
     if (currentIndex < allProducts.length - 1) {
       setSelectedProduct(allProducts[currentIndex + 1]);
     }
-  };
+  }, [allProducts, selectedProduct?.Id]);
 
-  const canGoPrevious = () => {
-    const currentIndex = allProducts.findIndex(p => p.Id === selectedProduct?.Id);
+  const canGoPrevious = useMemo(() => {
+    if (!selectedProduct) return false;
+    const currentIndex = allProducts.findIndex(p => p.Id === selectedProduct.Id);
     return currentIndex > 0;
-  };
+  }, [allProducts, selectedProduct]);
 
-  const canGoNext = () => {
-    const currentIndex = allProducts.findIndex(p => p.Id === selectedProduct?.Id);
+  const canGoNext = useMemo(() => {
+    if (!selectedProduct) return false;
+    const currentIndex = allProducts.findIndex(p => p.Id === selectedProduct.Id);
     return currentIndex < allProducts.length - 1;
-  };
+  }, [allProducts, selectedProduct]);
 
   if (loading) return <Loading />;
 
@@ -179,99 +308,149 @@ function RestaurantMenu() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-b from-purple-50 via-white to-gray-50">
       {/* Kategoriler */}
-      <div className="sticky top-14 z-30">
-        {/* Kategori Filtresi */}
-        {categories.length > 0 && (
-          <div className="bg-white border-b shadow-sm">
-            <div className="container mx-auto px-4 py-2 sm:py-3">
-            <div 
+      {!isModalOpen && (
+        <div ref={stickyWrapperRef} className="sticky top-[64px] z-50 bg-white border-b border-gray-200 shadow-[0_4px_12px_rgba(0,0,0,0.06)]">
+        {categoriesWithProducts.length > 0 && (
+          <div className="max-w-4xl mx-auto px-4 py-2">
+            <div
               ref={navbarRef}
-              className="flex overflow-x-auto gap-2 pb-2 categories-scroll" 
-              style={{
-                scrollbarWidth: 'thin',
-                scrollbarColor: '#D1D5DB transparent'
-              }}
+              className="flex overflow-x-auto gap-2 pb-2 -mx-4 px-4 scrollbar-hide snap-x snap-mandatory [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [touch-action:pan-x] overscroll-x-contain"
             >
-              {categories.map((category) => (
+              {categoriesWithProducts.map((category) => (
                 <button
                   key={category.Id}
                   data-category-button={category.Id}
+                  data-role="cat-btn"
                   onClick={() => {
-                    const categoryElement = categoryRefs.current[category.Id];
-                    if (categoryElement) {
-                      // Sticky header'ın toplam yüksekliğini hesapla
-                      const stickyHeader = document.querySelector('.sticky.top-14');
-                      const mainHeader = document.querySelector('header'); // Ana header
-                      
-                      let headerOffset = 56; // top-14 = 56px (ana header)
-                      if (stickyHeader) {
-                        headerOffset += stickyHeader.offsetHeight;
-                      }
-                      
-                      const elementPosition = categoryElement.getBoundingClientRect().top;
-                      const offsetPosition = elementPosition + window.pageYOffset - headerOffset - 20; // 20px ekstra boşluk
-                      
-                      window.scrollTo({
-                        top: offsetPosition,
-                        behavior: 'smooth'
+                    // 1. Highlight'ı lokalde zorla (observer'ı bekleme) - önce yap ki yükseklik sabitlensin
+                    const categoryIdStr = String(category.Id);
+                    activeCategoryIdRef.current = categoryIdStr;
+
+                    const btns = navButtonsRef.current;
+                    if (btns && btns.length) {
+                      // Hangi buton aktif olmalı?
+                      let newActiveBtn = null;
+
+                      btns.forEach(btn => {
+                        const thisId = btn.getAttribute('data-category-button');
+                        if (thisId === categoryIdStr) {
+                          newActiveBtn = btn;
+                        }
                       });
+
+                      if (newActiveBtn && newActiveBtn !== lastActiveBtnRef.current) {
+                        // Eski aktifi pasifleştir
+                        if (lastActiveBtnRef.current) {
+                          lastActiveBtnRef.current.classList.remove(...activeClassArray);
+                          lastActiveBtnRef.current.classList.add(...inactiveClassArray);
+                        }
+
+                        // Yeniyi aktifleştir
+                        newActiveBtn.classList.remove(...inactiveClassArray);
+                        newActiveBtn.classList.add(...activeClassArray);
+
+                        lastActiveBtnRef.current = newActiveBtn;
+                      }
                     }
+
+                    // 2. İçeri kaydır (highlight sonrası yükseklik doğru ölçülür)
+                    scrollToCategory(category.Id);
+
+                    // 3. Navbar'ı hizala
+                    scrollToActiveCategory(category.Id);
                   }}
-                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full whitespace-nowrap transition-colors text-sm sm:text-base ${
-                    activeCategory === category.Id
-                      ? 'bg-primary text-white shadow-md'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
-                  }`}
+                  className={`
+                    snap-start whitespace-nowrap px-3 py-1.5 rounded-xl
+                    text-[13px] font-semibold
+                    active:opacity-90 transition
+                    ${INACTIVE_CLASSES}
+                  `}
                 >
                   {category.Name}
                 </button>
               ))}
             </div>
-            </div>
           </div>
         )}
       </div>
+      )}
 
       {/* Ürünler */}
-      <div className="container mx-auto px-4 py-4 sm:py-6 md:py-8 mb-16 lg:mb-0">
-        {categories.length === 0 ? (
+      <div
+        className="container mx-auto px-4 py-4 sm:py-6 md:py-8 mb-16 lg:mb-0"
+        style={{ touchAction: 'pan-y' }}
+      >
+        {categoriesWithProducts.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-sm sm:text-base text-gray-600">Ürün bulunmuyor</p>
           </div>
         ) : (
           <div className="space-y-8 sm:space-y-10 md:space-y-12">
-            {categories.map((category) => {
-              const categoryProducts = productsByCategory[category.Id] || [];
-              if (categoryProducts.length === 0) return null;
+            {categoryChunks.map((chunk, chunkIndex) => (
+              <section
+                key={chunkIndex}
+                style={{
+                  contentVisibility: 'auto',
+                  containIntrinsicSize: '900px', // her chunk 2 kategori içerir, daha büyük tahmin - layout jump'ı önler
+                }}
+              >
+                <div className="space-y-8 sm:space-y-10 md:space-y-12">
+                  {chunk.map((category) => {
+                    const categoryProducts = productsByCategory[category.Id] || [];
+                    if (categoryProducts.length === 0) return null;
 
-              return (
-                <div key={category.Id} className="space-y-4 sm:space-y-6">
-                  {/* Kategori İsmi - Intersection observer için referans noktası */}
-                  <h2 
-                    ref={(el) => {
-                      if (el) categoryRefs.current[category.Id] = el;
-                    }}
-                    data-category-id={category.Id}
-                    className="text-lg sm:text-xl md:text-2xl font-bold text-gray-800 mb-3 sm:mb-4"
-                  >
-                    {category.Name}
-                  </h2>
+                    const hasFeaturedProducts = categoryProducts.some(p => p.IsFeatured);
 
-                  {/* Kategori Ürünleri */}
-                  <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-                    {categoryProducts.map((product) => (
-                      <ProductCard 
-                        key={product.Id} 
-                        product={product} 
-                        onProductClick={handleProductClick}
-                      />
-                    ))}
-                  </div>
+                    return (
+                      <div key={category.Id} className="space-y-4">
+                        {/* Kategori Başlığı */}
+                        <div className="mb-2">
+                          <div className="flex items-center gap-2">
+                            <h2
+                              ref={(el) => {
+                                if (el) {
+                                  categoryRefs.current[category.Id] = el;
+                                } else {
+                                  delete categoryRefs.current[category.Id];
+                                }
+                              }}
+                              data-category-id={category.Id}
+                              className="text-[15px] font-bold text-gray-900"
+                            >
+                              {category.Name}
+                            </h2>
+
+                            <span className="text-[11px] font-medium text-gray-500">
+                              {categoryProducts.length} ürün
+                            </span>
+                          </div>
+
+                          {hasFeaturedProducts && (
+                            <div className="mt-1 inline-flex items-center text-[10px] font-semibold text-purple-600 bg-purple-50 border border-purple-200 rounded-lg px-2 py-1 leading-none shadow-sm">
+                              Popüler
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Ürün Listesi */}
+                        <div className="flex flex-col gap-3">
+                          {categoryProducts.map((product) => (
+                            <ProductRowCard
+                              key={product.Id}
+                              product={product}
+                              onProductClick={handleProductClick}
+                              onAddToCart={handleAddToCartGlobal}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
+              </section>
+            ))}
           </div>
         )}
       </div>
@@ -283,12 +462,58 @@ function RestaurantMenu() {
         product={selectedProduct}
         onPrevious={handlePreviousProduct}
         onNext={handleNextProduct}
-        canGoPrevious={canGoPrevious()}
-        canGoNext={canGoNext()}
+        canGoPrevious={canGoPrevious}
+        canGoNext={canGoNext}
       />
+
+      {/* Global Toast */}
+      {toast && (
+        <div className="fixed top-4 right-4 bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/40 z-[70] animate-slideInRight max-w-sm">
+          <div className="p-4 flex items-start gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Check className="w-6 h-6 text-white" strokeWidth={3} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="text-sm font-bold text-gray-900 mb-1">Sepete Eklendi!</h4>
+              <p className="text-xs text-gray-600 truncate">
+                {toast.quantity} adet {toast.name}
+              </p>
+              <button
+                onClick={() => {
+                  setToast(null);
+                  navigate('/cart');
+                }}
+                className="mt-2 text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
+              >
+                Sepete Git →
+              </button>
+            </div>
+            <button
+              onClick={() => setToast(null)}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+              aria-label="Kapat"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 export default RestaurantMenu;
+
+// Tailwind safelist (build için; sakın silme)
+// Bu class'lar runtime'da DOM API ile eklendiği için Tailwind purge edebilir
+// Bu sabit Tailwind'in bu class'ları görmesini sağlar
+const __tailwindSafelist = `
+  bg-gradient-to-r from-purple-600 to-pink-500
+  text-white
+  border border-transparent
+  shadow-[0_12px_30px_rgba(168,85,247,0.5)]
+  bg-gray-100 text-gray-700 border-gray-200 shadow-sm
+`;
 

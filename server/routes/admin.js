@@ -23,9 +23,11 @@ export const adminAuth = async (req, res, next) => {
       .input('username', sql.NVarChar, username)
       .input('password', sql.NVarChar, password)
       .query(`
-        SELECT Id, Username, FullName, Email, IsActive
-        FROM AdminUsers
-        WHERE Username = @username AND Password = @password AND IsActive = 1
+        SELECT au.Id, au.Username, au.FullName, au.Email, au.IsActive, au.RestaurantId,
+               r.Name as RestaurantName
+        FROM AdminUsers au
+        LEFT JOIN Restaurants r ON au.RestaurantId = r.Id
+        WHERE au.Username = @username AND au.Password = @password AND au.IsActive = 1
       `);
 
     if (result.recordset.length === 0) {
@@ -64,9 +66,11 @@ router.post('/login', async (req, res) => {
       .input('username', sql.NVarChar, username)
       .input('password', sql.NVarChar, password)
       .query(`
-        SELECT Id, Username, FullName, Email, IsActive
-        FROM AdminUsers
-        WHERE Username = @username AND Password = @password AND IsActive = 1
+        SELECT au.Id, au.Username, au.FullName, au.Email, au.IsActive, au.RestaurantId,
+               r.Name as RestaurantName
+        FROM AdminUsers au
+        LEFT JOIN Restaurants r ON au.RestaurantId = r.Id
+        WHERE au.Username = @username AND au.Password = @password AND au.IsActive = 1
       `);
 
     if (result.recordset.length === 0) {
@@ -99,6 +103,8 @@ router.post('/login', async (req, res) => {
           username: admin.Username,
           fullName: admin.FullName,
           email: admin.Email,
+          restaurantId: admin.RestaurantId,
+          restaurantName: admin.RestaurantName,
         },
         token,
       },

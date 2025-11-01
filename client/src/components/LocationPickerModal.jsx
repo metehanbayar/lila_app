@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { GoogleMap, useJsApiLoader } from '@react-google-maps/api';
 import { X, Check, Loader2 } from 'lucide-react';
+import { safeSetTimeout, safeClearTimeout, debounce } from '../utils/performance';
 
 // LoadScript için sabit libraries dizisi
 const libraries = ['places'];
@@ -200,7 +201,7 @@ function LocationPickerModal({ isOpen, onClose, onConfirm }) {
       );
 
       // Haritayı marker'a odakla
-      setTimeout(() => {
+      safeSetTimeout(() => {
         if (map && pos) {
           map.panTo({ lat: pos[0], lng: pos[1] });
           map.setZoom(17);
@@ -232,7 +233,7 @@ function LocationPickerModal({ isOpen, onClose, onConfirm }) {
     }
 
     // Harita tamamen yüklendikten sonra marker oluştur
-    setTimeout(() => {
+    safeSetTimeout(() => {
       if (mapRef.current && position) {
         const marker = createMarker(mapRef.current, position);
         if (marker) {
@@ -263,7 +264,7 @@ function LocationPickerModal({ isOpen, onClose, onConfirm }) {
       watchIdRef.current = null;
     }
     if (watchTimeoutRef.current) {
-      clearTimeout(watchTimeoutRef.current);
+      safeClearTimeout(watchTimeoutRef.current);
       watchTimeoutRef.current = null;
     }
   };
@@ -322,7 +323,7 @@ function LocationPickerModal({ isOpen, onClose, onConfirm }) {
       });
 
       // 6 sn sonra en iyi sabiti kullan
-      watchTimeoutRef.current = setTimeout(() => {
+      watchTimeoutRef.current = safeSetTimeout(() => {
         const best = bestFixRef.current.coords;
         stopWatching();
         if (best) {
@@ -496,15 +497,26 @@ function LocationPickerModal({ isOpen, onClose, onConfirm }) {
   };
 
   // Debounce search input
+  // Debounced search için
+  const debouncedSearch = useCallback(
+    debounce((term) => {
+      if (term && term.trim().length >= 3) {
+        searchAddress(term.trim());
+      } else {
+        setSuggestions([]);
+      }
+    }, 350),
+    []
+  );
+
   useEffect(() => {
     if (!isOpen) return;
     if (!searchTerm || searchTerm.trim().length < 3) {
       setSuggestions([]);
       return;
     }
-    const t = setTimeout(() => searchAddress(searchTerm.trim()), 350);
-    return () => clearTimeout(t);
-  }, [searchTerm, isOpen]);
+    debouncedSearch(searchTerm);
+  }, [searchTerm, isOpen, debouncedSearch]);
 
   // Temizlik: modal kapanırken watcher, timer ve marker'ı temizle
   useEffect(() => {

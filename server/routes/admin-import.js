@@ -85,12 +85,10 @@ async function downloadImage(url, filename, retries = 2) {
   } catch (error) {
     // Retry mekanizması
     if (retries > 0) {
-      console.log(`   🔄 Yeniden deneniyor (${retries} deneme kaldı)...`);
       await new Promise(resolve => setTimeout(resolve, 1000)); // 1 saniye bekle
       return downloadImage(url, filename, retries - 1);
     }
     
-    console.error(`   ❌ İndirme hatası: ${error.message}`);
     return null;
   }
 }
@@ -107,7 +105,6 @@ function unserialize(serialized) {
     try {
       data = phpUnserialize(serialized);
     } catch (phpError) {
-      console.error('PHP unserialize hatası:', phpError.message);
       return null;
     }
     
@@ -145,7 +142,6 @@ function unserialize(serialized) {
 
     return data;
   } catch (error) {
-    console.error('Unserialize hatası:', error);
     return null;
   }
 }
@@ -230,21 +226,8 @@ router.post('/parse-xml', adminAuth, upload.single('file'), async (req, res) => 
         imageUrl: imageUrl,
       };
 
-      // Debug log - İlk 5 ürün için varyantları logla
-      if (products.length < 5) {
-        console.log(`\n📦 Ürün: ${product.name}`);
-        console.log(`   Görsel: ${product.imageUrl || 'Yok'}`);
-        console.log(`   Varyantlar (${product.variants?.length || 0}):`);
-        if (product.variants && Array.isArray(product.variants)) {
-          product.variants.forEach((v, i) => {
-            console.log(`   ${i + 1}. ${v.name || '(varsayılan)'}: ${v.price}₺`);
-          });
-        }
-      }
-
-      // Eğer varyant yoksa uyarı ver
+      // Eğer varyant yoksa varsayılan ekle
       if (product.variants.length === 0) {
-        console.warn(`⚠️  ${product.name}: Varyant bulunamadı!`);
         product.variants.push({
           name: '',
           price: 0,
@@ -263,7 +246,6 @@ router.post('/parse-xml', adminAuth, upload.single('file'), async (req, res) => 
       },
     });
   } catch (error) {
-    console.error('XML parse hatası:', error);
     res.status(500).json({
       success: false,
       message: 'XML dosyası işlenirken bir hata oluştu',
@@ -278,12 +260,7 @@ router.post('/import-products', adminAuth, async (req, res) => {
   req.setTimeout(300000); // 5 dakika
   
   try {
-    console.log('\n🚀 Import başlatılıyor...');
     const { restaurantId, products, categoryMapping } = req.body;
-
-    console.log(`   Restoran ID: ${restaurantId}`);
-    console.log(`   Ürün sayısı: ${products?.length || 0}`);
-    console.log(`   Kategori eşleşmeleri: ${Object.keys(categoryMapping || {}).length}`);
 
     if (!restaurantId || !products || !Array.isArray(products)) {
       return res.status(400).json({
@@ -404,7 +381,6 @@ router.post('/import-products', adminAuth, async (req, res) => {
 
             // Varyantları ekle (eğer birden fazla varsa veya isimli ise)
             if (product.variants.length > 1 || product.variants[0].name) {
-              console.log(`   💾 ${product.variants.length} varyant ekleniyor...`);
               let variantOrder = 0;
               for (const variant of product.variants) {
                 await transaction.request()
@@ -427,10 +403,8 @@ router.post('/import-products', adminAuth, async (req, res) => {
           } else {
             skippedCount++;
             errors.push(`${product.name}: Fiyat bilgisi bulunamadı`);
-            console.warn(`⚠️  Atlandı: ${product.name} - Varyant yok`);
           }
         } catch (productError) {
-          console.error(`Ürün import hatası (${product.name}):`, productError.message);
           errors.push(`${product.name}: ${productError.message}`);
           skippedCount++;
         }

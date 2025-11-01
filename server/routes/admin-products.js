@@ -4,11 +4,12 @@ import { adminAuth } from './admin.js';
 
 const router = express.Router();
 
-// Tüm ürünleri getir (sadece aktif olanlar)
+// Tüm ürünleri getir (aktif ve pasif dahil - admin için)
 router.get('/', adminAuth, async (req, res) => {
   try {
     const pool = await getConnection();
-    const result = await pool.request().query(`
+    
+    let query = `
       SELECT 
         p.Id, p.RestaurantId, p.CategoryId, p.Name, p.Description,
         p.Price, p.ImageUrl, p.IsActive, p.IsFeatured, p.DisplayOrder,
@@ -18,9 +19,19 @@ router.get('/', adminAuth, async (req, res) => {
       FROM Products p
       LEFT JOIN Restaurants r ON p.RestaurantId = r.Id
       LEFT JOIN Categories c ON p.CategoryId = c.Id
-      WHERE p.IsActive = 1
-      ORDER BY r.Name, c.Name, p.DisplayOrder, p.Name
-    `);
+    `;
+    
+    const request = pool.request();
+    
+    // Restoran bazlı kullanıcı ise sadece kendi restoranının ürünlerini göster
+    if (req.admin.RestaurantId) {
+      query += ' WHERE p.RestaurantId = @restaurantId';
+      request.input('restaurantId', sql.Int, req.admin.RestaurantId);
+    }
+    
+    query += ' ORDER BY r.Name, c.Name, p.DisplayOrder, p.Name';
+    
+    const result = await request.query(query);
 
     res.json({
       success: true,
@@ -35,10 +46,19 @@ router.get('/', adminAuth, async (req, res) => {
   }
 });
 
-// Restorana ait ürünler (sadece aktif olanlar)
+// Restorana ait ürünler (aktif ve pasif dahil - admin için)
 router.get('/restaurant/:restaurantId', adminAuth, async (req, res) => {
   try {
     const { restaurantId } = req.params;
+    
+    // Restoran bazlı kullanıcı ise sadece kendi restoranının ürünlerini görebilir
+    if (req.admin.RestaurantId && parseInt(restaurantId) !== req.admin.RestaurantId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bu restorana erişim yetkiniz yok',
+      });
+    }
+    
     const pool = await getConnection();
 
     const result = await pool
@@ -51,7 +71,7 @@ router.get('/restaurant/:restaurantId', adminAuth, async (req, res) => {
           c.Name as CategoryName
         FROM Products p
         LEFT JOIN Categories c ON p.CategoryId = c.Id
-        WHERE p.RestaurantId = @restaurantId AND p.IsActive = 1
+        WHERE p.RestaurantId = @restaurantId
         ORDER BY c.Name, p.DisplayOrder, p.Name
       `);
 
@@ -97,9 +117,19 @@ router.get('/:id', adminAuth, async (req, res) => {
       });
     }
 
+    const product = result.recordset[0];
+
+    // Restoran bazlı kullanıcı ise sadece kendi restoranının ürünlerini görebilir
+    if (req.admin.RestaurantId && product.RestaurantId !== req.admin.RestaurantId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bu ürüne erişim yetkiniz yok',
+      });
+    }
+
     res.json({
       success: true,
-      data: result.recordset[0],
+      data: product,
     });
   } catch (error) {
     console.error('Ürün detay hatası:', error);
@@ -124,10 +154,28 @@ router.post('/', adminAuth, async (req, res) => {
       displayOrder,
     } = req.body;
 
-    if (!restaurantId || !name || !price) {
+    if (!name || !price) {
       return res.status(400).json({
         success: false,
-        message: 'Restoran, ürün adı ve fiyat gerekli',
+        message: 'Ürün adı ve fiyat gerekli',
+      });
+    }
+
+    // Restoran bazlı kullanıcı ise sadece kendi restoranı için ürün oluşturabilir
+    const finalRestaurantId = req.admin.RestaurantId || restaurantId;
+    
+    if (!finalRestaurantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Restoran bilgisi gerekli',
+      });
+    }
+
+    // Restoran bazlı kullanıcı ise, parametre olarak gelen restaurantId'yi yok say
+    if (req.admin.RestaurantId && restaurantId && restaurantId !== req.admin.RestaurantId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bu restoran için ürün oluşturamazsınız',
       });
     }
 
@@ -135,7 +183,7 @@ router.post('/', adminAuth, async (req, res) => {
 
     const result = await pool
       .request()
-      .input('restaurantId', sql.Int, restaurantId)
+      .input('restaurantId', sql.Int, finalRestaurantId)
       .input('categoryId', sql.Int, categoryId || null)
       .input('name', sql.NVarChar, name)
       .input('description', sql.NVarChar, description || null)
@@ -185,19 +233,45 @@ router.put('/:id', adminAuth, async (req, res) => {
       displayOrder,
     } = req.body;
 
-    if (!restaurantId || !name || !price) {
+    if (!name || !price) {
       return res.status(400).json({
         success: false,
-        message: 'Restoran, ürün adı ve fiyat gerekli',
+        message: 'Ürün adı ve fiyat gerekli',
       });
     }
 
     const pool = await getConnection();
 
+    // Önce ürünü kontrol et
+    const productCheck = await pool
+      .request()
+      .input('id', sql.Int, id)
+      .query(`SELECT RestaurantId FROM Products WHERE Id = @id`);
+
+    if (productCheck.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Ürün bulunamadı',
+      });
+    }
+
+    const existingProduct = productCheck.recordset[0];
+
+    // Restoran bazlı kullanıcı ise sadece kendi restoranının ürünlerini güncelleyebilir
+    if (req.admin.RestaurantId && existingProduct.RestaurantId !== req.admin.RestaurantId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bu ürünü güncelleme yetkiniz yok',
+      });
+    }
+
+    // Restoran bazlı kullanıcı ise sadece kendi restoranı için ürün güncelleyebilir
+    const finalRestaurantId = req.admin.RestaurantId || restaurantId || existingProduct.RestaurantId;
+
     const result = await pool
       .request()
       .input('id', sql.Int, id)
-      .input('restaurantId', sql.Int, restaurantId)
+      .input('restaurantId', sql.Int, finalRestaurantId)
       .input('categoryId', sql.Int, categoryId || null)
       .input('name', sql.NVarChar, name)
       .input('description', sql.NVarChar, description || null)
@@ -249,6 +323,29 @@ router.delete('/:id', adminAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const pool = await getConnection();
+
+    // Önce ürünü kontrol et
+    const productCheck = await pool
+      .request()
+      .input('id', sql.Int, id)
+      .query(`SELECT RestaurantId FROM Products WHERE Id = @id`);
+
+    if (productCheck.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Ürün bulunamadı',
+      });
+    }
+
+    const existingProduct = productCheck.recordset[0];
+
+    // Restoran bazlı kullanıcı ise sadece kendi restoranının ürünlerini silebilir
+    if (req.admin.RestaurantId && existingProduct.RestaurantId !== req.admin.RestaurantId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bu ürünü silme yetkiniz yok',
+      });
+    }
 
     // Sipariş detaylarındaki ürünü kontrol et (OrderItems tablosu)
     const orderCheck = await pool
@@ -320,6 +417,53 @@ router.delete('/:id', adminAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Ürün silinirken bir hata oluştu',
+    });
+  }
+});
+
+// Ürün durumunu değiştir (aktif/pasif)
+router.patch('/:id/status', adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isActive } = req.body;
+
+    if (typeof isActive !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        message: 'Geçerli bir durum değeri gerekli (true/false)',
+      });
+    }
+
+    const pool = await getConnection();
+
+    const result = await pool
+      .request()
+      .input('id', sql.Int, id)
+      .input('isActive', sql.Bit, isActive)
+      .query(`
+        UPDATE Products
+        SET IsActive = @isActive, UpdatedAt = GETDATE()
+        OUTPUT INSERTED.*
+        WHERE Id = @id
+      `);
+
+    if (result.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Ürün bulunamadı',
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `Ürün ${isActive ? 'aktif' : 'pasif'} edildi`,
+      data: result.recordset[0],
+    });
+  } catch (error) {
+    console.error('Ürün durumu güncelleme hatası:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Ürün durumu güncellenirken bir hata oluştu',
     });
   }
 });

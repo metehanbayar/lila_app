@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import BottomNav from './BottomNav';
 import LocationPickerModal from './LocationPickerModal';
 import AddressManager from './AddressManager';
+import ScrollToTop from './ScrollToTop';
 import { ArrowLeft, MapPin, ChevronRight } from 'lucide-react';
 import useCustomerStore from '../store/customerStore';
 import { getAddresses } from '../services/customerApi';
@@ -80,9 +81,10 @@ function AppLayout({ children, showBottomNav = true, showBackButton = false, tit
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className={`min-h-screen bg-gradient-to-b from-purple-50 via-white to-gray-50 flex flex-col ${!showBottomNav ? 'h-screen' : ''}`}>
+      <ScrollToTop />
       {/* Unified Header - Sabit Layout */}
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-40 px-4 py-3">
+      <header className="bg-white/80 backdrop-blur-xl border-b border-white/30 sticky top-0 z-40 px-4 py-3 shadow-sm">
         <div className="flex items-center gap-3">
           {/* Sol Bölüm - Logo */}
           <Link to="/" className="flex items-center flex-shrink-0">
@@ -123,7 +125,7 @@ function AppLayout({ children, showBottomNav = true, showBackButton = false, tit
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 pb-16 lg:pb-0">
+      <main className={`flex-1 pb-16 lg:pb-0 ${!showBottomNav ? 'overflow-hidden' : ''}`}>
         {children}
       </main>
 

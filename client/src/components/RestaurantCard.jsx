@@ -1,13 +1,16 @@
 import { useNavigate } from 'react-router-dom';
 import { Utensils, Clock, Star, MapPin, TrendingUp, Heart, Zap, BadgePercent, ShoppingBag, ArrowRight } from 'lucide-react';
-import { useState } from 'react';
+import { useState, memo, useCallback, useMemo } from 'react';
 
 function RestaurantCard({ restaurant, showPromo = true }) {
   const navigate = useNavigate();
   const [isFavorite, setIsFavorite] = useState(false);
 
-  const getGradientClass = (color) => {
-    switch (color) {
+  const getGradientClass = useCallback((color) => {
+    // Renk kodunu normalize et (büyük-küçük harf farkını gidermek için)
+    const normalizedColor = color ? color.toUpperCase() : null;
+    
+    switch (normalizedColor) {
       case '#EC4899':
         return 'from-pink-500 to-pink-600';
       case '#22C55E':
@@ -17,127 +20,113 @@ function RestaurantCard({ restaurant, showPromo = true }) {
       default:
         return 'from-purple-500 to-purple-600';
     }
-  };
+  }, []);
 
-  // Mock data
-  const deliveryTime = '20-30 dk';
-  const minOrder = '50 TL';
-  const rating = (4.2 + Math.random() * 0.6).toFixed(1);
-  const totalOrders = Math.floor(Math.random() * 500) + 100;
-  const discount = showPromo ? (Math.floor(Math.random() * 3) === 0 ? 20 : null) : null;
-  const freeDelivery = Math.floor(Math.random() * 2) === 0;
-  const isPopular = Math.floor(Math.random() * 3) === 0;
+  // Veri yoksa varsayılan değerler - useMemo ile optimize et
+  const deliveryTime = useMemo(() => restaurant.DeliveryTime || '30-45 dk', [restaurant.DeliveryTime]);
+  const minOrder = useMemo(() => restaurant.MinOrder ? `${restaurant.MinOrder} ₺` : '50 ₺', [restaurant.MinOrder]);
+  
+  // Mock data - puan ve indirim (henüz API'de yok) - useMemo ile sabit tut
+  const rating = useMemo(() => {
+    // Restoran ID'sine göre sabit bir değer döndür (her render'da değişmesin)
+    const seed = restaurant.Id || 0;
+    return (4.2 + (seed % 100) / 100 * 0.6).toFixed(1);
+  }, [restaurant.Id]);
+  
+  const discount = useMemo(() => {
+    if (!showPromo) return null;
+    const seed = restaurant.Id || 0;
+    return seed % 3 === 0 ? 20 : null;
+  }, [showPromo, restaurant.Id]);
 
-  const handleFavoriteClick = (e) => {
+  const handleFavoriteClick = useCallback((e) => {
     e.stopPropagation();
-    setIsFavorite(!isFavorite);
-  };
+    setIsFavorite(prev => !prev);
+  }, []);
 
   return (
     <div
       onClick={() => navigate(`/restaurant/${restaurant.Slug}`)}
-      className="bg-white rounded-3xl shadow-lg hover:shadow-2xl active:shadow-lg transition-all duration-300 overflow-hidden cursor-pointer group border-2 border-gray-100 hover:border-purple-200"
+      className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-2xl active:shadow-xl transition-all duration-300 overflow-hidden cursor-pointer group border border-white/40 hover:border-purple-300/60"
     >
-      {/* Üst Kısım - Büyük Resim */}
+      {/* Görsel - Daha Kompakt */}
       <div className="relative h-48 overflow-hidden">
         {restaurant.ImageUrl ? (
-          <>
-            <img
-              src={restaurant.ImageUrl}
-              alt={restaurant.Name}
-              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
-          </>
+          <img
+            src={restaurant.ImageUrl}
+            alt={restaurant.Name}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+          />
         ) : (
-          <div className={`w-full h-full bg-gradient-to-br ${getGradientClass(restaurant.Color)} flex items-center justify-center relative overflow-hidden`}>
-            <div className="absolute inset-0 opacity-20">
-              <div className="absolute top-10 right-10 w-32 h-32 bg-white rounded-full blur-3xl"></div>
-              <div className="absolute bottom-10 left-10 w-40 h-40 bg-white rounded-full blur-3xl"></div>
-            </div>
-            <Utensils className="w-16 h-16 text-white opacity-90 relative z-10" />
+          <div className={`w-full h-full bg-gradient-to-br ${getGradientClass(restaurant.Color)} flex items-center justify-center`}>
+            <Utensils className="w-20 h-20 text-white opacity-80" />
           </div>
         )}
         
-        {/* Badge'ler - Resim üstünde */}
-        <div className="absolute top-3 left-3 flex flex-col gap-2">
+        {/* Üst Overlay - Minimal */}
+        <div className="absolute top-3 left-3 flex items-center gap-2">
           {discount && (
-            <div className="bg-gradient-to-r from-red-500 to-pink-500 text-white px-3 py-1.5 rounded-full text-xs font-black shadow-xl flex items-center gap-1 animate-pulse">
-              <BadgePercent className="w-3.5 h-3.5" />
+            <div className="bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-lg">
               %{discount} İNDİRİM
             </div>
           )}
-          {isPopular && !discount && (
-            <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-3 py-1.5 rounded-full text-xs font-black shadow-xl flex items-center gap-1">
-              <TrendingUp className="w-3.5 h-3.5" />
-              POPÜLER
-            </div>
-          )}
-          {freeDelivery && (
-            <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-3 py-1.5 rounded-full text-xs font-black shadow-xl flex items-center gap-1">
-              <Zap className="w-3.5 h-3.5" />
-              ÜCRETSİZ
-            </div>
-          )}
         </div>
         
-        {/* Favori Butonu */}
+        {/* Favori Butonu - Minimal */}
         <button
           onClick={handleFavoriteClick}
-          className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm p-2.5 rounded-full shadow-xl active:scale-90 transition-all hover:bg-white"
+          className="absolute top-3 right-3 bg-white/95 backdrop-blur-md p-2 rounded-lg shadow-lg active:scale-90 transition-all hover:bg-white"
         >
-          <Heart
-            className={`w-5 h-5 ${
-              isFavorite ? 'fill-red-500 text-red-500 animate-pulse' : 'text-gray-600'
-            }`}
-          />
+          <Heart className={`w-5 h-5 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
         </button>
 
-        {/* Puan Badge - Sağ Alt */}
-        <div className="absolute bottom-3 right-3 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-xl flex items-center gap-1.5">
-          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-          <span className="text-sm font-black text-gray-900">{rating}</span>
-          <span className="text-xs text-gray-500">({totalOrders})</span>
+        {/* Rating - Minimal */}
+        <div className="absolute bottom-3 right-3 bg-white/95 backdrop-blur-md px-2.5 py-1.5 rounded-lg shadow-lg flex items-center gap-1.5">
+          <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
+          <span className="text-xs font-bold text-gray-900">{rating}</span>
         </div>
       </div>
 
-      {/* Alt Kısım - Bilgiler */}
-      <div className="p-4">
-        {/* Restoran Adı */}
-        <h3 className="font-black text-lg text-gray-900 mb-2 group-hover:text-purple-600 transition-colors line-clamp-1">
-          {restaurant.Name}
-        </h3>
-
-        {/* Açıklama */}
-        {restaurant.Description && (
-          <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-            {restaurant.Description}
-          </p>
-        )}
-
-        {/* Alt Bilgiler */}
-        <div className="flex items-center gap-3 text-sm text-gray-600 mb-3 pb-3 border-b border-gray-100">
-          <div className="flex items-center gap-1.5 font-semibold">
-            <Clock className="w-4 h-4 text-purple-500" />
-            <span>{deliveryTime}</span>
-          </div>
-          <span className="text-gray-300">•</span>
-          <span className="font-semibold">Min. {minOrder}</span>
-          {restaurant.Distance && (
-            <>
-              <span className="text-gray-300">•</span>
-              <div className="flex items-center gap-1 text-purple-600 font-semibold">
-                <MapPin className="w-4 h-4" />
-                {restaurant.Distance}
-              </div>
-            </>
+      {/* İçerik - Daha Temiz */}
+      <div className="p-5 space-y-3">
+        {/* Başlık */}
+        <div>
+          <h3 className="font-bold text-lg text-gray-900 mb-1 group-hover:text-purple-600 transition-colors">
+            {restaurant.Name}
+          </h3>
+          {restaurant.Description && (
+            <p className="text-sm text-gray-600 line-clamp-2">
+              {restaurant.Description}
+            </p>
           )}
         </div>
 
-        {/* CTA Butonu */}
-        <button className="w-full bg-gradient-to-r from-purple-600 to-pink-500 text-white py-3.5 px-4 rounded-xl font-bold text-sm shadow-lg group-hover:shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2">
-          <ShoppingBag className="w-4 h-4" />
-          Hemen Sipariş Ver
+        {/* Bilgiler - İkonlu Grid */}
+        <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-100">
+          <div className="flex items-center gap-2 text-sm text-gray-700">
+            <div className="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center">
+              <Clock className="w-4 h-4 text-purple-600" />
+            </div>
+            <div>
+              <div className="text-xs text-gray-500">Süre</div>
+              <div className="font-semibold">{deliveryTime}</div>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2 text-sm text-gray-700">
+            <div className="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center">
+              <MapPin className="w-4 h-4 text-purple-600" />
+            </div>
+            <div>
+              <div className="text-xs text-gray-500">Min. Sipariş</div>
+              <div className="font-semibold">{minOrder}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Buton - Daha Hareketli */}
+        <button className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white py-3.5 px-4 rounded-xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 mt-4 shadow-md hover:shadow-xl hover:-translate-y-0.5 group">
+          Menüyü Gör
           <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
         </button>
       </div>
@@ -145,4 +134,16 @@ function RestaurantCard({ restaurant, showPromo = true }) {
   );
 }
 
-export default RestaurantCard;
+// Memo ile sarmala
+export default memo(RestaurantCard, (prevProps, nextProps) => {
+  return (
+    prevProps.restaurant.Id === nextProps.restaurant.Id &&
+    prevProps.restaurant.Name === nextProps.restaurant.Name &&
+    prevProps.restaurant.ImageUrl === nextProps.restaurant.ImageUrl &&
+    prevProps.restaurant.Slug === nextProps.restaurant.Slug &&
+    prevProps.restaurant.DeliveryTime === nextProps.restaurant.DeliveryTime &&
+    prevProps.restaurant.MinOrder === nextProps.restaurant.MinOrder &&
+    prevProps.restaurant.Color === nextProps.restaurant.Color &&
+    prevProps.showPromo === nextProps.showPromo
+  );
+});

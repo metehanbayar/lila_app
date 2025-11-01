@@ -77,7 +77,7 @@ function Favorites() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
+      <div className="min-h-screen bg-gradient-to-b from-purple-50 via-white to-gray-50 py-8">
         <div className="container mx-auto px-4">
           <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-lg">
             {error}
@@ -100,7 +100,7 @@ function Favorites() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gradient-to-b from-purple-50 via-white to-gray-50 py-8">
       <div className="container mx-auto px-4">
         {/* Header */}
         <div className="mb-6">

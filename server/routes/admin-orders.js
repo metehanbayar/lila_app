@@ -1,6 +1,7 @@
 import express from 'express';
 import { getConnection, sql } from '../config/database.js';
 import { adminAuth } from './admin.js';
+import { sendCancelledOrderEmail } from '../config/email.js';
 
 const router = express.Router();
 
@@ -10,18 +11,30 @@ router.get('/', adminAuth, async (req, res) => {
     const { status, page = 1, limit = 20 } = req.query;
     const pool = await getConnection();
 
+    // Restoran bazlı kullanıcı ise, OrderItems üzerinden restoran filtresi uygula
     let query = `
-      SELECT 
-        Id, OrderNumber, CustomerName, CustomerPhone, CustomerAddress,
-        Notes, TotalAmount, Status, CreatedAt, UpdatedAt
-      FROM Orders
+      SELECT DISTINCT
+        o.Id, o.OrderNumber, o.CustomerName, o.CustomerPhone, o.CustomerAddress,
+        o.Notes, o.TotalAmount, o.Status, o.CreatedAt, o.UpdatedAt
+      FROM Orders o
     `;
 
     const conditions = [];
     const request = pool.request();
 
+    // Restoran bazlı filtreleme
+    if (req.admin.RestaurantId) {
+      query += ' INNER JOIN OrderItems oi ON o.Id = oi.OrderId';
+      conditions.push('oi.RestaurantId = @restaurantId');
+      request.input('restaurantId', sql.Int, req.admin.RestaurantId);
+    }
+
+    // Mutfak kuyruğu: Sadece ödemesi yapılmış veya offline ödeme bekleyen siparişler
+    // Online (Paid) ve offline (AwaitingPayment) siparişler aynı kuyruğa düşer
+    conditions.push("o.PaymentStatus IN ('Paid', 'AwaitingPayment')");
+
     if (status) {
-      conditions.push('Status = @status');
+      conditions.push('o.Status = @status');
       request.input('status', sql.NVarChar, status);
     }
 
@@ -29,7 +42,7 @@ router.get('/', adminAuth, async (req, res) => {
       query += ' WHERE ' + conditions.join(' AND ');
     }
 
-    query += ' ORDER BY CreatedAt DESC';
+    query += ' ORDER BY o.CreatedAt DESC';
 
     // Pagination
     const offset = (page - 1) * limit;
@@ -38,14 +51,35 @@ router.get('/', adminAuth, async (req, res) => {
     const result = await request.query(query);
 
     // Toplam sayı
-    let countQuery = 'SELECT COUNT(*) as total FROM Orders';
-    if (conditions.length > 0) {
-      countQuery += ' WHERE ' + conditions.join(' AND ');
+    let countQuery = `
+      SELECT COUNT(DISTINCT o.Id) as total 
+      FROM Orders o
+    `;
+    
+    if (req.admin.RestaurantId) {
+      countQuery += ' INNER JOIN OrderItems oi ON o.Id = oi.OrderId';
+    }
+    
+    const countConditions = [];
+    if (req.admin.RestaurantId) {
+      countConditions.push('oi.RestaurantId = @countRestaurantId');
+    }
+    // Mutfak kuyruğu: Sadece ödemesi yapılmış veya offline ödeme bekleyen siparişler
+    countConditions.push("o.PaymentStatus IN ('Paid', 'AwaitingPayment')");
+    if (status) {
+      countConditions.push('o.Status = @countStatus');
+    }
+    
+    if (countConditions.length > 0) {
+      countQuery += ' WHERE ' + countConditions.join(' AND ');
     }
 
     const countRequest = pool.request();
+    if (req.admin.RestaurantId) {
+      countRequest.input('countRestaurantId', sql.Int, req.admin.RestaurantId);
+    }
     if (status) {
-      countRequest.input('status', sql.NVarChar, status);
+      countRequest.input('countStatus', sql.NVarChar, status);
     }
 
     const countResult = await countRequest.query(countQuery);
@@ -94,14 +128,42 @@ router.get('/:id', adminAuth, async (req, res) => {
 
     const order = orderResult.recordset[0];
 
-    const itemsResult = await pool
-      .request()
-      .input('orderId', sql.Int, id)
-      .query(`
-        SELECT *
-        FROM OrderItems
-        WHERE OrderId = @orderId
-      `);
+    // Sipariş öğelerini getir
+    let itemsQuery = `
+      SELECT *
+      FROM OrderItems
+      WHERE OrderId = @orderId
+    `;
+    
+    const itemsRequest = pool.request().input('orderId', sql.Int, id);
+    
+    // Restoran bazlı kullanıcı ise sadece kendi restoranının ürünlerini göster
+    if (req.admin.RestaurantId) {
+      itemsQuery += ' AND RestaurantId = @restaurantId';
+      itemsRequest.input('restaurantId', sql.Int, req.admin.RestaurantId);
+    }
+    
+    const itemsResult = await itemsRequest.query(itemsQuery);
+
+    // Eğer restoran bazlı kullanıcı ise ve bu siparişte hiç ürün yoksa erişim reddedilir
+    if (req.admin.RestaurantId && itemsResult.recordset.length === 0) {
+      // Siparişin başka restoranlara ait ürünleri olup olmadığını kontrol et
+      const otherItemsCheck = await pool
+        .request()
+        .input('orderId', sql.Int, id)
+        .query(`
+          SELECT COUNT(*) as count
+          FROM OrderItems
+          WHERE OrderId = @orderId
+        `);
+      
+      if (otherItemsCheck.recordset[0].count > 0) {
+        return res.status(403).json({
+          success: false,
+          message: 'Bu siparişe erişim yetkiniz yok',
+        });
+      }
+    }
 
     res.json({
       success: true,
@@ -135,6 +197,26 @@ router.patch('/:id/status', adminAuth, async (req, res) => {
     }
 
     const pool = await getConnection();
+
+    // Restoran bazlı kullanıcı ise, siparişte kendi restoranının ürünü olup olmadığını kontrol et
+    if (req.admin.RestaurantId) {
+      const orderCheck = await pool
+        .request()
+        .input('orderId', sql.Int, id)
+        .input('restaurantId', sql.Int, req.admin.RestaurantId)
+        .query(`
+          SELECT COUNT(*) as count
+          FROM OrderItems
+          WHERE OrderId = @orderId AND RestaurantId = @restaurantId
+        `);
+      
+      if (orderCheck.recordset[0].count === 0) {
+        return res.status(403).json({
+          success: false,
+          message: 'Bu siparişi güncelleme yetkiniz yok',
+        });
+      }
+    }
 
     const result = await pool
       .request()
@@ -176,6 +258,26 @@ router.patch('/:id/notes', adminAuth, async (req, res) => {
 
     const pool = await getConnection();
 
+    // Restoran bazlı kullanıcı ise, siparişte kendi restoranının ürünü olup olmadığını kontrol et
+    if (req.admin.RestaurantId) {
+      const orderCheck = await pool
+        .request()
+        .input('orderId', sql.Int, id)
+        .input('restaurantId', sql.Int, req.admin.RestaurantId)
+        .query(`
+          SELECT COUNT(*) as count
+          FROM OrderItems
+          WHERE OrderId = @orderId AND RestaurantId = @restaurantId
+        `);
+      
+      if (orderCheck.recordset[0].count === 0) {
+        return res.status(403).json({
+          success: false,
+          message: 'Bu siparişi güncelleme yetkiniz yok',
+        });
+      }
+    }
+
     const result = await pool
       .request()
       .input('id', sql.Int, id)
@@ -212,10 +314,67 @@ router.patch('/:id/notes', adminAuth, async (req, res) => {
 router.delete('/:id', adminAuth, async (req, res) => {
   try {
     const { id } = req.params;
+    const { reason } = req.body; // İptal nedeni
     const pool = await getConnection();
 
+    // Restoran bazlı kullanıcı ise, siparişte kendi restoranının ürünü olup olmadığını kontrol et
+    if (req.admin.RestaurantId) {
+      const orderCheck = await pool
+        .request()
+        .input('orderId', sql.Int, id)
+        .input('restaurantId', sql.Int, req.admin.RestaurantId)
+        .query(`
+          SELECT COUNT(*) as count
+          FROM OrderItems
+          WHERE OrderId = @orderId AND RestaurantId = @restaurantId
+        `);
+      
+      if (orderCheck.recordset[0].count === 0) {
+        return res.status(403).json({
+          success: false,
+          message: 'Bu siparişi iptal etme yetkiniz yok',
+        });
+      }
+    }
+
+    // Önce sipariş bilgilerini al
+    const orderResult = await pool
+      .request()
+      .input('id', sql.Int, id)
+      .query(`
+        SELECT *
+        FROM Orders
+        WHERE Id = @id
+      `);
+
+    if (orderResult.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Sipariş bulunamadı',
+      });
+    }
+
+    const order = orderResult.recordset[0];
+
+    // Sipariş ürünlerini al
+    const itemsResult = await pool
+      .request()
+      .input('orderId', sql.Int, id)
+      .query(`
+        SELECT *
+        FROM OrderItems
+        WHERE OrderId = @orderId
+      `);
+
+    const orderItems = itemsResult.recordset.map((item) => ({
+      ProductName: item.ProductName,
+      ProductPrice: parseFloat(item.ProductPrice),
+      Quantity: item.Quantity,
+      Subtotal: parseFloat(item.Subtotal),
+    }));
+
     // Siparişi iptal et
-    const result = await pool
+    const updateResult = await pool
       .request()
       .input('id', sql.Int, id)
       .query(`
@@ -224,16 +383,31 @@ router.delete('/:id', adminAuth, async (req, res) => {
         WHERE Id = @id
       `);
 
-    if (result.rowsAffected[0] === 0) {
+    if (updateResult.rowsAffected[0] === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Sipariş bulunamadı',
+        message: 'Sipariş iptal edilemedi',
       });
     }
 
+    // E-posta gönder (arka planda)
+    const orderData = {
+      OrderNumber: order.OrderNumber,
+      CustomerName: order.CustomerName,
+      CustomerPhone: order.CustomerPhone,
+      CustomerAddress: order.CustomerAddress,
+      Notes: order.Notes,
+      TotalAmount: parseFloat(order.TotalAmount),
+      CreatedAt: order.CreatedAt,
+    };
+
+    sendCancelledOrderEmail(orderData, orderItems, reason).catch((err) =>
+      console.error('İptal e-postası gönderimi başarısız:', err)
+    );
+
     res.json({
       success: true,
-      message: 'Sipariş iptal edildi',
+      message: 'Sipariş iptal edildi ve bildirim gönderildi',
     });
   } catch (error) {
     console.error('Sipariş silme hatası:', error);

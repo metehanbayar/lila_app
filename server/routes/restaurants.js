@@ -8,7 +8,7 @@ router.get('/', async (req, res) => {
   try {
     const pool = await getConnection();
     const result = await pool.request().query(`
-      SELECT Id, Name, Slug, Description, Color, ImageUrl, IsActive
+      SELECT Id, Name, Slug, Description, Color, ImageUrl, IsActive, DeliveryTime, MinOrder
       FROM Restaurants
       WHERE IsActive = 1
       ORDER BY Id
@@ -37,7 +37,7 @@ router.get('/:slug', async (req, res) => {
       .request()
       .input('slug', sql.NVarChar, slug)
       .query(`
-        SELECT Id, Name, Slug, Description, Color, ImageUrl, IsActive
+        SELECT Id, Name, Slug, Description, Color, ImageUrl, IsActive, DeliveryTime, MinOrder
         FROM Restaurants
         WHERE Slug = @slug AND IsActive = 1
       `);
@@ -58,6 +58,40 @@ router.get('/:slug', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Restoran bilgisi yüklenirken bir hata oluştu',
+    });
+  }
+});
+
+// Minimum sipariş kontrolü
+router.post('/check-min-order', async (req, res) => {
+  try {
+    const { restaurantIds } = req.body;
+    
+    if (!restaurantIds || !Array.isArray(restaurantIds) || restaurantIds.length === 0) {
+      return res.json({
+        success: true,
+        data: [],
+      });
+    }
+    
+    const pool = await getConnection();
+    
+    const idsString = restaurantIds.join(',');
+    const result = await pool.request().query(`
+      SELECT Id, Name, MinOrder, Color
+      FROM Restaurants
+      WHERE Id IN (${idsString}) AND IsActive = 1
+    `);
+    
+    res.json({
+      success: true,
+      data: result.recordset,
+    });
+  } catch (error) {
+    console.error('Minimum sipariş kontrolü hatası:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Minimum sipariş kontrolü yapılırken bir hata oluştu',
     });
   }
 });

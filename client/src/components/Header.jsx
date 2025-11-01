@@ -47,7 +47,7 @@ function Header() {
         }
       }
     } catch (err) {
-      console.error('Adresler yüklenemedi:', err);
+      // Adres yükleme hatası
     }
   };
 
@@ -81,9 +81,6 @@ function Header() {
     setShowAddressManager(false);
   };
 
-  console.log('Header render - selectedAddress:', selectedAddress);
-  console.log('Header render - isAuthenticated:', isAuthenticated);
-
   return (
     <>
       <header className="bg-white shadow-sm sticky top-0 z-40">
@@ -101,7 +98,6 @@ function Header() {
             {/* Adres Seçici - Ortada */}
             <button
               onClick={() => {
-                console.log('Adres butonu tıklandı');
                 if (isAuthenticated) {
                   setShowAddressManager(true);
                 } else {

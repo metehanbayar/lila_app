@@ -3,14 +3,6 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Environment değişkenlerini kontrol et
-console.log('🔍 Environment değişkenleri:');
-console.log('DB_SERVER:', process.env.DB_SERVER);
-console.log('DB_PORT:', process.env.DB_PORT);
-console.log('DB_DATABASE:', process.env.DB_DATABASE);
-console.log('DB_USER:', process.env.DB_USER);
-console.log('DB_ENCRYPT:', process.env.DB_ENCRYPT);
-
 const config = {
   server: process.env.DB_SERVER || 'localhost',
   port: parseInt(process.env.DB_PORT || '1433'),
@@ -21,6 +13,12 @@ const config = {
     encrypt: process.env.DB_ENCRYPT === 'true',
     trustServerCertificate: true,
     enableArithAbort: true,
+    connectTimeout: 30000, // 30 saniye
+    requestTimeout: 30000, // 30 saniye
+    connectionTimeout: 30000, // 30 saniye
+    // Alternatif bağlantı yöntemleri
+    instanceName: process.env.DB_INSTANCE || undefined,
+    connectionString: process.env.DB_CONNECTION_STRING || undefined,
   },
   pool: {
     max: 10,
@@ -29,16 +27,6 @@ const config = {
   },
 };
 
-// Config'i kontrol et
-console.log('🔧 Database config:', {
-  server: config.server,
-  port: config.port,
-  database: config.database,
-  user: config.user,
-  password: config.password ? '***' : 'undefined',
-  encrypt: config.options.encrypt
-});
-
 let pool = null;
 
 export async function getConnection() {
@@ -46,11 +34,38 @@ export async function getConnection() {
     if (pool) {
       return pool;
     }
-    pool = await sql.connect(config);
-    console.log('✅ MSSQL veritabanına bağlantı başarılı');
-    return pool;
+    
+    // Farklı bağlantı yöntemlerini dene
+    // Yöntem 1: Normal bağlantı
+    try {
+      pool = await sql.connect(config);
+      return pool;
+    } catch (error1) {
+      // Yöntem 2: Instance name ile
+      const configWithInstance = {
+        ...config,
+        options: {
+          ...config.options,
+          instanceName: 'SQLEXPRESS'
+        }
+      };
+      
+      try {
+        pool = await sql.connect(configWithInstance);
+        return pool;
+      } catch (error2) {
+        // Yöntem 3: Connection string ile
+        const connectionString = `Server=${config.server},${config.port};Database=${config.database};User Id=${config.user};Password=${config.password};Encrypt=${config.options.encrypt};TrustServerCertificate=true;`;
+        
+        try {
+          pool = await sql.connect(connectionString);
+          return pool;
+        } catch (error3) {
+          throw error1; // İlk hatayı fırlat
+        }
+      }
+    }
   } catch (error) {
-    console.error('❌ Veritabanı bağlantı hatası:', error);
     throw error;
   }
 }
@@ -60,10 +75,9 @@ export async function closeConnection() {
     if (pool) {
       await pool.close();
       pool = null;
-      console.log('Veritabanı bağlantısı kapatıldı');
     }
   } catch (error) {
-    console.error('Bağlantı kapatma hatası:', error);
+    // Bağlantı kapatma hatası
   }
 }
 

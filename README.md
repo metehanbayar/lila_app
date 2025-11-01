@@ -71,7 +71,7 @@ MSSQL Server'da veritabanını oluşturun:
 
 ```env
 PORT=3000
-NODE_ENV=production
+NODE_ENV=development
 
 # MSSQL Database (External)
 DB_SERVER=your-mssql-server.com
@@ -290,7 +290,7 @@ node -e "require('./config/database.js').getConnection().then(() => console.log(
 ## 📝 Önemli Notlar
 
 - Veritabanı **dış kaynakta** (Plesk içinde değil)
-- Production'da `NODE_ENV=production` olmalı
+- Production'da `NODE_ENV=development` olmalı
 - CORS ayarlarını production domain'e göre yapın
 - E-posta SMTP bilgilerini doğru girin
 - PM2 ile backend'i daemon olarak çalıştırın

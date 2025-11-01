@@ -33,8 +33,8 @@ function BottomNav() {
   ];
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-50 safe-area-bottom shadow-2xl">
-      <div className="flex items-center justify-around px-2">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/80 supports-[backdrop-filter]:backdrop-blur-2xl border-t border-white/30 z-50 safe-area-bottom shadow-[0_-10px_40px_rgba(0,0,0,0.1)]">
+      <div className="flex items-center justify-around px-1">
         {navItems.map((item) => {
           const active = isActive(item.path);
           return (
@@ -42,36 +42,34 @@ function BottomNav() {
               key={item.id}
               to={item.path}
               className={`flex-1 flex flex-col items-center justify-center py-2 transition-all ${
-                active ? 'text-purple-600' : 'text-gray-500'
+                active ? 'text-purple-600' : 'text-gray-700'
               }`}
             >
               <div className="relative">
-                {/* Aktif gösterge */}
-                {active && (
-                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-8 h-1 bg-purple-600 rounded-full"></div>
-                )}
-                
                 {/* İkon container */}
-                <div className={`p-2 rounded-xl transition-all ${
-                  active ? 'bg-purple-50 scale-110' : ''
+                <div className={`p-1.5 rounded-xl transition-all ${
+                  active ? 'bg-gradient-to-br from-purple-50 to-pink-50' : 'hover:bg-gray-100'
                 }`}>
                   <item.icon 
-                    size={22} 
-                    className={active ? 'stroke-[2.5]' : 'stroke-2'} 
+                    size={20} 
+                    className="transition-all"
+                    style={{
+                      strokeWidth: active ? 2.5 : 2
+                    }}
                   />
                 </div>
                 
                 {/* Badge */}
                 {item.badge > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                  <span className="absolute -top-0.5 -right-0.5 bg-gradient-to-r from-red-500 to-red-600 text-white text-[10px] font-black rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 shadow-md border border-white">
                     {item.badge > 9 ? '9+' : item.badge}
                   </span>
                 )}
               </div>
               
               {/* Label */}
-              <span className={`text-[10px] mt-0.5 font-medium transition-all ${
-                active ? 'font-bold' : ''
+              <span className={`text-[10px] mt-0.5 font-semibold transition-all ${
+                active ? 'scale-105' : ''
               }`}>
                 {item.label}
               </span>

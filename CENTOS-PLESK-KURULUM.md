@@ -126,7 +126,7 @@ EMAIL_USER=your-email@example.com
 EMAIL_PASSWORD=your-email-password
 
 # Environment
-NODE_ENV=production
+NODE_ENV=development
 PORT=3000
 CORS_ORIGIN=https://lilamenu.yourdomain.com
 

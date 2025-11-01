@@ -267,6 +267,11 @@ function Coupons() {
           <div className="text-xs text-gray-500">
             {coupon.DiscountType === 'percentage' ? 'Yüzde' : 'Sabit Tutar'}
           </div>
+          {coupon.MaxDiscount && (
+            <div className="text-xs text-gray-600 mt-1 font-semibold">
+              Max: {formatCurrency(coupon.MaxDiscount)}
+            </div>
+          )}
         </div>
       ),
     },

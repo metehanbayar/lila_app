@@ -28,7 +28,7 @@ import {
   Upload, Download, Edit, Trash2, Plus, X, Check, Eye, EyeOff,
   Lock, Unlock, Key, Search as SearchIcon,
   // Özel
-  Sparkle, Zap as Lightning, Flame as Fire, Droplet, Snowflake,
+  Zap as Lightning, Flame as Fire, Droplet, Snowflake,
   Bookmark, BookOpen, Globe, Compass
 } from 'lucide-react';
 
@@ -64,7 +64,7 @@ const ICON_COMPONENTS = {
   Lock, Unlock, Key,
   // Özel
   Lightning, Droplet, Snowflake, Bookmark, BookOpen, Globe, Compass,
-  Frown, TrendingDown, Sparkle, SearchIcon
+  Frown, TrendingDown, SearchIcon
 };
 
 // Kategorilere göre organize edilmiş ikon isimleri
@@ -196,7 +196,7 @@ function IconPicker({ value, onChange }) {
         <>
           {/* Backdrop */}
           <div 
-            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 transition-opacity"
+            className="fixed inset-0 bg-black/30 supports-[backdrop-filter]:backdrop-blur-sm z-40 transition-opacity"
             onClick={() => setIsOpen(false)}
           />
           

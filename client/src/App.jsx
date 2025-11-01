@@ -1,10 +1,14 @@
 import { Routes, Route } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
 import AppLayout from './components/AppLayout';
+import Loading from './components/Loading';
 import Home from './pages/Home';
 import RestaurantMenu from './pages/RestaurantMenu';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import OrderSuccess from './pages/OrderSuccess';
+import PaymentSuccess from './pages/PaymentSuccess';
+import PaymentFailure from './pages/PaymentFailure';
 import NotFound from './pages/NotFound';
 import Search from './pages/Search';
 
@@ -21,6 +25,8 @@ import CouponsTest from './pages/admin/CouponsTest';
 import Media from './pages/admin/Media';
 import Import from './pages/admin/Import';
 import ReceiptTemplateEditor from './pages/admin/ReceiptTemplateEditor';
+// Kullanıcı yönetimi sayfası - lazy loading ile
+const Users = lazy(() => import('./pages/admin/Users'));
 
 // Customer imports
 import CustomerProtectedRoute from './components/customer/CustomerProtectedRoute';
@@ -48,6 +54,8 @@ function App() {
         } 
       />
       <Route path="/order-success/:orderNumber" element={<AppLayout><OrderSuccess /></AppLayout>} />
+      <Route path="/payment/success" element={<AppLayout><PaymentSuccess /></AppLayout>} />
+      <Route path="/payment/failure" element={<AppLayout><PaymentFailure /></AppLayout>} />
 
       {/* Customer Routes */}
       <Route path="/login" element={<Login />} />
@@ -87,14 +95,6 @@ function App() {
 
       {/* Admin Routes */}
       <Route path="/admin/login" element={<AdminLogin />} />
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        }
-      />
       {/* Nested routes ÖNCE gelmeli (daha spesifik) */}
       <Route
         path="/admin/restaurants/:id/receipt-template"
@@ -161,6 +161,25 @@ function App() {
         element={
           <ProtectedRoute>
             <Import />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/users"
+        element={
+          <ProtectedRoute>
+            <Suspense fallback={<Loading />}>
+              <Users />
+            </Suspense>
+          </ProtectedRoute>
+        }
+      />
+      {/* Genel /admin route'u EN SON gelmeli (daha az spesifik) */}
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
           </ProtectedRoute>
         }
       />

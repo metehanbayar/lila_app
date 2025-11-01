@@ -13,6 +13,7 @@ const isOTPEnabled = () => {
 router.post('/send', async (req, res) => {
   try {
     const { phone, purpose } = req.body; // purpose: 'register' veya 'login'
+    let { name } = req.body; // name: isim soyisim (let olarak tanımla)
 
     // OTP devre dışıysa, demo mod
     if (!isOTPEnabled()) {
@@ -68,7 +69,7 @@ router.post('/send', async (req, res) => {
         .request()
         .input('phone', sql.NVarChar, cleanPhone)
         .query(`
-          SELECT Id, IsActive FROM Customers WHERE Phone = @phone
+          SELECT Id, IsActive, FirstName, LastName FROM Customers WHERE Phone = @phone
         `);
 
       if (existingCustomer.recordset.length === 0) {
@@ -83,6 +84,13 @@ router.post('/send', async (req, res) => {
           success: false,
           message: 'Hesabınız pasif durumda',
         });
+      }
+
+      // Login için müşteri adını al
+      if (!name && existingCustomer.recordset[0].FirstName) {
+        const firstName = existingCustomer.recordset[0].FirstName || '';
+        const lastName = existingCustomer.recordset[0].LastName || '';
+        name = `${firstName} ${lastName}`.trim();
       }
     }
 
@@ -129,7 +137,7 @@ router.post('/send', async (req, res) => {
       `);
 
     // SMS gönder
-    const message = createOTPMessage(otpCode, purpose);
+    const message = createOTPMessage(otpCode, purpose, name);
     const smsSent = await sendSMS(cleanPhone, message);
 
     if (!smsSent) {

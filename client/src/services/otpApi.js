@@ -10,8 +10,8 @@ const otpApi = axios.create({
 });
 
 // OTP gönder
-export const sendOTP = async (phone, purpose) => {
-  const response = await otpApi.post('/send', { phone, purpose });
+export const sendOTP = async (phone, purpose, name = '') => {
+  const response = await otpApi.post('/send', { phone, purpose, name });
   return response.data;
 };
 

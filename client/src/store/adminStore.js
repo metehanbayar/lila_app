@@ -35,6 +35,18 @@ const useAdminStore = create(
       getAdmin: () => {
         return get().admin;
       },
+
+      // Restoran ID'sini kontrol et
+      isRestaurantAdmin: () => {
+        const admin = get().admin;
+        return admin?.restaurantId !== null && admin?.restaurantId !== undefined;
+      },
+
+      // Sistem admin'i mi kontrol et
+      isSystemAdmin: () => {
+        const admin = get().admin;
+        return admin?.restaurantId === null || admin?.restaurantId === undefined;
+      },
     }),
     {
       name: 'lila-admin-storage',

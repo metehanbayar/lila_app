@@ -165,7 +165,7 @@ Bu kodu kimseyle paylasmayiniz.
 Production ortamında gerçek SMS gönderimi yapılır:
 
 ```env
-NODE_ENV=production
+NODE_ENV=development
 SMS_USERNAME=actual_username
 SMS_PASSWORD=actual_password
 SMS_USERCODE=actual_usercode

@@ -35,7 +35,7 @@ code .env
 ```env
 # Server Ayarları
 PORT=3000
-NODE_ENV=production
+NODE_ENV=development
 
 # MSSQL Veritabanı (Kendi bilgilerinizle değiştirin!)
 DB_SERVER=yourserver.database.windows.net

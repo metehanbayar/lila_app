@@ -26,6 +26,8 @@ function Restaurants() {
     color: '#EC4899',
     imageUrl: '',
     isActive: true,
+    deliveryTime: '',
+    minOrder: '',
   });
 
   useEffect(() => {
@@ -56,6 +58,8 @@ function Restaurants() {
         color: restaurant.Color,
         imageUrl: restaurant.ImageUrl || '',
         isActive: restaurant.IsActive,
+        deliveryTime: restaurant.DeliveryTime || '',
+        minOrder: restaurant.MinOrder || '',
       });
     } else {
       setEditingRestaurant(null);
@@ -66,6 +70,8 @@ function Restaurants() {
         color: '#EC4899',
         imageUrl: '',
         isActive: true,
+        deliveryTime: '',
+        minOrder: '',
       });
     }
     setModalOpen(true);
@@ -108,6 +114,22 @@ function Restaurants() {
     { header: 'ID', field: 'Id' },
     { header: 'Ad', field: 'Name' },
     { header: 'Slug', field: 'Slug' },
+    {
+      header: 'Teslimat',
+      render: (row) => (
+        <span className="text-sm text-gray-700">
+          {row.DeliveryTime || '-'}
+        </span>
+      ),
+    },
+    {
+      header: 'Min. Sipariş',
+      render: (row) => (
+        <span className="text-sm text-gray-700">
+          {row.MinOrder ? `${row.MinOrder} ₺` : '-'}
+        </span>
+      ),
+    },
     {
       header: 'Görsel',
       render: (row) => (
@@ -256,6 +278,35 @@ function Restaurants() {
                   value={formData.color}
                   onChange={(e) => setFormData({ ...formData, color: e.target.value })}
                   className="flex-1 px-3 py-2.5 sm:py-2 text-base sm:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Teslimat Süresi
+                </label>
+                <input
+                  type="text"
+                  value={formData.deliveryTime}
+                  onChange={(e) => setFormData({ ...formData, deliveryTime: e.target.value })}
+                  placeholder="30-45 dk"
+                  className="w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Minimum Sipariş (₺)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.minOrder}
+                  onChange={(e) => setFormData({ ...formData, minOrder: e.target.value })}
+                  placeholder="50"
+                  className="w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
               </div>
             </div>

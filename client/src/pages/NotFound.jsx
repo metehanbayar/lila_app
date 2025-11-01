@@ -5,7 +5,7 @@ function NotFound() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-b from-purple-50 via-white to-gray-50 flex items-center justify-center px-4">
       <div className="text-center">
         <div className="mb-8">
           <Search className="w-24 h-24 text-gray-300 mx-auto mb-4" />

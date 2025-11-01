@@ -11,7 +11,7 @@ router.get('/', adminAuth, async (req, res) => {
     const result = await pool.request().query(`
       SELECT 
         Id, Name, Slug, Description, Color, ImageUrl, IsActive,
-        CreatedAt, UpdatedAt
+        DeliveryTime, MinOrder, CreatedAt, UpdatedAt
       FROM Restaurants
       ORDER BY Id
     `);
@@ -41,7 +41,7 @@ router.get('/:id', adminAuth, async (req, res) => {
       .query(`
         SELECT 
           Id, Name, Slug, Description, Color, ImageUrl, IsActive,
-          CreatedAt, UpdatedAt
+          DeliveryTime, MinOrder, CreatedAt, UpdatedAt
         FROM Restaurants
         WHERE Id = @id
       `);
@@ -69,7 +69,7 @@ router.get('/:id', adminAuth, async (req, res) => {
 // Yeni restoran oluştur
 router.post('/', adminAuth, async (req, res) => {
   try {
-    const { name, slug, description, color, imageUrl } = req.body;
+    const { name, slug, description, color, imageUrl, deliveryTime, minOrder, isActive } = req.body;
 
     if (!name || !slug) {
       return res.status(400).json({
@@ -87,10 +87,13 @@ router.post('/', adminAuth, async (req, res) => {
       .input('description', sql.NVarChar, description || null)
       .input('color', sql.NVarChar, color || '#EC4899')
       .input('imageUrl', sql.NVarChar, imageUrl || null)
+      .input('deliveryTime', sql.NVarChar, deliveryTime || null)
+      .input('minOrder', sql.Decimal(10, 2), minOrder || null)
+      .input('isActive', sql.Bit, isActive !== undefined ? isActive : true)
       .query(`
-        INSERT INTO Restaurants (Name, Slug, Description, Color, ImageUrl)
+        INSERT INTO Restaurants (Name, Slug, Description, Color, ImageUrl, DeliveryTime, MinOrder, IsActive)
         OUTPUT INSERTED.*
-        VALUES (@name, @slug, @description, @color, @imageUrl)
+        VALUES (@name, @slug, @description, @color, @imageUrl, @deliveryTime, @minOrder, @isActive)
       `);
 
     res.status(201).json({
@@ -119,7 +122,7 @@ router.post('/', adminAuth, async (req, res) => {
 router.put('/:id', adminAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, slug, description, color, imageUrl, isActive } = req.body;
+    const { name, slug, description, color, imageUrl, isActive, deliveryTime, minOrder } = req.body;
 
     if (!name || !slug) {
       return res.status(400).json({
@@ -139,6 +142,8 @@ router.put('/:id', adminAuth, async (req, res) => {
       .input('color', sql.NVarChar, color || '#EC4899')
       .input('imageUrl', sql.NVarChar, imageUrl || null)
       .input('isActive', sql.Bit, isActive !== undefined ? isActive : true)
+      .input('deliveryTime', sql.NVarChar, deliveryTime || null)
+      .input('minOrder', sql.Decimal(10, 2), minOrder || null)
       .query(`
         UPDATE Restaurants
         SET 
@@ -148,6 +153,8 @@ router.put('/:id', adminAuth, async (req, res) => {
           Color = @color,
           ImageUrl = @imageUrl,
           IsActive = @isActive,
+          DeliveryTime = @deliveryTime,
+          MinOrder = @minOrder,
           UpdatedAt = GETDATE()
         OUTPUT INSERTED.*
         WHERE Id = @id

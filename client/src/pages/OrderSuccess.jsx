@@ -1,19 +1,20 @@
 import { useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { CheckCircle, Home } from 'lucide-react';
 
 function OrderSuccess() {
   const { orderNumber } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const orderData = location.state?.orderData;
 
   useEffect(() => {
-    // Confetti effect (optional)
     window.scrollTo(0, 0);
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center px-4 py-8">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center animate-fadeIn">
+    <div className="min-h-screen bg-gradient-to-b from-purple-50 via-white to-gray-50 flex items-center justify-center px-4 py-8">
+      <div className="max-w-md w-full bg-white/80 backdrop-blur-xl rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.2)] border border-white/40 p-8 text-center animate-fadeIn">
         <div className="mb-6">
           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-12 h-12 text-green-600" />
@@ -28,7 +29,27 @@ function OrderSuccess() {
 
         <div className="bg-gray-50 rounded-xl p-6 mb-6">
           <p className="text-sm text-gray-600 mb-2">Sipariş Numaranız</p>
-          <p className="text-2xl font-bold text-primary">{orderNumber}</p>
+          {orderData && orderData.orderCount > 1 ? (
+            <>
+              <p className="text-2xl font-bold text-primary mb-3">{orderNumber}</p>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
+                <p className="text-sm font-semibold text-green-800 mb-1">
+                  {orderData.orderCount} ayrı sipariş oluşturuldu
+                </p>
+                <div className="space-y-1 mt-2">
+                  {orderData.orders.map((order, idx) => (
+                    <p key={idx} className="text-xs text-green-700">
+                      • {order.restaurantName}: <span className="font-mono">{order.orderNumber}</span>
+                    </p>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-2xl font-bold text-primary">{orderNumber}</p>
+            </>
+          )}
           <p className="text-xs text-gray-500 mt-2">
             Bu numarayı kaydedin, siparişinizi takip etmek için kullanabilirsiniz
           </p>

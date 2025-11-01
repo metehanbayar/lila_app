@@ -94,7 +94,7 @@ Backend production modunda çalıştırmak için:
 
 ```bash
 cd server
-NODE_ENV=production npm start
+NODE_ENV=development npm start
 ```
 
 ## ✅ Kurulum Kontrolü

@@ -4,7 +4,7 @@ import DataTable from '../../components/admin/DataTable';
 import Modal from '../../components/admin/Modal';
 import Loading from '../../components/Loading';
 import ImagePicker from '../../components/admin/ImagePicker';
-import { Plus, Trash2, GripVertical, ArrowUpDown } from 'lucide-react';
+import { Plus, Trash2, GripVertical, ArrowUpDown, Power, PowerOff } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -28,6 +28,7 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
+  updateProductStatus,
   getProductVariants,
   bulkUpdateProductVariants,
   reorderProducts,
@@ -318,6 +319,21 @@ function Products() {
     }
   };
 
+  const handleToggleStatus = async (product) => {
+    try {
+      const newStatus = !product.IsActive;
+      await updateProductStatus(product.Id, newStatus);
+      
+      // UI'ı hemen güncelle
+      setProducts(products.map(p => 
+        p.Id === product.Id ? { ...p, IsActive: newStatus } : p
+      ));
+    } catch (err) {
+      console.error('Durum güncelleme hatası:', err);
+      alert(err.response?.data?.message || 'Durum güncellenirken bir hata oluştu');
+    }
+  };
+
   const handleDelete = async (product) => {
     if (window.confirm(`${product.Name} ürününü silmek istediğinizden emin misiniz?`)) {
       try {
@@ -461,8 +477,25 @@ function Products() {
         <DataTable
           columns={columns}
           data={products}
-          onEdit={handleOpenModal}
-          onDelete={handleDelete}
+          actions={[
+            {
+              label: 'Düzenle',
+              icon: null,
+              variant: 'primary',
+              onClick: handleOpenModal,
+            },
+            {
+              type: 'switch',
+              field: 'IsActive',
+              onClick: handleToggleStatus,
+            },
+            {
+              label: 'Sil',
+              icon: Trash2,
+              variant: 'danger',
+              onClick: handleDelete,
+            },
+          ]}
           emptyMessage="Henüz ürün eklenmemiş"
         />
 

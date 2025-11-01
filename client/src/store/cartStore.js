@@ -5,9 +5,10 @@ const useCartStore = create(
   persist(
     (set, get) => ({
       items: [],
+      appliedCoupon: null,
       
-      // Sepete ürün ekle (varyant bilgisiyle)
-      addItem: (product, selectedVariant = null) => {
+      // Sepete ürün ekle (varyant bilgisiyle, quantity desteği ile)
+      addItem: (product, selectedVariant = null, quantity = 1) => {
         const items = get().items;
         
         // Varyant ID'si ile unique key oluştur (undefined/null tutarlılığı)
@@ -20,7 +21,7 @@ const useCartStore = create(
           set({
             items: items.map((item) =>
               item.Id === product.Id && (item.selectedVariant?.Id ?? null) === variantId
-                ? { ...item, quantity: item.quantity + 1 }
+                ? { ...item, quantity: item.quantity + quantity }
                 : item
             ),
           });
@@ -28,7 +29,7 @@ const useCartStore = create(
           set({
             items: [...items, { 
               ...product, 
-              quantity: 1,
+              quantity: quantity,
               selectedVariant: selectedVariant,
               // Fiyatı seçili varyanttan al, yoksa ürün fiyatını kullan
               effectivePrice: selectedVariant?.Price || product.Price,
@@ -84,13 +85,27 @@ const useCartStore = create(
 
       // Sepeti temizle
       clearCart: () => {
-        set({ items: [] });
+        set({ items: [], appliedCoupon: null });
+      },
+      
+      // Kupon uygula
+      applyCoupon: (coupon) => {
+        set({ appliedCoupon: coupon });
+      },
+      
+      // Kupon kaldır
+      removeCoupon: () => {
+        set({ appliedCoupon: null });
       },
 
       // Toplam tutar (varyant fiyatlarını dikkate alarak)
       getTotalAmount: () => {
         return get().items.reduce(
-          (total, item) => total + item.effectivePrice * item.quantity,
+          (total, item) => {
+            const price = Number(item.effectivePrice) || 0;
+            const qty = Number(item.quantity) || 0;
+            return total + (price * qty);
+          },
           0
         );
       },

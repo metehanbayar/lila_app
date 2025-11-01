@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Lock, User, AlertCircle } from 'lucide-react';
 import useAdminStore from '../../store/adminStore';
 import { adminLogin } from '../../services/adminApi';
+import ScrollToTop from '../../components/ScrollToTop';
 
 function AdminLogin() {
   const navigate = useNavigate();
@@ -42,6 +43,7 @@ function AdminLogin() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary via-primary-dark to-dark flex items-center justify-center px-4">
+      <ScrollToTop />
       <div className="max-w-md w-full">
         {/* Logo */}
         <div className="text-center mb-8">

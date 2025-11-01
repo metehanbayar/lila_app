@@ -8,10 +8,11 @@ import {
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { searchProducts, getRestaurants, getCategories } from '../services/api';
-import ProductCard from '../components/ProductCard';
+import ProductRowCard from '../components/ProductRowCard';
 import ProductDetailModal from '../components/ProductDetailModal';
 import EmptyState from '../components/EmptyState';
 import Loading from '../components/Loading';
+import { debounce } from '../utils/performance';
 
 // İkon bileşenini al
 const getIconComponent = (iconName) => {
@@ -42,15 +43,6 @@ function Search() {
   const handleGoBack = () => {
     navigate('/');
   };
-
-  // Debounce fonksiyonu
-  const debounce = useCallback((func, delay) => {
-    let timeoutId;
-    return (...args) => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => func.apply(null, args), delay);
-    };
-  }, []);
 
   // Live search için debounced arama fonksiyonu
   const debouncedSearch = useCallback(
@@ -141,7 +133,12 @@ function Search() {
       const searchTerm = query && query.trim().length >= 2 ? query.trim() : null;
       const response = await searchProducts(searchTerm, restaurantFilter, categoryFilter);
       if (response.success) {
-        setResults(response.data);
+        // Arama sonuçlarına restoran bilgisini ekle
+        const resultsWithRestaurant = response.data.map(product => ({
+          ...product,
+          RestaurantName: product.RestaurantName || 'Bilinmeyen Restoran'
+        }));
+        setResults(resultsWithRestaurant);
       } else {
         setError(response.message);
         setResults([]);
@@ -234,7 +231,7 @@ function Search() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
+    <div className="min-h-screen bg-gradient-to-b from-purple-50 via-white to-gray-50 py-4 sm:py-8">
       <div className="container mx-auto px-4">
         {/* Header */}
         <div className="mb-4 sm:mb-6">
@@ -257,7 +254,7 @@ function Search() {
         {categories.length > 0 && (
           <div className="mb-4 sm:mb-6">
             <h3 className="text-sm font-bold text-gray-700 mb-3 px-1">Kategoriler</h3>
-            <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+            <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [touch-action:pan-x] overscroll-x-contain">
               {categories.map((category) => {
                 const Icon = getIconComponent(category.icon);
                 const isSelected = selectedCategory === category.id;
@@ -270,10 +267,10 @@ function Search() {
                     }`}
                   >
                     <div
-                      className={`flex flex-col items-center gap-2 p-3 rounded-xl ${
+                      className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-all ${
                         isSelected
                           ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg ring-2 ring-purple-300'
-                          : 'bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-100 shadow-sm'
+                          : 'bg-white/80 backdrop-blur-sm text-gray-700 hover:bg-white/90 border-2 border-white/40 shadow-sm hover:shadow-md'
                       }`}
                     >
                       <div
@@ -295,7 +292,7 @@ function Search() {
         )}
 
         {/* Arama Kutusu */}
-        <div className="bg-white rounded-lg sm:rounded-xl shadow-card p-4 sm:p-6 mb-4 sm:mb-6">
+        <div className="bg-white/70 backdrop-blur-xl rounded-xl shadow-lg border border-white/40 p-4 sm:p-6 mb-4 sm:mb-6">
           <form onSubmit={handleSearchSubmit} className="relative">
             <div className="relative">
               <SearchIcon className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -394,9 +391,9 @@ function Search() {
                 message={`"${searchQuery}" için ürün bulunamadı. Farklı bir arama terimi deneyin.`}
               />
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+              <div className="flex flex-col gap-3">
                 {results.map((product) => (
-                  <ProductCard
+                  <ProductRowCard
                     key={product.Id}
                     product={product}
                     onProductClick={handleProductClick}

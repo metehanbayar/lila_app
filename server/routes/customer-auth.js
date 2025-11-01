@@ -29,7 +29,7 @@ export const customerAuth = async (req, res, next) => {
       .request()
       .input('identifier', sql.NVarChar, identifier)
       .query(`
-        SELECT Id, Email, FullName, Phone, Address, EmailVerified, PhoneVerified
+        SELECT Id, Email, FirstName, LastName, Phone, DateOfBirth, Gender, ReferralCode
         FROM Customers
         WHERE (Phone = @identifier OR Email = @identifier) AND IsActive = 1
       `);
@@ -41,7 +41,11 @@ export const customerAuth = async (req, res, next) => {
       });
     }
 
-    req.customer = result.recordset[0];
+    // fullName'i oluştur
+    const customer = result.recordset[0];
+    customer.FullName = `${customer.FirstName || ''} ${customer.LastName || ''}`.trim();
+
+    req.customer = customer;
     next();
   } catch (error) {
     console.error('Customer auth middleware hatası:', error);
@@ -55,7 +59,7 @@ export const customerAuth = async (req, res, next) => {
 // Müşteri kaydı (OTP ile)
 router.post('/register', async (req, res) => {
   try {
-    const { phone, fullName, email, address, otp } = req.body;
+    const { phone, fullName, email, dateOfBirth, gender, referralCode, otp } = req.body;
 
     // Validasyon
     if (!phone || !fullName || !otp) {
@@ -143,23 +147,61 @@ router.post('/register', async (req, res) => {
       }
     }
 
-    // Yeni müşteri kaydı (şifresiz - OTP ile giriş yapılacak)
+    // fullName'i parçala
+    const nameParts = fullName.trim().split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    // Referral code kontrolü ve referrer'ı bul
+    let referredBy = null;
+    if (referralCode) {
+      const referrerCheck = await pool
+        .request()
+        .input('refCode', sql.NVarChar, referralCode)
+        .query(`
+          SELECT Id FROM Customers WHERE ReferralCode = @refCode
+        `);
+      
+      if (referrerCheck.recordset.length > 0) {
+        referredBy = referrerCheck.recordset[0].Id;
+      }
+    }
+
+    // Yeni müşteri kaydı (OTP ile)
     const result = await pool
       .request()
       .input('email', sql.NVarChar, email || null)
-      .input('fullName', sql.NVarChar, fullName)
+      .input('firstName', sql.NVarChar, firstName)
+      .input('lastName', sql.NVarChar, lastName)
       .input('phone', sql.NVarChar, cleanPhone)
-      .input('address', sql.NVarChar, address || null)
+      .input('dateOfBirth', sql.Date, dateOfBirth || null)
+      .input('gender', sql.NVarChar, gender || null)
+      .input('referredBy', sql.Int, referredBy || null)
       .query(`
-        INSERT INTO Customers (Email, FullName, Phone, Address, PhoneVerified, EmailVerified)
-        OUTPUT INSERTED.Id, INSERTED.Email, INSERTED.FullName, INSERTED.Phone, INSERTED.Address
-        VALUES (@email, @fullName, @phone, @address, 1, 0)
+        INSERT INTO Customers (Email, FirstName, LastName, Phone, DateOfBirth, Gender, ReferredBy)
+        OUTPUT INSERTED.Id, INSERTED.Email, INSERTED.FirstName, INSERTED.LastName, INSERTED.Phone
+        VALUES (@email, @firstName, @lastName, @phone, @dateOfBirth, @gender, @referredBy)
+      `);
+
+    // Yeni müşteri için referral code oluştur
+    const newCustomerId = result.recordset[0].Id;
+    const newReferralCode = 'REF' + String(newCustomerId).padStart(6, '0');
+    
+    await pool
+      .request()
+      .input('id', sql.Int, newCustomerId)
+      .input('code', sql.NVarChar, newReferralCode)
+      .query(`
+        UPDATE Customers SET ReferralCode = @code WHERE Id = @id
       `);
 
     const customer = result.recordset[0];
 
     // Token oluştur (telefon bazlı)
     const token = Buffer.from(`${cleanPhone}:otp`).toString('base64');
+
+    // fullName'i oluştur
+    const customerFullName = `${customer.FirstName} ${customer.LastName}`.trim();
 
     res.status(201).json({
       success: true,
@@ -168,9 +210,8 @@ router.post('/register', async (req, res) => {
         customer: {
           id: customer.Id,
           email: customer.Email,
-          fullName: customer.FullName,
+          fullName: customerFullName,
           phone: customer.Phone,
-          address: customer.Address,
         },
         token,
       },
@@ -201,7 +242,7 @@ router.post('/login', async (req, res) => {
 
     // OTP devre dışıysa, doğrulama kontrolünü atla
     if (!isOTPEnabled()) {
-      console.log('⚠️ OTP DEVRE DIŞI - Giriş işlemi OTP olmadan devam ediyor');
+      // OTP devre dışı
     } else {
       // OTP doğrulaması
       const otpResult = await pool
@@ -247,7 +288,7 @@ router.post('/login', async (req, res) => {
       .request()
       .input('phone', sql.NVarChar, cleanPhone)
       .query(`
-        SELECT Id, Email, FullName, Phone, Address, EmailVerified, PhoneVerified, IsActive
+        SELECT Id, Email, FirstName, LastName, Phone, DateOfBirth, Gender, IsActive, ReferralCode
         FROM Customers
         WHERE Phone = @phone
       `);
@@ -267,6 +308,9 @@ router.post('/login', async (req, res) => {
         message: 'Hesabınız pasif durumda',
       });
     }
+
+    // fullName'i oluştur
+    const customerFullName = `${customer.FirstName || ''} ${customer.LastName || ''}`.trim();
 
     // Last login güncelle
     await pool
@@ -288,11 +332,8 @@ router.post('/login', async (req, res) => {
         customer: {
           id: customer.Id,
           email: customer.Email,
-          fullName: customer.FullName,
+          fullName: customerFullName,
           phone: customer.Phone,
-          address: customer.Address,
-          emailVerified: customer.EmailVerified,
-          phoneVerified: customer.PhoneVerified,
         },
         token,
       },
@@ -325,7 +366,7 @@ router.get('/profile', customerAuth, async (req, res) => {
 // Profil güncelle
 router.put('/profile', customerAuth, async (req, res) => {
   try {
-    const { fullName, phone, address } = req.body;
+    const { fullName, email, dateOfBirth, gender } = req.body;
 
     if (!fullName) {
       return res.status(400).json({
@@ -334,95 +375,47 @@ router.put('/profile', customerAuth, async (req, res) => {
       });
     }
 
+    // fullName'i parçala
+    const nameParts = fullName.trim().split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+
     const pool = await getConnection();
     const result = await pool
       .request()
       .input('id', sql.Int, req.customer.Id)
-      .input('fullName', sql.NVarChar, fullName)
-      .input('phone', sql.NVarChar, phone || null)
-      .input('address', sql.NVarChar, address || null)
+      .input('firstName', sql.NVarChar, firstName)
+      .input('lastName', sql.NVarChar, lastName)
+      .input('email', sql.NVarChar, email || null)
+      .input('dateOfBirth', sql.Date, dateOfBirth || null)
+      .input('gender', sql.NVarChar, gender || null)
       .query(`
         UPDATE Customers
         SET 
-          FullName = @fullName,
-          Phone = @phone,
-          Address = @address
-        OUTPUT INSERTED.Id, INSERTED.Email, INSERTED.FullName, INSERTED.Phone, INSERTED.Address
+          FirstName = @firstName,
+          LastName = @lastName,
+          Email = @email,
+          DateOfBirth = @dateOfBirth,
+          Gender = @gender,
+          UpdatedAt = GETDATE()
+        OUTPUT INSERTED.Id, INSERTED.Email, INSERTED.FirstName, INSERTED.LastName, INSERTED.Phone
         WHERE Id = @id
       `);
+
+    // Response için fullName'i oluştur
+    const updatedCustomer = result.recordset[0];
+    updatedCustomer.FullName = `${updatedCustomer.FirstName} ${updatedCustomer.LastName}`.trim();
 
     res.json({
       success: true,
       message: 'Profil başarıyla güncellendi',
-      data: result.recordset[0],
+      data: updatedCustomer,
     });
   } catch (error) {
     console.error('Profil güncelleme hatası:', error);
     res.status(500).json({
       success: false,
       message: 'Profil güncellenirken bir hata oluştu',
-    });
-  }
-});
-
-// Şifre değiştir
-router.put('/change-password', customerAuth, async (req, res) => {
-  try {
-    const { currentPassword, newPassword } = req.body;
-
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({
-        success: false,
-        message: 'Mevcut ve yeni şifre gerekli',
-      });
-    }
-
-    if (newPassword.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: 'Yeni şifre en az 6 karakter olmalıdır',
-      });
-    }
-
-    const pool = await getConnection();
-
-    // Mevcut şifreyi kontrol et
-    const checkPassword = await pool
-      .request()
-      .input('id', sql.Int, req.customer.Id)
-      .input('password', sql.NVarChar, currentPassword)
-      .query(`
-        SELECT Id FROM Customers 
-        WHERE Id = @id AND Password = @password
-      `);
-
-    if (checkPassword.recordset.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Mevcut şifre hatalı',
-      });
-    }
-
-    // Yeni şifreyi güncelle
-    await pool
-      .request()
-      .input('id', sql.Int, req.customer.Id)
-      .input('newPassword', sql.NVarChar, newPassword)
-      .query(`
-        UPDATE Customers
-        SET Password = @newPassword
-        WHERE Id = @id
-      `);
-
-    res.json({
-      success: true,
-      message: 'Şifre başarıyla değiştirildi',
-    });
-  } catch (error) {
-    console.error('Şifre değiştirme hatası:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Şifre değiştirilirken bir hata oluştu',
     });
   }
 });

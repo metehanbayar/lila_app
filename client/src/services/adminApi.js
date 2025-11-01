@@ -141,6 +141,11 @@ export const deleteProduct = async (id) => {
   return response.data;
 };
 
+export const updateProductStatus = async (id, isActive) => {
+  const response = await adminApi.patch(`/products/${id}/status`, { isActive });
+  return response.data;
+};
+
 export const reorderProducts = async (productOrders) => {
   const response = await adminApi.post('/products/reorder', {
     productOrders,
@@ -335,6 +340,38 @@ export const updateReceiptTemplate = async (restaurantId, template) => {
   const response = await adminApi.put(`/receipt-templates/restaurants/${restaurantId}/receipt-template`, {
     template,
   });
+  return response.data;
+};
+
+// ==================== USERS ====================
+
+export const getAdminUsers = async () => {
+  const response = await adminApi.get('/users');
+  return response.data;
+};
+
+export const getAdminUser = async (id) => {
+  const response = await adminApi.get(`/users/${id}`);
+  return response.data;
+};
+
+export const createAdminUser = async (data) => {
+  const response = await adminApi.post('/users', data);
+  return response.data;
+};
+
+export const updateAdminUser = async (id, data) => {
+  const response = await adminApi.put(`/users/${id}`, data);
+  return response.data;
+};
+
+export const deleteAdminUser = async (id) => {
+  const response = await adminApi.delete(`/users/${id}`);
+  return response.data;
+};
+
+export const updateAdminUserStatus = async (id, isActive) => {
+  const response = await adminApi.patch(`/users/${id}/status`, { isActive });
   return response.data;
 };
 

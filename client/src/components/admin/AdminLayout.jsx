@@ -12,13 +12,15 @@ import {
   Menu,
   X,
   Gift,
+  Users,
 } from 'lucide-react';
 import { useState } from 'react';
+import ScrollToTop from '../ScrollToTop';
 
 function AdminLayout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { admin, logout } = useAdminStore();
+  const { admin, logout, isSystemAdmin } = useAdminStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = () => {
@@ -35,6 +37,8 @@ function AdminLayout({ children }) {
     { path: '/admin/coupons', icon: Gift, label: 'Kampanyalar' },
     { path: '/admin/media', icon: Image, label: 'Görsel Kütüphanesi' },
     { path: '/admin/import', icon: Download, label: 'İçe Aktarma' },
+    // Kullanıcılar menüsü - tüm admin'ler için (restoran bazlı admin'ler sadece kendi restoranının kullanıcılarını görebilir)
+    { path: '/admin/users', icon: Users, label: 'Kullanıcılar' },
   ];
 
   const isActive = (path) => {
@@ -46,6 +50,7 @@ function AdminLayout({ children }) {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col lg:flex-row">
+      <ScrollToTop />
       {/* Sidebar - Desktop */}
       <aside className="hidden lg:flex lg:flex-col w-64 bg-dark text-white">
         <div className="p-4 lg:p-6 border-b border-dark-light flex justify-center">

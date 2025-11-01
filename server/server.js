@@ -18,12 +18,15 @@ import adminProductVariantsRouter from './routes/admin-product-variants.js';
 import adminImportRouter from './routes/admin-import.js';
 import adminCouponsRouter from './routes/admin-coupons.js';
 import adminReceiptTemplatesRouter from './routes/admin-receipt-templates.js';
+import adminUsersRouter from './routes/admin-users.js';
 import customerAuthRouter from './routes/customer-auth.js';
 import customerOrdersRouter from './routes/customer-orders.js';
 import customerAddressesRouter from './routes/customer-addresses.js';
 import couponsRouter from './routes/coupons.js';
 import geocodeRouter from './routes/geocode.js';
 import otpRouter from './routes/otp.js';
+import testEmailRouter from './routes/test-email.js';
+import paymentRouter from './routes/payment.js';
 import { initializeSocketIO } from './services/socket-service.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -96,6 +99,7 @@ app.use('/api/admin/media', adminMediaRouter);
 app.use('/api/admin/import', adminImportRouter);
 app.use('/api/admin/coupons', adminCouponsRouter);
 app.use('/api/admin/receipt-templates', adminReceiptTemplatesRouter);
+app.use('/api/admin/users', adminUsersRouter);
 
 // Customer API Routes
 app.use('/api/customer', customerAuthRouter);
@@ -107,6 +111,12 @@ app.use('/api/otp', otpRouter);
 
 // Coupon API Routes
 app.use('/api/coupons', couponsRouter);
+
+// Payment API Routes
+app.use('/api/payment', paymentRouter);
+
+// Email Test Routes
+app.use('/api/test-email', testEmailRouter);
 
 // 404 handler
 app.use((req, res) => {
@@ -129,8 +139,13 @@ app.use((err, req, res, next) => {
 // Sunucuyu başlat
 async function startServer() {
   try {
-    // Veritabanı bağlantısını test et
-    await getConnection();
+    // Veritabanı bağlantısını test et (geçici olarak devre dışı)
+    try {
+      await getConnection();
+    } catch (dbError) {
+      console.log('⚠️  Veritabanı bağlantısı başarısız, devam ediliyor...');
+      console.log('Veritabanı hatası:', dbError.message);
+    }
 
     // Socket.IO'yu başlat
     initializeSocketIO(httpServer);
@@ -148,6 +163,10 @@ async function startServer() {
       console.log(`   POST /api/orders`);
       console.log(`   GET  /api/orders/:orderNumber`);
       console.log(`   GET  /api/geocode/reverse`);
+      console.log(`\n💳 Payment Endpoints:`);
+      console.log(`   POST /api/payment/initialize`);
+      console.log(`   POST /api/payment/callback/3d-secure`);
+      console.log(`   GET  /api/payment/status/:transactionId`);
       console.log(`\n🔐 Admin Endpoints:`);
       console.log(`   POST /api/admin/login`);
       console.log(`   GET  /api/admin/dashboard/stats`);

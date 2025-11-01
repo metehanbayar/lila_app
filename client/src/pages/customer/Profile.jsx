@@ -1,55 +1,65 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { User, Mail, Phone, Package, TrendingUp, ShoppingBag, Edit2, Heart, BookMarked } from 'lucide-react';
+import { 
+  User, 
+  Mail, 
+  Phone, 
+  ShoppingBag, 
+  Edit2, 
+  Heart, 
+  BookMarked,
+  Calendar,
+  UserCheck,
+  MapPin,
+  LogOut,
+  TrendingUp,
+  Award,
+  Settings,
+  Share2
+} from 'lucide-react';
 import useCustomerStore from '../../store/customerStore';
-import { getStatistics, updateProfile, getFavorites } from '../../services/customerApi';
+import { updateProfile, getFavorites, getMyOrders } from '../../services/customerApi';
 import AppLayout from '../../components/AppLayout';
-import Loading from '../../components/Loading';
 import AddressManager from '../../components/AddressManager';
 
 function Profile() {
   const { customer, updateProfile: updateStoreProfile, logout, setFavorites } = useCustomerStore();
-  const [stats, setStats] = useState(null);
   const [favoritesCount, setFavoritesCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [ordersCount, setOrdersCount] = useState(0);
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({
-    fullName: customer?.fullName || '',
+    firstName: (customer?.fullName?.split(' ')[0] || ''),
+    lastName: (customer?.fullName?.split(' ').slice(1).join(' ') || ''),
+    email: customer?.email || '',
     phone: customer?.phone || '',
+    dateOfBirth: customer?.dateOfBirth || '',
+    gender: customer?.gender || '',
   });
   const [saveLoading, setSaveLoading] = useState(false);
   const [showAddressManager, setShowAddressManager] = useState(false);
 
   useEffect(() => {
-    loadStatistics();
-    loadFavorites();
+    loadData();
   }, []);
 
-  const loadStatistics = async () => {
+  const loadData = async () => {
     try {
-      setLoading(true);
-      const response = await getStatistics();
-      if (response.success) {
-        setStats(response.data);
-      }
-    } catch (err) {
-      console.error('İstatistikler yüklenemedi:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadFavorites = async () => {
-    try {
-      const response = await getFavorites();
-      if (response.success) {
-        setFavoritesCount(response.data.length);
-        // Store'a favori ID'leri kaydet
-        const favoriteIds = response.data.map(p => p.Id);
+      const [favoritesRes, ordersRes] = await Promise.all([
+        getFavorites(),
+        getMyOrders(1, 1)
+      ]);
+      
+      if (favoritesRes.success) {
+        setFavoritesCount(favoritesRes.data.length);
+        const favoriteIds = favoritesRes.data.map(p => p.Id);
         setFavorites(favoriteIds);
       }
+      
+      if (ordersRes.success) {
+        setOrdersCount(ordersRes.total || 0);
+      }
     } catch (err) {
-      console.error('Favoriler yüklenemedi:', err);
+      console.error('Veriler yüklenemedi:', err);
     }
   };
 
@@ -58,7 +68,15 @@ function Profile() {
     setSaveLoading(true);
 
     try {
-      const response = await updateProfile(formData);
+      const fullName = `${formData.firstName} ${formData.lastName}`.trim();
+      const dataToSend = { 
+        fullName, 
+        email: formData.email,
+        dateOfBirth: formData.dateOfBirth || null,
+        gender: formData.gender || null
+      };
+      
+      const response = await updateProfile(dataToSend);
       if (response.success) {
         updateStoreProfile(response.data);
         setEditing(false);
@@ -71,274 +89,315 @@ function Profile() {
     }
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('tr-TR', {
-      style: 'currency',
-      currency: 'TRY',
-    }).format(amount);
-  };
-
-  if (loading) return (
-    <AppLayout>
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <Loading />
-      </div>
-    </AppLayout>
-  );
+  const initials = customer?.fullName
+    ?.split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .substring(0, 2) || 'K';
 
   return (
     <AppLayout>
-      <div className="px-4 py-4 sm:py-6">
-        <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Profilim</h1>
-              <p className="text-sm sm:text-base text-gray-600 mt-1">
-                Hesap bilgileriniz ve istatistikleriniz
-              </p>
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+        {/* Header Section with Gradient */}
+        <div className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-white">
+          <div className="px-4 py-8">
+            <div className="max-w-4xl mx-auto">
+              {/* User Profile Card */}
+              <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 shadow-lg">
+                <div className="flex items-start gap-4">
+                  {/* Avatar */}
+                  <div className="relative">
+                    <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-2xl font-bold shadow-lg border-2 border-white/30">
+                      {initials}
+                    </div>
+                    {!editing && (
+                      <button
+                        onClick={() => setEditing(true)}
+                        className="absolute -bottom-1 -right-1 w-7 h-7 bg-primary shadow-md rounded-full flex items-center justify-center hover:scale-110 transition-transform border-2 border-white"
+                      >
+                        <Edit2 size={14} className="text-white" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* User Info */}
+                  <div className="flex-1 min-w-0">
+                    {!editing ? (
+                      <>
+                        <h1 className="text-2xl font-bold mb-1">{customer?.fullName || 'Misafir'}</h1>
+                        <div className="flex flex-wrap gap-3 text-sm">
+                          {customer?.phone && (
+                            <div className="flex items-center gap-1.5 text-white/90">
+                              <Phone size={14} />
+                              <span>{customer.phone}</span>
+                            </div>
+                          )}
+                          {customer?.email && (
+                            <div className="flex items-center gap-1.5 text-white/90">
+                              <Mail size={14} />
+                              <span className="truncate max-w-[200px]">{customer.email}</span>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="text"
+                            value={formData.firstName}
+                            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                            placeholder="Ad"
+                            className="px-3 py-2 rounded-lg text-gray-900 text-sm focus:ring-2 focus:ring-white"
+                          />
+                          <input
+                            type="text"
+                            value={formData.lastName}
+                            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                            placeholder="Soyad"
+                            className="px-3 py-2 rounded-lg text-gray-900 text-sm focus:ring-2 focus:ring-white"
+                          />
+                        </div>
+                        <input
+                          type="email"
+                          value={formData.email}
+                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                          placeholder="E-posta (Opsiyonel)"
+                          className="w-full px-3 py-2 rounded-lg text-gray-900 text-sm focus:ring-2 focus:ring-white"
+                        />
+                        <input
+                          type="date"
+                          value={formData.dateOfBirth}
+                          onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                          placeholder="Doğum Tarihi"
+                          className="w-full px-3 py-2 rounded-lg text-gray-900 text-sm focus:ring-2 focus:ring-white"
+                        />
+                        <select
+                          value={formData.gender}
+                          onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                          className="w-full px-3 py-2 rounded-lg text-gray-900 text-sm focus:ring-2 focus:ring-white"
+                        >
+                          <option value="">Cinsiyet Seçin</option>
+                          <option value="Male">Erkek</option>
+                          <option value="Female">Kadın</option>
+                          <option value="Other">Diğer</option>
+                        </select>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditing(false);
+                              setFormData({
+                                firstName: (customer?.fullName?.split(' ')[0] || ''),
+                                lastName: (customer?.fullName?.split(' ').slice(1).join(' ') || ''),
+                                email: customer?.email || '',
+                                phone: customer?.phone || '',
+                                dateOfBirth: customer?.dateOfBirth || '',
+                                gender: customer?.gender || '',
+                              });
+                            }}
+                            className="flex-1 px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors text-sm font-medium"
+                          >
+                            İptal
+                          </button>
+                          <button
+                            onClick={handleSaveProfile}
+                            disabled={saveLoading}
+                            className="flex-1 px-4 py-2 bg-white text-primary rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 text-sm font-medium"
+                          >
+                            {saveLoading ? 'Kaydediliyor...' : 'Kaydet'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
-            <button
-              onClick={logout}
-              className="px-4 py-2 text-sm text-red-600 hover:bg-red-50 active:bg-red-100 rounded-lg transition-colors font-medium"
-            >
-              Çıkış Yap
-            </button>
           </div>
+        </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-            <div className="bg-white p-4 sm:p-5 rounded-lg shadow-card">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-primary bg-opacity-10 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <ShoppingBag className="text-primary" size={20} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs sm:text-sm text-gray-600 truncate">Toplam Sipariş</p>
-                  <p className="text-xl sm:text-2xl font-bold text-gray-800">{stats?.totalOrders || 0}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-4 sm:p-5 rounded-lg shadow-card">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-500 bg-opacity-10 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <TrendingUp className="text-green-600" size={20} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs sm:text-sm text-gray-600 truncate">Toplam Harcama</p>
-                  <p className="text-base sm:text-xl font-bold text-gray-800 break-all">
-                    {formatCurrency(stats?.totalSpent || 0)}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-4 sm:p-5 rounded-lg shadow-card">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-500 bg-opacity-10 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Package className="text-blue-600" size={20} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs sm:text-sm text-gray-600 truncate">Aktif Sipariş</p>
-                  <p className="text-xl sm:text-2xl font-bold text-gray-800">
-                    {stats?.ordersByStatus?.filter(s => ['Pending', 'Confirmed', 'Preparing'].includes(s.Status))
-                      .reduce((sum, s) => sum + s.count, 0) || 0}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-4 sm:p-5 rounded-lg shadow-card">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-red-500 bg-opacity-10 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Heart className="text-red-500" size={20} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs sm:text-sm text-gray-600 truncate">Favorilerim</p>
-                  <p className="text-xl sm:text-2xl font-bold text-gray-800">{favoritesCount}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Profile Info */}
-          <div className="bg-white rounded-lg sm:rounded-xl shadow-card p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-4 sm:mb-6">
-              <h2 className="text-lg sm:text-xl font-bold text-gray-800">Hesap Bilgileri</h2>
-              {!editing && (
-                <button
-                  onClick={() => setEditing(true)}
-                  className="flex items-center gap-2 text-sm text-primary hover:text-primary-dark font-medium"
-                >
-                  <Edit2 size={16} />
-                  <span>Düzenle</span>
-                </button>
-              )}
-            </div>
-
-            {editing ? (
-              <form onSubmit={handleSaveProfile} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Ad Soyad
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.fullName}
-                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                    required
-                    className="w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Telefon
-                  </label>
-                  <input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                  />
-                </div>
-
-
-                <div className="flex gap-2 sm:gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditing(false);
-                      setFormData({
-                        fullName: customer?.fullName || '',
-                        phone: customer?.phone || '',
-                      });
-                    }}
-                    className="flex-1 px-4 py-2.5 sm:py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 active:bg-gray-100 transition-colors font-medium"
-                  >
-                    İptal
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={saveLoading}
-                    className="flex-1 px-4 py-2.5 sm:py-2 text-sm bg-primary hover:bg-primary-dark active:bg-primary-dark text-white rounded-lg transition-colors disabled:opacity-50 font-medium"
-                  >
-                    {saveLoading ? 'Kaydediliyor...' : 'Kaydet'}
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <User className="text-gray-600" size={18} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs sm:text-sm text-gray-500">Ad Soyad</p>
-                    <p className="text-sm sm:text-base font-medium text-gray-900 mt-0.5 break-words">
-                      {customer?.fullName || '-'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Mail className="text-gray-600" size={18} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs sm:text-sm text-gray-500">E-posta</p>
-                    <p className="text-sm sm:text-base font-medium text-gray-900 mt-0.5 break-all">
-                      {customer?.email || '-'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Phone className="text-gray-600" size={18} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs sm:text-sm text-gray-500">Telefon</p>
-                    <p className="text-sm sm:text-base font-medium text-gray-900 mt-0.5 break-words">
-                      {customer?.phone || 'Belirtilmemiş'}
-                    </p>
-                  </div>
-                </div>
-
-              </div>
-            )}
-          </div>
-
-          {/* Quick Actions */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* Stats Cards */}
+        <div className="px-4 -mt-6">
+          <div className="max-w-4xl mx-auto grid grid-cols-2 gap-4">
             <Link
               to="/my-orders"
-              className="bg-white p-4 sm:p-5 rounded-lg shadow-card hover:shadow-card-hover transition-shadow group"
+              className="bg-white rounded-xl shadow-lg p-4 hover:shadow-xl transition-all hover:scale-105 active:scale-95"
             >
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-primary bg-opacity-10 rounded-lg flex items-center justify-center">
-                  <Package className="text-primary" size={24} />
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                  <ShoppingBag className="text-white" size={20} />
                 </div>
-                <div>
-                  <h3 className="font-semibold text-gray-800 group-hover:text-primary transition-colors">
-                    Siparişlerim
-                  </h3>
-                  <p className="text-sm text-gray-600 mt-0.5">Tüm siparişlerinizi görüntüleyin</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-2xl font-bold text-gray-900">{ordersCount}</p>
+                  <p className="text-xs text-gray-600">Sipariş</p>
                 </div>
               </div>
             </Link>
 
             <Link
               to="/favorites"
-              className="bg-white p-4 sm:p-5 rounded-lg shadow-card hover:shadow-card-hover transition-shadow group"
+              className="bg-white rounded-xl shadow-lg p-4 hover:shadow-xl transition-all hover:scale-105 active:scale-95"
             >
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-red-500 bg-opacity-10 rounded-lg flex items-center justify-center">
-                  <Heart className="text-red-500" size={24} />
+                <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center">
+                  <Heart className="text-white" size={20} />
                 </div>
-                <div>
-                  <h3 className="font-semibold text-gray-800 group-hover:text-red-500 transition-colors">
-                    Favorilerim
-                  </h3>
-                  <p className="text-sm text-gray-600 mt-0.5">Favori ürünlerinizi görün</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-2xl font-bold text-gray-900">{favoritesCount}</p>
+                  <p className="text-xs text-gray-600">Favori</p>
                 </div>
               </div>
             </Link>
+          </div>
+        </div>
 
+        {/* Main Content */}
+        <div className="px-4 py-6">
+          <div className="max-w-4xl mx-auto space-y-6">
+            {/* Quick Actions */}
+            <div>
+              <h2 className="text-lg font-bold text-gray-800 mb-3">Hızlı Erişim</h2>
+              <div className="grid grid-cols-1 gap-3">
+                <Link
+                  to="/my-orders"
+                  className="group bg-white rounded-xl shadow-md p-4 hover:shadow-lg transition-all flex items-center gap-4"
+                >
+                  <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center group-hover:bg-primary transition-colors">
+                    <ShoppingBag className="text-primary" size={22} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900">Siparişlerim</h3>
+                    <p className="text-sm text-gray-600">Tüm sipariş geçmişiniz</p>
+                  </div>
+                  <div className="text-2xl text-gray-300 group-hover:text-primary transition-colors">→</div>
+                </Link>
+
+                <Link
+                  to="/favorites"
+                  className="group bg-white rounded-xl shadow-md p-4 hover:shadow-lg transition-all flex items-center gap-4"
+                >
+                  <div className="w-12 h-12 bg-red-500/10 rounded-xl flex items-center justify-center group-hover:bg-red-500 transition-colors">
+                    <Heart className="text-red-500" size={22} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900">Favorilerim</h3>
+                    <p className="text-sm text-gray-600">Beğendiğiniz ürünler</p>
+                  </div>
+                  <div className="text-2xl text-gray-300 group-hover:text-red-500 transition-colors">→</div>
+                </Link>
+
+                <button
+                  onClick={() => setShowAddressManager(true)}
+                  className="group bg-white rounded-xl shadow-md p-4 hover:shadow-lg transition-all flex items-center gap-4 text-left"
+                >
+                  <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center group-hover:bg-blue-500 transition-colors">
+                    <MapPin className="text-blue-600" size={22} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900">Adreslerim</h3>
+                    <p className="text-sm text-gray-600">Kayıtlı adreslerinizi yönetin</p>
+                  </div>
+                  <div className="text-2xl text-gray-300 group-hover:text-blue-600 transition-colors">→</div>
+                </button>
+
+                <Link
+                  to="/"
+                  className="group bg-white rounded-xl shadow-md p-4 hover:shadow-lg transition-all flex items-center gap-4"
+                >
+                  <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center group-hover:bg-green-500 transition-colors">
+                    <ShoppingBag className="text-green-600" size={22} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900">Yeni Sipariş</h3>
+                    <p className="text-sm text-gray-600">Menüye göz atın ve sipariş verin</p>
+                  </div>
+                  <div className="text-2xl text-gray-300 group-hover:text-green-600 transition-colors">→</div>
+                </Link>
+              </div>
+            </div>
+
+            {/* Referral Code */}
+            {customer?.referralCode && (
+              <div>
+                <h2 className="text-lg font-bold text-gray-800 mb-3">Arkadaş Davet Et</h2>
+                <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl shadow-lg p-6 text-white">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Share2 size={20} />
+                        <h3 className="font-bold text-lg">Davet Kodum</h3>
+                      </div>
+                      <p className="text-sm opacity-90 mb-3">Arkadaşlarınızı davet edin ve ödüller kazanın!</p>
+                      <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-3 flex items-center justify-between gap-3">
+                        <code className="text-xl font-bold tracking-wider">{customer.referralCode}</code>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(customer.referralCode);
+                            alert('Davet kodu kopyalandı!');
+                          }}
+                          className="bg-white text-purple-600 px-4 py-2 rounded-lg font-semibold hover:bg-white/90 transition-colors"
+                        >
+                          Kopyala
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Profile Info Card */}
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <Settings className="text-gray-600" size={20} />
+                <h2 className="text-lg font-bold text-gray-800">Hesap Ayarları</h2>
+              </div>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <User className="text-gray-600" size={16} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-500 mb-0.5">Ad Soyad</p>
+                    <p className="text-sm font-medium text-gray-900">{customer?.fullName || '-'}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <Phone className="text-gray-600" size={16} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-500 mb-0.5">Telefon</p>
+                    <p className="text-sm font-medium text-gray-900">{customer?.phone || '-'}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Giriş için kullanılır</p>
+                  </div>
+                </div>
+
+                {customer?.email && (
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                      <Mail className="text-gray-600" size={16} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-500 mb-0.5">E-posta</p>
+                      <p className="text-sm font-medium text-gray-900 break-all">{customer.email}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Logout Button */}
             <button
-              onClick={() => setShowAddressManager(true)}
-              className="bg-white p-4 sm:p-5 rounded-lg shadow-card hover:shadow-card-hover transition-shadow group text-left"
+              onClick={logout}
+              className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-blue-500 bg-opacity-10 rounded-lg flex items-center justify-center">
-                  <BookMarked className="text-blue-600" size={24} />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">
-                    Adreslerim
-                  </h3>
-                  <p className="text-sm text-gray-600 mt-0.5">Kayıtlı adreslerinizi yönetin</p>
-                </div>
-              </div>
+              <LogOut size={20} />
+              <span>Çıkış Yap</span>
             </button>
-
-            <Link
-              to="/"
-              className="bg-white p-4 sm:p-5 rounded-lg shadow-card hover:shadow-card-hover transition-shadow group"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-secondary bg-opacity-10 rounded-lg flex items-center justify-center">
-                  <ShoppingBag className="text-secondary" size={24} />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-800 group-hover:text-secondary transition-colors">
-                    Yeni Sipariş
-                  </h3>
-                  <p className="text-sm text-gray-600 mt-0.5">Menüye göz atın</p>
-                </div>
-              </div>
-            </Link>
           </div>
         </div>
       </div>
