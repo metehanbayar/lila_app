@@ -34,7 +34,7 @@ code .env
 
 ```env
 # Server Ayarları
-PORT=3000
+PORT=3300
 NODE_ENV=development
 
 # MSSQL Veritabanı (Kendi bilgilerinizle değiştirin!)
