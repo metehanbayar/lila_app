@@ -16,11 +16,14 @@ export default defineConfig(({ mode }) => {
       mkcert(), // SSL sertifikası otomatik oluşturur
     ],
   server: {
-    https: true, // HTTPS'i aktif et
-    host: '0.0.0.0', // Ağdan erişim için
+    // Development için HTTP kullanıyoruz (HTTPS production'da nginx üzerinden sağlanır)
+    https: false, // Dev server için HTTP (self-signed sertifika sorunlarını önlemek için)
+    host: '0.0.0.0', // Ağdan erişim için (tüm interface'lerden dinle)
     port: 5173,
+    strictPort: false, // Port kullanılıyorsa otomatik farklı port dene
     hmr: {
       overlay: false, // HMR overlay'ini kapat - performans için
+      host: 'localhost', // HMR için localhost kullan
     },
     watch: {
       usePolling: false, // Polling'i kapat - performans için
@@ -28,14 +31,16 @@ export default defineConfig(({ mode }) => {
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: process.env.VITE_API_URL || 'http://localhost:3000',
         changeOrigin: true,
         timeout: 10000, // Timeout ekle
+        secure: false, // SSL sertifikası kontrolünü atla
       },
       '/uploads': {
-        target: 'http://localhost:3000',
+        target: process.env.VITE_API_URL || 'http://localhost:3000',
         changeOrigin: true,
         timeout: 10000, // Timeout ekle
+        secure: false,
       },
     },
   },
