@@ -3,13 +3,13 @@ import fs from 'fs';
 import { promises as fsp } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { closeConnection, getConnection, sql } from '../config/database.js';
+import { closeConnection, getConnection } from '../config/database.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const uploadsDir = path.resolve(__dirname, '../uploads');
+export const uploadsDir = path.resolve(__dirname, '../uploads');
 
-function formatBytes(bytes) {
+export function formatBytes(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
@@ -22,7 +22,7 @@ function getCliOption(name) {
   return process.argv[index + 1] ?? null;
 }
 
-function parseUploadReference(rawValue) {
+export function parseUploadReference(rawValue) {
   if (typeof rawValue !== 'string') {
     return null;
   }
@@ -68,7 +68,7 @@ function parseUploadReference(rawValue) {
   return null;
 }
 
-async function listFilesRecursively(rootDir) {
+export async function listFilesRecursively(rootDir) {
   if (!fs.existsSync(rootDir)) {
     return [];
   }
@@ -102,7 +102,7 @@ async function listFilesRecursively(rootDir) {
   return files;
 }
 
-async function computeSha256(filePath) {
+export async function computeSha256(filePath) {
   const hash = crypto.createHash('sha256');
 
   return await new Promise((resolve, reject) => {
@@ -114,7 +114,7 @@ async function computeSha256(filePath) {
   });
 }
 
-async function getSchema(pool) {
+export async function getSchema(pool) {
   const result = await pool.request().query(`
     SELECT TABLE_NAME, COLUMN_NAME
     FROM INFORMATION_SCHEMA.COLUMNS
@@ -136,7 +136,7 @@ function hasColumns(schema, tableName, columns) {
   return Boolean(tableColumns && columns.every(column => tableColumns.has(column)));
 }
 
-async function loadReferences(pool, schema) {
+export async function loadReferences(pool, schema) {
   const references = [];
 
   if (hasColumns(schema, 'Media', ['Id', 'FileName', 'FilePath', 'FileUrl'])) {
@@ -252,7 +252,7 @@ async function loadReferences(pool, schema) {
   return references;
 }
 
-async function buildDuplicateReport(files) {
+export async function buildDuplicateReport(files, referenceCountByPath = new Map()) {
   const sizeGroups = new Map();
 
   for (const file of files) {
@@ -294,6 +294,7 @@ async function buildDuplicateReport(files) {
           relativePath: file.relativePath,
           size: file.size,
           modifiedAt: file.modifiedAt,
+          referenceCount: referenceCountByPath.get(file.relativePath) ?? 0,
         })),
       });
     }
@@ -304,7 +305,7 @@ async function buildDuplicateReport(files) {
   return duplicateGroups;
 }
 
-function buildPathIndex(files) {
+export function buildPathIndex(files) {
   const byRelativePath = new Map();
   const byBasename = new Map();
 
@@ -320,103 +321,114 @@ function buildPathIndex(files) {
   return { byRelativePath, byBasename };
 }
 
-async function main() {
-  const jsonOutputPath = getCliOption('--json');
+export async function runAudit({ jsonOutputPath } = {}) {
+  const files = await listFilesRecursively(uploadsDir);
+  const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+  const pathIndex = buildPathIndex(files);
 
-  try {
-    const files = await listFilesRecursively(uploadsDir);
-    const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
-    const pathIndex = buildPathIndex(files);
+  const pool = await getConnection();
+  const schema = await getSchema(pool);
+  const references = await loadReferences(pool, schema);
 
-    const pool = await getConnection();
-    const schema = await getSchema(pool);
-    const references = await loadReferences(pool, schema);
+  const matchedPaths = new Set();
+  const missingReferences = [];
+  const matchedReferences = [];
+  const parseErrors = references.filter(reference => reference.parseError);
 
-    const matchedPaths = new Set();
-    const missingReferences = [];
-    const matchedReferences = [];
-    const parseErrors = references.filter(reference => reference.parseError);
+  for (const reference of references) {
+    if (reference.parseError) {
+      continue;
+    }
 
-    for (const reference of references) {
-      if (reference.parseError) {
-        continue;
-      }
-
-      const exactFile = pathIndex.byRelativePath.get(reference.relativePath);
-      if (exactFile) {
-        matchedPaths.add(exactFile.relativePath);
-        matchedReferences.push({
-          ...reference,
-          matchedPath: exactFile.relativePath,
-          matchedBy: 'exact',
-        });
-        continue;
-      }
-
-      const basenameMatches = pathIndex.byBasename.get(reference.basename) ?? [];
-      if (basenameMatches.length === 1) {
-        matchedPaths.add(basenameMatches[0].relativePath);
-        matchedReferences.push({
-          ...reference,
-          matchedPath: basenameMatches[0].relativePath,
-          matchedBy: 'basename',
-        });
-        continue;
-      }
-
-      missingReferences.push({
+    const exactFile = pathIndex.byRelativePath.get(reference.relativePath);
+    if (exactFile) {
+      matchedPaths.add(exactFile.relativePath);
+      matchedReferences.push({
         ...reference,
-        reason: basenameMatches.length > 1 ? 'ambiguous-basename' : 'missing-on-disk',
+        matchedPath: exactFile.relativePath,
+        matchedBy: 'exact',
       });
+      continue;
     }
 
-    const orphanFiles = files
-      .filter(file => !matchedPaths.has(file.relativePath))
-      .sort((left, right) => right.size - left.size);
-
-    const duplicateGroups = await buildDuplicateReport(files);
-    const duplicateFileCount = duplicateGroups.reduce((sum, group) => sum + group.files.length, 0);
-    const duplicateExtraFiles = duplicateGroups.reduce((sum, group) => sum + group.files.length - 1, 0);
-    const reclaimableBytes = duplicateGroups.reduce((sum, group) => sum + group.reclaimableBytes, 0);
-    const orphanBytes = orphanFiles.reduce((sum, file) => sum + file.size, 0);
-
-    const report = {
-      scannedAt: new Date().toISOString(),
-      uploadsDir,
-      summary: {
-        totalFiles: files.length,
-        totalBytes,
-        totalSize: formatBytes(totalBytes),
-        totalReferences: references.length,
-        matchedReferences: matchedReferences.length,
-        missingReferences: missingReferences.length,
-        parseErrors: parseErrors.length,
-        orphanFiles: orphanFiles.length,
-        orphanBytes,
-        orphanSize: formatBytes(orphanBytes),
-        duplicateGroups: duplicateGroups.length,
-        duplicateFiles: duplicateFileCount,
-        duplicateExtraFiles,
-        reclaimableBytes,
-        reclaimableSize: formatBytes(reclaimableBytes),
-      },
-      missingReferences,
-      parseErrors,
-      orphanFiles: orphanFiles.map(file => ({
-        relativePath: file.relativePath,
-        size: file.size,
-        sizeLabel: formatBytes(file.size),
-        modifiedAt: file.modifiedAt,
-      })),
-      duplicateGroups,
-    };
-
-    if (jsonOutputPath) {
-      const absoluteOutputPath = path.resolve(process.cwd(), jsonOutputPath);
-      await fsp.mkdir(path.dirname(absoluteOutputPath), { recursive: true });
-      await fsp.writeFile(absoluteOutputPath, JSON.stringify(report, null, 2), 'utf8');
-      console.log(`JSON report written: ${absoluteOutputPath}`);
+    const basenameMatches = pathIndex.byBasename.get(reference.basename) ?? [];
+    if (basenameMatches.length === 1) {
+      matchedPaths.add(basenameMatches[0].relativePath);
+      matchedReferences.push({
+        ...reference,
+        matchedPath: basenameMatches[0].relativePath,
+        matchedBy: 'basename',
+      });
+      continue;
     }
+
+    missingReferences.push({
+      ...reference,
+      reason: basenameMatches.length > 1 ? 'ambiguous-basename' : 'missing-on-disk',
+    });
+  }
+
+  const orphanFiles = files
+    .filter(file => !matchedPaths.has(file.relativePath))
+    .sort((left, right) => right.size - left.size);
+
+  const referenceCountByPath = matchedReferences.reduce((acc, reference) => {
+    acc.set(reference.matchedPath, (acc.get(reference.matchedPath) ?? 0) + 1);
+    return acc;
+  }, new Map());
+
+  const duplicateGroups = await buildDuplicateReport(files, referenceCountByPath);
+  const duplicateFileCount = duplicateGroups.reduce((sum, group) => sum + group.files.length, 0);
+  const duplicateExtraFiles = duplicateGroups.reduce((sum, group) => sum + group.files.length - 1, 0);
+  const reclaimableBytes = duplicateGroups.reduce((sum, group) => sum + group.reclaimableBytes, 0);
+  const orphanBytes = orphanFiles.reduce((sum, file) => sum + file.size, 0);
+
+  const report = {
+    scannedAt: new Date().toISOString(),
+    uploadsDir,
+    summary: {
+      totalFiles: files.length,
+      totalBytes,
+      totalSize: formatBytes(totalBytes),
+      totalReferences: references.length,
+      matchedReferences: matchedReferences.length,
+      missingReferences: missingReferences.length,
+      parseErrors: parseErrors.length,
+      orphanFiles: orphanFiles.length,
+      orphanBytes,
+      orphanSize: formatBytes(orphanBytes),
+      duplicateGroups: duplicateGroups.length,
+      duplicateFiles: duplicateFileCount,
+      duplicateExtraFiles,
+      reclaimableBytes,
+      reclaimableSize: formatBytes(reclaimableBytes),
+    },
+    matchedReferences,
+    missingReferences,
+    parseErrors,
+    orphanFiles: orphanFiles.map(file => ({
+      relativePath: file.relativePath,
+      size: file.size,
+      sizeLabel: formatBytes(file.size),
+      modifiedAt: file.modifiedAt,
+    })),
+    duplicateGroups,
+  };
+
+  if (jsonOutputPath) {
+    const absoluteOutputPath = path.resolve(process.cwd(), jsonOutputPath);
+    await fsp.mkdir(path.dirname(absoluteOutputPath), { recursive: true });
+    await fsp.writeFile(absoluteOutputPath, JSON.stringify(report, null, 2), 'utf8');
+    console.log(`JSON report written: ${absoluteOutputPath}`);
+  }
+
+  return report;
+}
+
+async function main() {
+  try {
+    const jsonOutputPath = getCliOption('--json');
+    const report = await runAudit({ jsonOutputPath });
 
     console.log(`Uploads scanned: ${report.summary.totalFiles} files (${report.summary.totalSize})`);
     console.log(`DB references: ${report.summary.totalReferences}`);
@@ -445,7 +457,7 @@ async function main() {
       for (const group of report.duplicateGroups.slice(0, 5)) {
         console.log(`- ${group.files.length} files, ${formatBytes(group.size)} each, ${formatBytes(group.reclaimableBytes)} reclaimable`);
         for (const file of group.files.slice(0, 5)) {
-          console.log(`  * ${file.relativePath}`);
+          console.log(`  * ${file.relativePath} (${file.referenceCount} refs)`);
         }
       }
     }
@@ -454,8 +466,10 @@ async function main() {
   }
 }
 
-main().catch(error => {
-  console.error('Upload audit failed.');
-  console.error(error.message);
-  process.exitCode = 1;
-});
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+  main().catch(error => {
+    console.error('Upload audit failed.');
+    console.error(error.message);
+    process.exitCode = 1;
+  });
+}

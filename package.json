@@ -12,6 +12,7 @@
     "lint": "npm --prefix client run lint",
     "check": "npm --prefix server run check && npm --prefix client run lint && npm --prefix client run build",
     "audit:uploads": "npm --prefix server run audit:uploads",
+    "dedupe:uploads": "npm --prefix server run dedupe:uploads",
     "install-all": "npm install && npm --prefix client install && npm --prefix server install"
   },
   "keywords": [

@@ -10,7 +10,8 @@
     "check:syntax": "node scripts/check-syntax.js",
     "check:smoke": "node scripts/smoke-check.js",
     "check": "npm run check:syntax && npm run check:smoke",
-    "audit:uploads": "node scripts/audit-uploads.js"
+    "audit:uploads": "node scripts/audit-uploads.js",
+    "dedupe:uploads": "node scripts/dedupe-uploads.js --apply"
   },
   "keywords": [],
   "author": "",
