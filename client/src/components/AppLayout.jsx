@@ -1,111 +1,81 @@
-import Header from './Header';
-import ScrollToTop from './ScrollToTop';
-import { Home, ShoppingCart, User, Search, Heart } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Heart, Home, Search, ShoppingBag, User2 } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import useCartStore from '../store/cartStore';
 import useCustomerStore from '../store/customerStore';
+import Footer from './Footer';
+import Header from './Header';
+import ScrollToTop from './ScrollToTop';
+import { cn } from './ui/primitives';
 
 function AppLayout({ children }) {
-    const navigate = useNavigate();
-    const location = useLocation();
-    const totalItems = useCartStore((state) => state.getTotalItems());
-    const { isAuthenticated } = useCustomerStore();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const totalItems = useCartStore((state) => state.getTotalItems());
+  const { isAuthenticated } = useCustomerStore();
 
-    const isActive = (path) => {
-        if (path === '/') return location.pathname === '/';
-        return location.pathname.startsWith(path);
-    };
+  const showFooter = !/^\/(cart|checkout|payment|order-success)/.test(location.pathname);
+  const showBottomNav = !/^\/(checkout|payment|order-success)/.test(location.pathname);
 
-    return (
-        <div className="min-h-screen flex flex-col bg-gradient-to-b from-purple-50 via-white to-gray-50">
-            <ScrollToTop />
-            <Header />
+  const items = [
+    { path: '/', label: 'Ana Sayfa', icon: Home },
+    { path: '/search', label: 'Ara', icon: Search },
+    { path: '/cart', label: 'Sepet', icon: ShoppingBag, badge: totalItems },
+    { path: '/favorites', label: 'Favoriler', icon: Heart },
+    { path: isAuthenticated ? '/profile' : '/login', label: isAuthenticated ? 'Profil' : 'Giris', icon: User2 },
+  ];
 
-            <main className="flex-grow animate-pageEnter pb-20 lg:pb-0">
-                {children}
-            </main>
+  const isActive = (path) => {
+    if (path === '/') return location.pathname === '/';
+    return location.pathname.startsWith(path);
+  };
 
-            {/* Mobile Bottom Navigation */}
-            <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
-                {/* Glass background */}
-                <div className="absolute inset-0 bg-white/95 backdrop-blur-xl border-t border-gray-200/50 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]" />
+  return (
+    <div className="relative flex min-h-screen flex-col overflow-x-clip">
+      <div className="pointer-events-none absolute inset-0 gm-mesh opacity-90" />
+      <ScrollToTop />
+      <Header />
 
-                {/* Safe area padding */}
-                <div className="relative px-4 safe-area-bottom">
-                    <div className="flex items-center justify-between h-16 max-w-md mx-auto">
-                        <BottomNavButton
-                            onClick={() => navigate('/')}
-                            isActive={isActive('/')}
-                            icon={<Home className="w-5 h-5" />}
-                            label="Ana Sayfa"
-                        />
+      <main className={cn('relative z-10 flex-1 animate-pageEnter', showBottomNav ? 'pb-28 lg:pb-0' : 'pb-8')}>
+        {children}
+      </main>
 
-                        <BottomNavButton
-                            onClick={() => navigate('/search')}
-                            isActive={isActive('/search')}
-                            icon={<Search className="w-5 h-5" />}
-                            label="Ara"
-                        />
+      {showFooter && <Footer />}
 
-                        {/* Center Cart Button */}
-                        <div className="relative -mt-5">
-                            <button
-                                onClick={() => navigate('/cart')}
-                                className={`relative flex items-center justify-center w-14 h-14 rounded-full transition-all duration-300 ${isActive('/cart')
-                                    ? 'bg-gradient-to-br from-purple-600 to-pink-600 shadow-xl shadow-purple-500/40 scale-105'
-                                    : 'bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg shadow-purple-500/30 hover:scale-105'
-                                    }`}
-                            >
-                                <ShoppingCart className="w-5 h-5 text-white" />
-                                {totalItems > 0 && (
-                                    <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-gradient-to-r from-rose-500 to-pink-500 text-white text-[11px] font-bold rounded-full flex items-center justify-center shadow-lg shadow-rose-500/40 animate-scaleIn border-2 border-white">
-                                        {totalItems > 9 ? '9+' : totalItems}
-                                    </span>
-                                )}
-                            </button>
-                            <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-medium text-gray-500 whitespace-nowrap">
-                                Sepet
-                            </span>
-                        </div>
+      {showBottomNav && (
+        <nav className="fixed inset-x-0 bottom-0 z-50 lg:hidden">
+          <div className="mx-3 mb-3 rounded-[28px] border border-white/70 bg-white/88 p-2 shadow-premium backdrop-blur-xl safe-area-bottom">
+            <div className="grid grid-cols-5 gap-1">
+              {items.map((item) => {
+                const Icon = item.icon;
+                const active = isActive(item.path);
 
-                        <BottomNavButton
-                            onClick={() => navigate('/favorites')}
-                            isActive={isActive('/favorites')}
-                            icon={<Heart className="w-5 h-5" />}
-                            label="Favoriler"
-                        />
-
-                        <BottomNavButton
-                            onClick={() => navigate(isAuthenticated ? '/profile' : '/login')}
-                            isActive={isActive('/profile') || isActive('/login')}
-                            icon={<User className="w-5 h-5" />}
-                            label={isAuthenticated ? 'Profil' : 'Giriş'}
-                        />
+                return (
+                  <button
+                    key={`${item.path}-${item.label}`}
+                    onClick={() => navigate(item.path)}
+                    className={cn(
+                      'relative flex flex-col items-center justify-center gap-1 rounded-[22px] px-2 py-2.5 text-[11px] font-semibold transition-all duration-200',
+                      active ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-dark-lighter',
+                    )}
+                  >
+                    <div className={cn('relative flex h-10 w-10 items-center justify-center rounded-2xl', active ? 'bg-white/12' : 'bg-surface-muted')}>
+                      <Icon className="h-4 w-4" />
+                      {item.badge > 0 && (
+                        <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-white shadow-lg">
+                          {item.badge > 9 ? '9+' : item.badge}
+                        </span>
+                      )}
                     </div>
-                </div>
-            </nav>
-        </div>
-    );
-}
-
-function BottomNavButton({ onClick, isActive, icon, label }) {
-    return (
-        <button
-            onClick={onClick}
-            className="flex flex-col items-center justify-center min-w-[56px] py-1 transition-all duration-300"
-        >
-            <div className={`p-2 rounded-xl transition-all duration-300 ${isActive
-                ? 'bg-purple-100 text-purple-600'
-                : 'text-gray-400 hover:text-gray-600'
-                }`}>
-                {icon}
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
             </div>
-            <span className={`text-[10px] font-medium mt-0.5 transition-colors ${isActive ? 'text-purple-600' : 'text-gray-400'
-                }`}>
-                {label}
-            </span>
-        </button>
-    );
+          </div>
+        </nav>
+      )}
+    </div>
+  );
 }
 
 export default AppLayout;

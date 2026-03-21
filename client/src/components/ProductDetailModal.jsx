@@ -39,11 +39,10 @@ function VariantDropdown({ variants, selectedVariant, onSelect }) {
         <button
           onClick={() => setOpen(!open)}
           className={`
-            w-full rounded-xl border-2 px-4 py-3 pr-10 text-left
-            bg-white bg-gradient-to-b from-white to-gray-50
-            shadow-sm active:scale-[0.99] transition
+            w-full rounded-[22px] border px-4 py-3 pr-10 text-left
+            bg-white shadow-card transition-all duration-200 active:scale-[0.99]
             ${open ? 'border-primary ring-2 ring-primary/20' :
-              selectedVariant ? 'border-primary' : 'border-gray-200'}
+              selectedVariant ? 'border-primary/25' : 'border-surface-border'}
           `}
         >
           <div className="flex items-start justify-between gap-2">
@@ -78,20 +77,20 @@ function VariantDropdown({ variants, selectedVariant, onSelect }) {
           }}
         >
           {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <div className="absolute inset-0 bg-dark/70 backdrop-blur-md" />
 
           {/* Menu Card */}
           <div
             ref={menuRef}
-            className="relative w-full max-w-md max-h-[85vh] bg-white rounded-xl shadow-2xl border border-white/40 overflow-hidden flex flex-col animate-scaleIn"
+            className="relative flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-[28px] border border-white/10 bg-[#f8f2ee] shadow-premium animate-scaleIn"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="px-4 py-2.5 border-b border-gray-200 flex items-center justify-between">
+            <div className="flex items-center justify-between border-b border-surface-border bg-white/90 px-4 py-3 backdrop-blur-xl">
               <h3 className="text-sm font-bold text-gray-900">Seçenek Seçin</h3>
               <button
                 onClick={() => setOpen(false)}
-                className="w-7 h-7 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 active:scale-95 transition-all"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-muted text-dark-lighter transition-all hover:bg-white"
                 aria-label="Kapat"
               >
                 <X className="w-4 h-4" />
@@ -99,7 +98,7 @@ function VariantDropdown({ variants, selectedVariant, onSelect }) {
             </div>
 
             {/* Menu Items */}
-            <div className="overflow-y-auto scroll-touch flex-1">
+            <div className="flex-1 overflow-y-auto scroll-touch">
               {variants.map(variant => (
                 <button
                   key={variant.Id}
@@ -107,16 +106,16 @@ function VariantDropdown({ variants, selectedVariant, onSelect }) {
                     onSelect(variant);
                     setOpen(false);
                   }}
-                  className={`w-full text-left px-4 py-2.5 flex items-center justify-between gap-2 active:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0
-                    ${selectedVariant?.Id === variant.Id ? 'bg-primary/5' : ''}`}
+                  className={`flex w-full items-center justify-between gap-2 border-b border-surface-border px-4 py-3 text-left transition-colors last:border-b-0
+                    ${selectedVariant?.Id === variant.Id ? 'bg-primary/6' : 'bg-white hover:bg-surface-muted'}`}
                 >
                   <div className="flex flex-col flex-1 min-w-0">
-                    <span className="text-xs font-semibold text-gray-900 leading-tight">
+                    <span className="text-xs font-semibold text-dark leading-tight">
                       {variant.Name}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <div className="text-xs font-extrabold text-gray-900 whitespace-nowrap tabular-nums">
+                    <div className="text-xs font-extrabold text-dark whitespace-nowrap tabular-nums">
                       {variant.Price.toFixed(2)} ₺
                     </div>
                     {selectedVariant?.Id === variant.Id && (
@@ -330,32 +329,6 @@ function ProductDetailModal({ isOpen, onClose, product, onPrevious, onNext, canG
   }, [showToast]);
 
   const currentPrice = useMemo(() => selectedVariant?.Price ?? product?.Price ?? 0, [selectedVariant, product]);
-  const [isVeryShortScreen, setIsVeryShortScreen] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return window.innerHeight < 700;
-  });
-
-  useEffect(() => {
-    let rafId = null;
-    const check = () => {
-      setIsVeryShortScreen(window.innerHeight < 700);
-    };
-
-    const handleResize = () => {
-      if (rafId) return; // Throttle
-      rafId = requestAnimationFrame(() => {
-        check();
-        rafId = null;
-      });
-    };
-
-    check();
-    window.addEventListener('resize', handleResize, { passive: true });
-    return () => {
-      if (rafId) cancelAnimationFrame(rafId);
-      window.removeEventListener('resize', handleResize);
-    };
-  }, []);
 
   // Basit swipe desteği (soldan/sağa)
   const handleTouchStart = (e) => {
@@ -383,27 +356,27 @@ function ProductDetailModal({ isOpen, onClose, product, onPrevious, onNext, canG
   return createPortal(
     (
       <div
-        className="fixed inset-0 z-[1000] flex flex-col"
+        className="fixed inset-0 z-[1000] flex flex-col sm:items-center sm:justify-center sm:p-5"
         role="dialog"
         aria-modal="true"
         aria-labelledby="product-title"
       >
         {/* Backdrop - Click outside to close */}
         <div
-          className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          className="absolute inset-0 bg-dark/70 backdrop-blur-md"
           onClick={onClose}
         />
 
         {/* Toast Notification */}
         {showToast && (
-          <div className="fixed top-4 right-4 bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/40 z-[70] animate-slideInRight max-w-sm">
-            <div className="p-4 flex items-start gap-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center flex-shrink-0">
+          <div className="fixed left-1/2 top-4 z-[70] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 animate-slideInRight rounded-[26px] border border-white/20 bg-white/95 shadow-premium backdrop-blur-xl">
+            <div className="flex items-start gap-3 p-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] bg-green-600 text-white shadow-lg shadow-green-600/20">
                 <Check className="w-6 h-6 text-white" strokeWidth={3} />
               </div>
               <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-bold text-gray-900 mb-1">Sepete Eklendi!</h4>
-                <p className="text-xs text-gray-600 truncate">
+                <h4 className="mb-1 text-sm font-bold text-dark">Sepete eklendi</h4>
+                <p className="truncate text-xs text-dark-lighter">
                   {quantity} adet {product.Name}
                 </p>
                 <button
@@ -412,14 +385,14 @@ function ProductDetailModal({ isOpen, onClose, product, onPrevious, onNext, canG
                     onClose();
                     safeSetTimeout(() => navigate('/cart'), 300);
                   }}
-                  className="mt-2 text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
+                  className="mt-2 text-xs font-semibold text-primary transition-colors hover:text-primary/80"
                 >
                   Sepete Git →
                 </button>
               </div>
               <button
                 onClick={() => setShowToast(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-dark-lighter transition-colors hover:text-dark"
                 aria-label="Kapat"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -432,15 +405,15 @@ function ProductDetailModal({ isOpen, onClose, product, onPrevious, onNext, canG
 
         {/* Modal Content - Stop propagation to prevent closing on content click */}
         <div
-          className="relative h-svh w-full bg-white/95 backdrop-blur-2xl flex flex-col"
+          className="relative flex h-svh w-full flex-col bg-[#f8f2ee] backdrop-blur-2xl sm:h-[92vh] sm:max-w-5xl sm:overflow-hidden sm:rounded-[32px] sm:border sm:border-white/10 sm:shadow-premium"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center px-4 py-3 border-b border-white/30 shrink-0 relative z-[50]">
+          <div className="relative z-[50] flex shrink-0 items-center border-b border-surface-border bg-white/90 px-4 py-4 backdrop-blur-xl sm:px-5">
             {/* Sol: Kapat */}
             <button
               onClick={onClose}
-              className="w-9 h-9 rounded-full bg-white/80 border border-white/60 shadow-md flex items-center justify-center text-gray-700 active:scale-95 transition-all"
+              className="flex h-10 w-10 items-center justify-center rounded-2xl bg-surface-muted text-dark transition-all active:scale-95 hover:bg-white hover:shadow-card"
               aria-label="Kapat"
             >
               <X size={18} />
@@ -450,13 +423,13 @@ function ProductDetailModal({ isOpen, onClose, product, onPrevious, onNext, canG
             <div className="flex-1 text-center px-2 min-w-0">
               <div
                 id="product-title"
-                className="text-[15px] font-semibold text-gray-900 truncate leading-tight"
+                className="truncate text-[15px] font-semibold leading-tight text-dark"
               >
                 {product.Name}
               </div>
               {/* Ürün sayacı */}
               {(canGoPrevious || canGoNext) && (
-                <div className="text-[10px] text-purple-600 font-bold mt-0.5">
+                <div className="mt-0.5 text-[10px] font-bold text-primary">
                   ← Ürünler arasında gezin →
                 </div>
               )}
@@ -467,9 +440,9 @@ function ProductDetailModal({ isOpen, onClose, product, onPrevious, onNext, canG
               <button
                 onClick={handlePrevious}
                 disabled={!canGoPrevious}
-                className={`w-9 h-9 rounded-full flex items-center justify-center active:scale-95 transition-all border ${canGoPrevious
-                  ? 'bg-white/60 border-white/50 text-gray-700 shadow-md'
-                  : 'bg-gray-100 text-gray-300 border-gray-200 shadow-none cursor-not-allowed'
+                className={`flex h-10 w-10 items-center justify-center rounded-2xl border transition-all active:scale-95 ${canGoPrevious
+                  ? 'border-white/70 bg-white text-dark shadow-card'
+                  : 'cursor-not-allowed border-surface-border bg-surface-muted text-dark-lighter'
                   }`}
                 aria-label="Önceki ürün"
               >
@@ -478,9 +451,9 @@ function ProductDetailModal({ isOpen, onClose, product, onPrevious, onNext, canG
               <button
                 onClick={handleNext}
                 disabled={!canGoNext}
-                className={`w-9 h-9 rounded-full flex items-center justify-center active:scale-95 transition-all border ${canGoNext
-                  ? 'bg-white/60 border-white/50 text-gray-700 shadow-md'
-                  : 'bg-gray-100 text-gray-300 border-gray-200 shadow-none cursor-not-allowed'
+                className={`flex h-10 w-10 items-center justify-center rounded-2xl border transition-all active:scale-95 ${canGoNext
+                  ? 'border-white/70 bg-white text-dark shadow-card'
+                  : 'cursor-not-allowed border-surface-border bg-surface-muted text-dark-lighter'
                   }`}
                 aria-label="Sonraki ürün"
               >
@@ -493,7 +466,7 @@ function ProductDetailModal({ isOpen, onClose, product, onPrevious, onNext, canG
           <div className="relative flex-1 flex flex-col overflow-hidden">
             {/* Scroll container */}
             <div
-              className={`px-4 py-3 flex-1 flex flex-col gap-3 overflow-y-auto overscroll-contain ${isTransitioning ? 'opacity-60' : 'opacity-100'
+              className={`flex flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 sm:py-5 ${isTransitioning ? 'opacity-60' : 'opacity-100'
                 }`}
               style={{ WebkitOverflowScrolling: 'touch' }}
               onTouchStart={handleTouchStart}
@@ -502,7 +475,7 @@ function ProductDetailModal({ isOpen, onClose, product, onPrevious, onNext, canG
             >
               {/* Görsel */}
               <div
-                className="relative w-full rounded-2xl bg-gray-100 overflow-hidden"
+                className="relative w-full overflow-hidden rounded-[28px] bg-white shadow-card"
                 style={{
                   height: imageHeightPx
                     ? `${Math.round(imageHeightPx)}px`
@@ -520,18 +493,18 @@ function ProductDetailModal({ isOpen, onClose, product, onPrevious, onNext, canG
                       }`}
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
-                    <ImageOff className="w-12 h-12 text-gray-400" />
-                  </div>
+                    <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#f1e4ec,#f2ece5)]">
+                      <ImageOff className="w-12 h-12 text-gray-400" />
+                    </div>
                 )}
 
                 {/* Swipe İpucu Overlay */}
                 {showSwipeHint && (canGoPrevious || canGoNext) && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 animate-pulse">
-                    <div className="flex items-center gap-3 px-4 py-2 bg-white/95 rounded-full shadow-lg">
-                      <ChevronLeft className="w-5 h-5 text-purple-600 animate-bounce" style={{ animationDelay: '0.1s' }} />
+                  <div className="absolute inset-0 flex items-center justify-center bg-dark/40 animate-pulse">
+                    <div className="flex items-center gap-3 rounded-full bg-white/95 px-4 py-2 shadow-lg">
+                      <ChevronLeft className="w-5 h-5 text-primary animate-bounce" style={{ animationDelay: '0.1s' }} />
                       <span className="text-sm font-bold text-gray-800">Kaydırarak gezin</span>
-                      <ChevronRight className="w-5 h-5 text-purple-600 animate-bounce" style={{ animationDelay: '0.2s' }} />
+                      <ChevronRight className="w-5 h-5 text-primary animate-bounce" style={{ animationDelay: '0.2s' }} />
                     </div>
                   </div>
                 )}
@@ -540,7 +513,7 @@ function ProductDetailModal({ isOpen, onClose, product, onPrevious, onNext, canG
                 {canGoPrevious && (
                   <button
                     onClick={handlePrevious}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:bg-white"
+                    className="absolute left-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/92 shadow-lg transition-all active:scale-95 hover:bg-white"
                   >
                     <ChevronLeft className="w-6 h-6 text-gray-700" />
                   </button>
@@ -548,7 +521,7 @@ function ProductDetailModal({ isOpen, onClose, product, onPrevious, onNext, canG
                 {canGoNext && (
                   <button
                     onClick={handleNext}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:bg-white"
+                    className="absolute right-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/92 shadow-lg transition-all active:scale-95 hover:bg-white"
                   >
                     <ChevronRight className="w-6 h-6 text-gray-700" />
                   </button>
@@ -556,20 +529,20 @@ function ProductDetailModal({ isOpen, onClose, product, onPrevious, onNext, canG
               </div>
 
               {/* Başlık ve fiyat */}
-              <div className="shrink-0">
-                <h2 ref={titleRef} className="text-xl font-bold text-gray-900 break-words leading-snug">{product.Name}</h2>
+              <div className="shrink-0 rounded-[28px] border border-white/70 bg-white p-5 shadow-card">
+                <h2 ref={titleRef} className="break-words text-2xl font-bold leading-snug text-dark">{product.Name}</h2>
                 <div className="text-2xl font-bold text-primary">{currentPrice.toFixed(2)} ₺</div>
 
                 {/* Kategori ve restoran bilgisi */}
-                <div className="mt-2 flex items-center gap-3 text-sm flex-wrap">
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
                   {product.CategoryName && (
-                    <div className="px-2.5 py-1 bg-primary/10 text-primary rounded-full font-semibold">
+                    <div className="rounded-full bg-primary/10 px-3 py-1 font-semibold text-primary">
                       {product.CategoryName}
                     </div>
                   )}
                   {product.RestaurantName && (
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <div className="flex items-center gap-2 text-dark-lighter">
+                      <div className="h-2 w-2 rounded-full bg-secondary"></div>
                       <span className="font-medium">{product.RestaurantName}</span>
                     </div>
                   )}
@@ -578,17 +551,17 @@ function ProductDetailModal({ isOpen, onClose, product, onPrevious, onNext, canG
 
               {/* Açıklama */}
               {product.Description && (
-                <div className="shrink-0 max-h-[120px] overflow-y-auto">
-                  <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
+                <div className="shrink-0 rounded-[24px] border border-white/70 bg-white p-4 shadow-card">
+                  <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-dark-lighter">
                     Açıklama
                   </div>
-                  <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{product.Description}</p>
+                  <p className="whitespace-pre-line text-sm leading-relaxed text-dark-lighter">{product.Description}</p>
                 </div>
               )}
 
               {/* Varyant seçimi: 4'ten fazlaysa dropdown, az sayıdaysa modern butonlar */}
               {product.variants && product.variants.length > 1 && (
-                <div className="shrink-0">
+                <div className="shrink-0 rounded-[24px] border border-white/70 bg-white p-4 shadow-card">
                   <label className="block text-xs font-semibold text-gray-900 mb-1.5">Seçenekler</label>
 
                   {product.variants.length > 4 ? (
@@ -608,17 +581,17 @@ function ProductDetailModal({ isOpen, onClose, product, onPrevious, onNext, canG
                         <button
                           key={variant.Id}
                           onClick={() => setSelectedVariant(variant)}
-                          className={`relative px-3 py-2 rounded-lg border transition-all duration-200 ${selectedVariant?.Id === variant.Id
-                            ? 'border-primary bg-primary/5 shadow-sm'
-                            : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
+                          className={`relative rounded-[18px] border px-3 py-3 transition-all duration-200 ${selectedVariant?.Id === variant.Id
+                            ? 'border-primary/25 bg-primary/6 shadow-card'
+                            : 'border-surface-border bg-white hover:border-primary/20 hover:shadow-card'
                             }`}
                         >
                           <div className="flex flex-col items-start">
-                            <span className={`font-semibold text-xs ${selectedVariant?.Id === variant.Id ? 'text-primary' : 'text-gray-900'
+                            <span className={`text-xs font-semibold ${selectedVariant?.Id === variant.Id ? 'text-primary' : 'text-dark'
                               }`}>
                               {variant.Name}
                             </span>
-                            <span className={`font-bold text-sm mt-0.5 ${selectedVariant?.Id === variant.Id ? 'text-primary' : 'text-gray-700'
+                            <span className={`mt-0.5 text-sm font-bold ${selectedVariant?.Id === variant.Id ? 'text-primary' : 'text-dark-lighter'
                               }`}>
                               {variant.Price.toFixed(2)} ₺
                             </span>
@@ -641,31 +614,31 @@ function ProductDetailModal({ isOpen, onClose, product, onPrevious, onNext, canG
             </div>
 
             {/* Scroll ipucu - gradient fade */}
-            <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white/95 to-transparent pointer-events-none" />
+            <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-[#f8f2ee] to-transparent" />
           </div>
 
           {/* Sabit alt bar: miktar + toplam + CTA (Sadece görüntüleme değilse göster) */}
           {!isViewOnly && (
-            <div className="fixed left-0 right-0 bottom-0 z-[60]" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-              <div className="mx-auto w-full max-w-2xl px-4 pb-3">
-                <div className="bg-white/90 backdrop-blur-2xl shadow-[0_-20px_60px_rgba(0,0,0,0.3)] rounded-2xl border border-white/40">
-                  <div className="flex items-center gap-2 p-3">
+            <div className="fixed bottom-0 left-0 right-0 z-[60] sm:absolute" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+              <div className="mx-auto w-full max-w-2xl px-4 pb-3 sm:max-w-none sm:px-5">
+                <div className="rounded-[26px] border border-white/30 bg-white/92 shadow-[0_-20px_60px_rgba(0,0,0,0.18)] backdrop-blur-2xl">
+                  <div className="flex items-center gap-2 p-3 sm:p-4">
                     {/* Miktar */}
                     <button
                       onClick={() => handleQuantityChange(-1)}
                       disabled={quantity <= 1}
-                      className="w-9 h-9 rounded-xl border-2 border-white/40 hover:bg-white/60 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition-all bg-white/50 backdrop-blur-sm flex-shrink-0"
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-surface-border bg-surface-muted transition-all hover:bg-white active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
                       aria-label="Miktarı azalt"
                     >
                       <Minus className="w-4 h-4 text-gray-700" />
                     </button>
 
-                    <span className="text-lg font-black text-gray-900 w-8 text-center">{quantity}</span>
+                    <span className="w-8 text-center text-lg font-black text-dark">{quantity}</span>
 
                     <button
                       onClick={() => handleQuantityChange(1)}
                       disabled={quantity >= 10}
-                      className="w-9 h-9 rounded-xl border-2 border-white/40 hover:bg-white/60 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition-all bg-white/50 backdrop-blur-sm flex-shrink-0"
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-surface-border bg-surface-muted transition-all hover:bg-white active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
                       aria-label="Miktarı artır"
                     >
                       <Plus className="w-4 h-4 text-gray-700" />
@@ -675,9 +648,9 @@ function ProductDetailModal({ isOpen, onClose, product, onPrevious, onNext, canG
                     <button
                       onClick={handleAddToCart}
                       disabled={!isActive}
-                      className={`flex-1 py-3 rounded-xl flex items-center justify-center gap-1.5 shadow-lg active:scale-[0.98] transition-all min-w-0 px-2 ${isActive
-                        ? 'bg-primary hover:bg-primary/90 text-white'
-                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-[22px] px-3 py-3 shadow-lg transition-all active:scale-[0.98] ${isActive
+                        ? 'bg-primary text-white shadow-primary/25 hover:bg-primary/90'
+                        : 'cursor-not-allowed bg-surface-border text-dark-lighter'
                         }`}
                     >
                       {justAdded ? (

@@ -1,460 +1,436 @@
-import { useEffect, useState, useCallback, memo } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, Clock, Star, Sparkles, Gift, Percent, Utensils } from 'lucide-react';
+import {
+  ArrowRight,
+  Clock3,
+  Copy,
+  Gift,
+  Percent,
+  Sparkles,
+  Star,
+  Store,
+} from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
-import { getRestaurants, getActivePromotions, getCategories, getFeaturedProducts } from '../services/api';
-import FeaturedTicker from '../components/customer/FeaturedTicker';
 import ProductDetailModal from '../components/ProductDetailModal';
+import FeaturedTicker from '../components/customer/FeaturedTicker';
+import { getActivePromotions, getCategories, getFeaturedProducts, getRestaurants } from '../services/api';
+import { Badge, Button, PageShell, SectionHeader, SurfaceCard } from '../components/ui/primitives';
 
-// Kategori Butonu
 const CategoryButton = memo(({ category, onClick }) => {
-    // Dinamik ikon
-    const IconComponent = LucideIcons[category.Icon] || LucideIcons.Utensils;
+  const IconComponent = LucideIcons[category.Icon] || LucideIcons.Utensils;
 
-    return (
-        <button
-            onClick={onClick}
-            className="flex flex-col items-center gap-1.5 min-w-[72px] transition-all duration-300 hover:scale-105 active:scale-95"
-        >
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg ${category.Color || 'bg-gray-500'}`}>
-                <IconComponent className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-xs font-semibold text-gray-700 text-center line-clamp-1 max-w-[72px]">
-                {category.Name}
-            </span>
-        </button>
-    );
+  return (
+    <button
+      onClick={onClick}
+      className="group flex min-w-[120px] items-center gap-3 rounded-[24px] border border-surface-border bg-white px-4 py-3 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-card"
+    >
+      <div
+        className="flex h-12 w-12 items-center justify-center rounded-[18px] text-white shadow-lg shadow-black/10"
+        style={{ background: category.Color || '#8C477C' }}
+      >
+        <IconComponent className="h-5 w-5" />
+      </div>
+      <div className="min-w-0">
+        <p className="truncate text-sm font-bold text-dark">{category.Name}</p>
+        <p className="text-xs text-dark-lighter">Kategori</p>
+      </div>
+    </button>
+  );
 });
 
-// Kampanya Banner
 const CampaignBanner = memo(({ campaigns, onCampaignClick }) => {
-    const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
-    useEffect(() => {
-        if (campaigns.length <= 1) return;
-        const interval = setInterval(() => {
-            setCurrentIndex((prev) => (prev + 1) % campaigns.length);
-        }, 4000);
-        return () => clearInterval(interval);
-    }, [campaigns.length]);
+  useEffect(() => {
+    if (campaigns.length <= 1) return undefined;
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % campaigns.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [campaigns.length]);
 
-    if (!campaigns || campaigns.length === 0) return null;
+  if (!campaigns?.length) return null;
 
-    return (
-        <div className="px-4 mb-6">
-            <div
-                className="relative h-40 sm:h-48 rounded-3xl overflow-hidden cursor-pointer"
-                onClick={() => onCampaignClick?.(campaigns[currentIndex])}
-            >
-                {/* Background Gradient */}
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-pink-500 to-rose-500" />
+  const campaign = campaigns[currentIndex];
+  const isPercentage = campaign.DiscountType === 'percentage';
 
-                {/* Animated Pattern */}
-                <div className="absolute inset-0 opacity-20">
-                    <div className="absolute top-0 right-0 w-40 h-40 bg-white rounded-full -translate-y-1/2 translate-x-1/2 animate-pulse" />
-                    <div className="absolute bottom-0 left-0 w-32 h-32 bg-white rounded-full translate-y-1/2 -translate-x-1/2 animate-pulse" />
-                    <div className="absolute top-1/2 right-1/4 w-20 h-20 bg-white rounded-full animate-bounce" style={{ animationDuration: '3s' }} />
-                </div>
+  return (
+    <SurfaceCard
+      tone="hero"
+      className="relative overflow-hidden p-5 sm:p-7 lg:p-8"
+      onClick={() => onCampaignClick?.(campaign)}
+    >
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.12),transparent_24%)]" />
+      <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="max-w-2xl space-y-4">
+          <Badge className="border border-white/20 bg-white/12 text-white">
+            <Sparkles className="h-3 w-3" />
+            Aktif kampanya
+          </Badge>
+          <div className="space-y-3">
+            <h3 className="font-display text-4xl leading-none sm:text-5xl lg:text-6xl">
+              {isPercentage ? `%${campaign.DiscountValue} indirim` : `${campaign.DiscountValue} TL avantaj`}
+            </h3>
+            <p className="max-w-xl text-sm leading-7 text-white/82 sm:text-base">
+              {campaign.Description || 'Siparis akisini hizlandiran, net ve premium kampanya deneyimi.'}
+            </p>
+          </div>
 
-                {/* Content */}
-                <div className="relative h-full flex items-center p-6">
-                    <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full">
-                                <span className="text-white text-xs font-bold">🔥 Fırsat</span>
-                            </div>
-                        </div>
-
-                        <h2 className="text-2xl sm:text-3xl font-black text-white mb-1">
-                            {campaigns[currentIndex].DiscountType === 'percentage'
-                                ? `%${campaigns[currentIndex].DiscountValue} İndirim!`
-                                : `${campaigns[currentIndex].DiscountValue}₺ Hediye!`}
-                        </h2>
-
-                        <p className="text-white/80 text-sm mb-3">
-                            {campaigns[currentIndex].Description || 'Hemen sipariş ver, fırsatı kaçırma!'}
-                        </p>
-
-                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-xl">
-                            <span className="text-purple-600 font-bold text-sm">
-                                Kod: {campaigns[currentIndex].Code}
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Big Icon */}
-                    <div className="hidden sm:flex w-24 h-24 bg-white/20 backdrop-blur-sm rounded-3xl items-center justify-center">
-                        {campaigns[currentIndex].DiscountType === 'percentage' ? (
-                            <Percent className="w-12 h-12 text-white" />
-                        ) : (
-                            <Gift className="w-12 h-12 text-white" />
-                        )}
-                    </div>
-                </div>
-
-                {/* Indicators */}
-                {campaigns.length > 1 && (
-                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-                        {campaigns.map((_, idx) => (
-                            <button
-                                key={idx}
-                                onClick={(e) => { e.stopPropagation(); setCurrentIndex(idx); }}
-                                className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentIndex ? 'w-6 bg-white' : 'w-1.5 bg-white/50'
-                                    }`}
-                            />
-                        ))}
-                    </div>
-                )}
-            </div>
+          <div className="inline-flex items-center gap-3 rounded-full border border-white/18 bg-white/12 px-4 py-3 text-sm font-semibold">
+            <span className="text-white/72">Kod</span>
+            <span className="text-lg font-black tracking-[0.14em]">{campaign.Code}</span>
+          </div>
         </div>
-    );
-});
 
-// Modern Restoran Kartı
-const RestaurantCard = memo(({ restaurant, onClick }) => {
-    const [imageLoaded, setImageLoaded] = useState(false);
-
-    return (
-        <div
-            onClick={onClick}
-            className="group bg-white rounded-3xl overflow-hidden cursor-pointer active:scale-[0.98] transition-all duration-300"
-            style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
-        >
-            {/* Image Container */}
-            <div className="relative h-36 sm:h-44 overflow-hidden">
-                {restaurant.ImageUrl ? (
-                    <>
-                        {!imageLoaded && (
-                            <div className="absolute inset-0 bg-gradient-to-br from-purple-100 to-pink-100 animate-pulse" />
-                        )}
-                        <img
-                            src={restaurant.ImageUrl}
-                            alt={restaurant.Name}
-                            className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-110 ${imageLoaded ? 'opacity-100' : 'opacity-0'
-                                }`}
-                            loading="lazy"
-                            onLoad={() => setImageLoaded(true)}
-                        />
-                    </>
-                ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-purple-500 via-pink-500 to-rose-500 flex items-center justify-center">
-                        <span className="text-white/50 text-5xl font-black">
-                            {restaurant.Name?.charAt(0) || 'R'}
-                        </span>
-                    </div>
-                )}
-
-                {/* Gradient Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-
-                {/* Status Badge */}
-                <div className="absolute top-3 left-3">
-                    <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold backdrop-blur-md ${restaurant.IsActive
-                        ? 'bg-green-500/90 text-white'
-                        : 'bg-gray-800/90 text-gray-300'
-                        }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${restaurant.IsActive ? 'bg-white animate-pulse' : 'bg-gray-500'}`} />
-                        {restaurant.IsActive ? 'Açık' : 'Kapalı'}
-                    </div>
-                </div>
-
-                {/* Featured Badge */}
-                {restaurant.IsFeatured && (
-                    <div className="absolute top-3 right-3">
-                        <div className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-lg">
-                            <Sparkles className="w-3 h-3" />
-                            Popüler
-                        </div>
-                    </div>
-                )}
-
-                {/* Delivery Time on image */}
-                {restaurant.DeliveryTime && (
-                    <div className="absolute bottom-3 right-3">
-                        <div className="flex items-center gap-1 px-2.5 py-1 bg-white/95 backdrop-blur-sm rounded-full text-xs font-bold text-gray-800 shadow-lg">
-                            <Clock className="w-3 h-3 text-purple-600" />
-                            {restaurant.DeliveryTime}
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* Info */}
-            <div className="p-4">
-                <div className="flex items-start justify-between gap-2 mb-2">
-                    <h3 className="font-bold text-gray-900 text-lg leading-tight line-clamp-1 group-hover:text-purple-600 transition-colors">
-                        {restaurant.Name}
-                    </h3>
-
-                    {/* Rating */}
-                    <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-50 rounded-lg flex-shrink-0">
-                        <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                        <span className="text-sm font-bold text-amber-700">4.8</span>
-                    </div>
-                </div>
-
-                {restaurant.Description && (
-                    <p className="text-gray-500 text-sm line-clamp-1 mb-3">
-                        {restaurant.Description}
-                    </p>
-                )}
-
-                {/* Tags */}
-                <div className="flex items-center gap-2">
-                    <span className="px-2 py-1 bg-purple-50 text-purple-600 text-xs font-medium rounded-lg">
-                        Ücretsiz Teslimat
-                    </span>
-                    {restaurant.MinOrder && (
-                        <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-lg">
-                            Min. {restaurant.MinOrder}₺
-                        </span>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-});
-
-// Skeletons
-const CampaignSkeleton = memo(() => (
-    <div className="px-4 mb-6">
-        <div className="h-40 sm:h-48 bg-gradient-to-br from-gray-200 to-gray-300 rounded-3xl animate-pulse" />
-    </div>
-));
-
-const CategorySkeleton = memo(() => (
-    <div className="flex gap-4 px-4 mb-6 overflow-hidden">
-        {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="flex flex-col items-center gap-1.5">
-                <div className="w-14 h-14 bg-gray-200 rounded-2xl animate-pulse" />
-                <div className="w-10 h-3 bg-gray-200 rounded animate-pulse" />
-            </div>
-        ))}
-    </div>
-));
-
-const RestaurantSkeleton = memo(() => (
-    <div className="bg-white rounded-3xl overflow-hidden animate-pulse" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
-        <div className="h-36 sm:h-44 bg-gray-200" />
-        <div className="p-4 space-y-3">
-            <div className="flex justify-between">
-                <div className="h-5 bg-gray-200 rounded w-2/3" />
-                <div className="h-5 bg-gray-200 rounded w-12" />
-            </div>
-            <div className="h-4 bg-gray-200 rounded w-full" />
+        <div className="flex items-end gap-3">
+          <div className="flex h-20 w-20 items-center justify-center rounded-[28px] border border-white/20 bg-white/12 shadow-lg shadow-black/10">
+            {isPercentage ? <Percent className="h-10 w-10 text-white" /> : <Gift className="h-10 w-10 text-white" />}
+          </div>
+          {campaigns.length > 1 && (
             <div className="flex gap-2">
-                <div className="h-6 bg-gray-200 rounded w-24" />
-                <div className="h-6 bg-gray-200 rounded w-16" />
+              {campaigns.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentIndex(idx);
+                  }}
+                  className={`h-2 rounded-full transition-all duration-200 ${idx === currentIndex ? 'w-8 bg-white' : 'w-2 bg-white/35'}`}
+                />
+              ))}
             </div>
+          )}
         </div>
-    </div>
+      </div>
+    </SurfaceCard>
+  );
+});
+
+const RestaurantCard = memo(({ restaurant, onClick }) => {
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  return (
+    <article
+      onClick={onClick}
+      className="group overflow-hidden rounded-[32px] border border-white/70 bg-white shadow-card transition-all duration-300 hover:-translate-y-1 hover:shadow-card-hover"
+    >
+      <div className="relative h-52 overflow-hidden">
+        {restaurant.ImageUrl ? (
+          <>
+            {!imageLoaded && <div className="absolute inset-0 animate-pulse bg-[linear-gradient(135deg,#f2e6ef,#f2ede8)]" />}
+            <img
+              src={restaurant.ImageUrl}
+              alt={restaurant.Name}
+              className={`h-full w-full object-cover transition-all duration-700 group-hover:scale-105 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              loading="lazy"
+              onLoad={() => setImageLoaded(true)}
+            />
+          </>
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#8c477c,#d16b53)]">
+            <span className="font-display text-7xl text-white/45">{restaurant.Name?.charAt(0) || 'R'}</span>
+          </div>
+        )}
+
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/55 to-transparent" />
+        <div className="absolute left-4 top-4 flex flex-wrap gap-2">
+          <Badge tone={restaurant.IsActive ? 'success' : 'danger'}>{restaurant.IsActive ? 'Acik' : 'Kapali'}</Badge>
+          {restaurant.IsFeatured && (
+            <Badge className="bg-accent text-white">
+              <Sparkles className="h-3 w-3" />
+              Populer
+            </Badge>
+          )}
+        </div>
+
+        {restaurant.DeliveryTime && (
+          <div className="absolute bottom-4 right-4">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-2 text-xs font-bold text-dark shadow-lg">
+              <Clock3 className="h-3.5 w-3.5 text-primary" />
+              {restaurant.DeliveryTime}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-4 p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="truncate text-xl font-bold text-dark">{restaurant.Name}</h3>
+            {restaurant.Description && <p className="mt-1 line-clamp-2 text-sm leading-6 text-dark-lighter">{restaurant.Description}</p>}
+          </div>
+          <div className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1.5 text-sm font-bold text-amber-700">
+            <Star className="h-3.5 w-3.5 fill-current" />
+            4.8
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Badge tone="primary">Ucretsiz teslimat</Badge>
+          {restaurant.MinOrder && <Badge tone="warning">Min. {restaurant.MinOrder} TL</Badge>}
+        </div>
+      </div>
+    </article>
+  );
+});
+
+const CampaignSkeleton = memo(() => <div className="h-[260px] animate-pulse rounded-[32px] bg-[linear-gradient(135deg,#eadce7,#f3ebe6)]" />);
+const CategorySkeleton = memo(() => (
+  <div className="flex gap-3 overflow-hidden">
+    {[1, 2, 3, 4].map((i) => (
+      <div key={i} className="h-20 w-36 animate-pulse rounded-[24px] bg-white shadow-card" />
+    ))}
+  </div>
 ));
+const RestaurantSkeleton = memo(() => <div className="h-[332px] animate-pulse rounded-[32px] bg-white shadow-card" />);
 
 function Home() {
-    const navigate = useNavigate();
-    const [restaurants, setRestaurants] = useState([]);
-    const [campaigns, setCampaigns] = useState([]);
-    const [categories, setCategories] = useState([]);
-    const [featuredProducts, setFeaturedProducts] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [selectedProduct, setSelectedProduct] = useState(null);
-    const [isModalOpen, setIsModalOpen] = useState(false);
+  const navigate = useNavigate();
+  const [restaurants, setRestaurants] = useState([]);
+  const [campaigns, setCampaigns] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [featuredProducts, setFeaturedProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-    useEffect(() => {
-        loadData();
-    }, []);
+  useEffect(() => {
+    loadData();
+  }, []);
 
-    const loadData = async () => {
-        try {
-            setLoading(true);
-            setError(null);
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-            const [restaurantsRes, campaignsRes, categoriesRes, featuredRes] = await Promise.all([
-                getRestaurants(),
-                getActivePromotions(),
-                getCategories(),
-                getFeaturedProducts()
-            ]);
+      const [restaurantsRes, campaignsRes, categoriesRes, featuredRes] = await Promise.all([
+        getRestaurants(),
+        getActivePromotions(),
+        getCategories(),
+        getFeaturedProducts(),
+      ]);
 
-            if (restaurantsRes.success) {
-                setRestaurants(restaurantsRes.data || []);
-            } else {
-                setError('Restoranlar yüklenemedi');
-            }
+      if (restaurantsRes.success) {
+        setRestaurants(restaurantsRes.data || []);
+      } else {
+        setError('Restoranlar yuklenemedi');
+      }
 
-            if (campaignsRes.success) {
-                setCampaigns(campaignsRes.data || []);
-            }
+      if (campaignsRes.success) {
+        setCampaigns(campaignsRes.data || []);
+      }
 
-            if (categoriesRes.success) {
-                // Sadece aktif kategorileri al ve sırala
-                const activeCategories = (categoriesRes.data || [])
-                    .filter(cat => cat.IsActive !== false)
-                    .sort((a, b) => (a.SortOrder || 0) - (b.SortOrder || 0));
-                setCategories(activeCategories);
-            }
+      if (categoriesRes.success) {
+        const activeCategories = (categoriesRes.data || [])
+          .filter((cat) => cat.IsActive !== false)
+          .sort((a, b) => (a.SortOrder || 0) - (b.SortOrder || 0));
+        setCategories(activeCategories);
+      }
 
-            if (featuredRes.success) {
-                setFeaturedProducts(featuredRes.data || []);
-            }
-        } catch (err) {
-            console.error('Veri yüklenirken hata:', err);
-            setError('Bağlantı hatası oluştu');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleRestaurantClick = useCallback((restaurant) => {
-        if (restaurant.Slug) {
-            navigate(`/restaurant/${restaurant.Slug}`);
-        }
-    }, [navigate]);
-
-    const handleCampaignClick = useCallback((campaign) => {
-        if (campaign.Code) {
-            navigator.clipboard.writeText(campaign.Code);
-        }
-    }, []);
-
-    const handleCategoryClick = useCallback((category) => {
-        // Kategoriye tıklayınca arama sayfasına yönlendir
-        navigate(`/search?q=${encodeURIComponent(category.Name)}`);
-    }, [navigate]);
-
-    const handleProductClick = useCallback((product) => {
-        setSelectedProduct(product);
-        setIsModalOpen(true);
-    }, []);
-
-    const handleNextProduct = useCallback(() => {
-        if (!selectedProduct || featuredProducts.length <= 1) return;
-        const index = featuredProducts.findIndex(p => p.Id === selectedProduct.Id);
-        const nextIndex = (index + 1) % featuredProducts.length;
-        setSelectedProduct(featuredProducts[nextIndex]);
-    }, [selectedProduct, featuredProducts]);
-
-    const handlePrevProduct = useCallback(() => {
-        if (!selectedProduct || featuredProducts.length <= 1) return;
-        const index = featuredProducts.findIndex(p => p.Id === selectedProduct.Id);
-        const prevIndex = (index - 1 + featuredProducts.length) % featuredProducts.length;
-        setSelectedProduct(featuredProducts[prevIndex]);
-    }, [selectedProduct, featuredProducts]);
-
-    // Loading
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-gray-50 pb-24">
-                <div className="pt-2">
-                    <CampaignSkeleton />
-                    <CategorySkeleton />
-                    <div className="px-4">
-                        <div className="h-6 bg-gray-200 rounded w-40 mb-4 animate-pulse" />
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {[1, 2, 3, 4].map((i) => <RestaurantSkeleton key={i} />)}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
+      if (featuredRes.success) {
+        setFeaturedProducts(featuredRes.data || []);
+      }
+    } catch (err) {
+      console.error('Veri yuklenirken hata:', err);
+      setError('Baglanti hatasi olustu');
+    } finally {
+      setLoading(false);
     }
+  };
 
-    // Error
-    if (error) {
-        return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-                <div className="text-center max-w-sm">
-                    <div className="text-6xl mb-4">😕</div>
-                    <h2 className="text-xl font-bold text-gray-800 mb-2">Bir Sorun Oluştu</h2>
-                    <p className="text-gray-600 mb-4">{error}</p>
-                    <button
-                        onClick={loadData}
-                        className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-2xl shadow-lg"
-                    >
-                        Tekrar Dene
-                    </button>
-                </div>
-            </div>
-        );
+  const handleRestaurantClick = useCallback(
+    (restaurant) => {
+      if (restaurant.Slug) {
+        navigate(`/restaurant/${restaurant.Slug}`);
+      }
+    },
+    [navigate],
+  );
+
+  const handleCampaignClick = useCallback((campaign) => {
+    if (campaign.Code) {
+      navigator.clipboard.writeText(campaign.Code);
     }
+  }, []);
 
+  const handleCategoryClick = useCallback(
+    (category) => {
+      navigate(`/search?q=${encodeURIComponent(category.Name)}`);
+    },
+    [navigate],
+  );
+
+  const handleProductClick = useCallback((product) => {
+    setSelectedProduct(product);
+    setIsModalOpen(true);
+  }, []);
+
+  const handleNextProduct = useCallback(() => {
+    if (!selectedProduct || featuredProducts.length <= 1) return;
+    const index = featuredProducts.findIndex((product) => product.Id === selectedProduct.Id);
+    const nextIndex = (index + 1) % featuredProducts.length;
+    setSelectedProduct(featuredProducts[nextIndex]);
+  }, [selectedProduct, featuredProducts]);
+
+  const handlePrevProduct = useCallback(() => {
+    if (!selectedProduct || featuredProducts.length <= 1) return;
+    const index = featuredProducts.findIndex((product) => product.Id === selectedProduct.Id);
+    const prevIndex = (index - 1 + featuredProducts.length) % featuredProducts.length;
+    setSelectedProduct(featuredProducts[prevIndex]);
+  }, [selectedProduct, featuredProducts]);
+
+  if (loading) {
     return (
-        <div className="min-h-screen bg-gray-50 pb-24">
-            {/* Kampanya Banner */}
-            <div className="pt-2">
-                <CampaignBanner
-                    campaigns={campaigns}
-                    onCampaignClick={handleCampaignClick}
-                />
-            </div>
-
-            {/* Öne Çıkan Ürünler Ticker */}
-            {featuredProducts.length > 0 && (
-                <FeaturedTicker
-                    products={featuredProducts}
-                    onProductClick={handleProductClick}
-                />
-            )}
-
-            {/* Kategoriler - API'den dinamik */}
-            {categories.length > 0 && (
-                <div className="mb-6">
-                    <div className="flex gap-3 px-4 overflow-x-auto scrollbar-hide pb-2">
-                        {categories.map((category) => (
-                            <CategoryButton
-                                key={category.Id}
-                                category={category}
-                                onClick={() => handleCategoryClick(category)}
-                            />
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Restoranlar */}
-            <div className="px-4">
-                <div className="flex items-center justify-between mb-4">
-                    <div>
-                        <h2 className="text-xl font-black text-gray-900">Yakınındaki Lila'lar</h2>
-                        <p className="text-gray-500 text-sm">{restaurants.length} restoran bulundu</p>
-                    </div>
-                    <button className="text-purple-600 text-sm font-semibold flex items-center gap-1">
-                        Filtrele <ChevronRight className="w-4 h-4" />
-                    </button>
-                </div>
-
-                {restaurants.length === 0 ? (
-                    <div className="text-center py-16">
-                        <div className="text-6xl mb-4">🍽️</div>
-                        <h3 className="text-xl font-bold text-gray-800 mb-2">Henüz Restoran Yok</h3>
-                        <p className="text-gray-500">Yakında yeni mekanlar eklenecek.</p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {restaurants.map((restaurant) => (
-                            <RestaurantCard
-                                key={restaurant.Id}
-                                restaurant={restaurant}
-                                onClick={() => handleRestaurantClick(restaurant)}
-                            />
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            {/* Ürün Detay Modal */}
-            <ProductDetailModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                product={selectedProduct}
-                onNext={handleNextProduct}
-                onPrevious={handlePrevProduct}
-                canGoNext={featuredProducts.length > 1}
-                canGoPrevious={featuredProducts.length > 1}
-            />
-        </div>
+      <div className="pb-8 pt-4 sm:pt-6 lg:pb-12">
+        <PageShell width="full" className="space-y-6">
+          <CampaignSkeleton />
+          <CategorySkeleton />
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <RestaurantSkeleton key={i} />
+            ))}
+          </div>
+        </PageShell>
+      </div>
     );
+  }
+
+  if (error) {
+    return (
+      <div className="pb-8 pt-6">
+        <PageShell width="content">
+          <SurfaceCard tone="muted" className="p-8 text-center sm:p-12">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[28px] bg-white shadow-card">
+              <Store className="h-9 w-9 text-primary" />
+            </div>
+            <h2 className="gm-display mt-6 text-4xl">Bir sorun olustu</h2>
+            <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-dark-lighter sm:text-base">{error}</p>
+            <Button className="mt-6" onClick={loadData}>
+              Tekrar dene
+            </Button>
+          </SurfaceCard>
+        </PageShell>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pb-8 pt-4 sm:pt-6 lg:pb-12">
+      <PageShell width="full" className="space-y-6 sm:space-y-8">
+        <SurfaceCard tone="hero" className="overflow-hidden p-6 sm:p-8 lg:p-10">
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr),320px] lg:items-end">
+            <div className="space-y-5">
+              <span className="gm-eyebrow border-white/20 bg-white/10 text-white">Mobil once, premium akıs</span>
+              <div className="space-y-4">
+                <h1 className="font-display text-5xl leading-none sm:text-6xl lg:text-7xl">
+                  Restoran sec, urunu bul, hizla siparis ver.
+                </h1>
+                <p className="max-w-2xl text-sm leading-7 text-white/82 sm:text-base">
+                  Telefon ekraninda hizli, desktopta ferah bir akis. Restoranlar, kampanyalar ve one cikan urunler tek bir
+                  editorial landing yapisinda toplandi.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <Button className="bg-white text-dark hover:bg-white/92" onClick={() => navigate('/search')}>
+                  Kesfet
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+                <button
+                  onClick={() => navigate('/favorites')}
+                  className="inline-flex items-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-bold text-white transition-all duration-200 hover:bg-white/14"
+                >
+                  Favorilere git
+                </button>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+              <div className="rounded-[26px] border border-white/15 bg-white/10 p-4 backdrop-blur-md">
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/60">Restoran</p>
+                <p className="mt-2 text-3xl font-black">{restaurants.length}</p>
+                <p className="mt-1 text-sm text-white/72">Aktif liste</p>
+              </div>
+              <div className="rounded-[26px] border border-white/15 bg-white/10 p-4 backdrop-blur-md">
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/60">Kategori</p>
+                <p className="mt-2 text-3xl font-black">{categories.length}</p>
+                <p className="mt-1 text-sm text-white/72">Hizli kesfet</p>
+              </div>
+              <div className="rounded-[26px] border border-white/15 bg-white/10 p-4 backdrop-blur-md">
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/60">One cikan</p>
+                <p className="mt-2 text-3xl font-black">{featuredProducts.length}</p>
+                <p className="mt-1 text-sm text-white/72">Secili urun</p>
+              </div>
+            </div>
+          </div>
+        </SurfaceCard>
+
+        <CampaignBanner campaigns={campaigns} onCampaignClick={handleCampaignClick} />
+
+        {featuredProducts.length > 0 && <FeaturedTicker products={featuredProducts} onProductClick={handleProductClick} />}
+
+        {categories.length > 0 && (
+          <SurfaceCard tone="muted" className="p-4 sm:p-5">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Hizli gecis</p>
+                <h2 className="text-lg font-bold text-dark sm:text-xl">Kategoriler</h2>
+              </div>
+              <button onClick={() => navigate('/search')} className="inline-flex items-center gap-2 text-sm font-bold text-primary">
+                Tumunu gor
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="scrollbar-hide flex gap-3 overflow-x-auto pb-1">
+              {categories.map((category) => (
+                <CategoryButton key={category.Id} category={category} onClick={() => handleCategoryClick(category)} />
+              ))}
+            </div>
+          </SurfaceCard>
+        )}
+
+        <SectionHeader
+          eyebrow="Restoranlar"
+          title="Yakininizdaki mekanlar"
+          description={`${restaurants.length} restoran bulundu. Mobilde tek elle rahat, desktopta daha genis editorial grid kullaniliyor.`}
+          action={
+            <button className="inline-flex items-center gap-2 text-sm font-bold text-primary" onClick={() => navigate('/search')}>
+              Kategorilerde ara
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          }
+        />
+
+        {restaurants.length === 0 ? (
+          <SurfaceCard tone="muted" className="p-10 text-center">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[28px] bg-white shadow-card">
+              <Store className="h-9 w-9 text-primary" />
+            </div>
+            <h3 className="gm-display mt-6 text-4xl">Henuz restoran yok</h3>
+            <p className="mt-3 text-sm leading-7 text-dark-lighter">Yakinda yeni mekanlar eklenecek.</p>
+          </SurfaceCard>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {restaurants.map((restaurant) => (
+              <RestaurantCard key={restaurant.Id} restaurant={restaurant} onClick={() => handleRestaurantClick(restaurant)} />
+            ))}
+          </div>
+        )}
+      </PageShell>
+
+      <ProductDetailModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        product={selectedProduct}
+        onNext={handleNextProduct}
+        onPrevious={handlePrevProduct}
+        canGoNext={featuredProducts.length > 1}
+        canGoPrevious={featuredProducts.length > 1}
+      />
+    </div>
+  );
 }
 
 export default Home;

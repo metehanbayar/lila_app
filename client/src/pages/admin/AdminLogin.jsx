@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, User, AlertCircle } from 'lucide-react';
-import useAdminStore from '../../store/adminStore';
-import { adminLogin } from '../../services/adminApi';
+import { AlertCircle, Lock, User } from 'lucide-react';
 import ScrollToTop from '../../components/ScrollToTop';
+import { adminLogin } from '../../services/adminApi';
+import useAdminStore from '../../store/adminStore';
+import { Button, Field, PageShell, SurfaceCard, TextInput } from '../../components/ui/primitives';
 
 function AdminLogin() {
   const navigate = useNavigate();
@@ -27,115 +28,83 @@ function AdminLogin() {
         navigate('/admin');
       }
     } catch (err) {
-      console.error('Login hatası:', err);
-      setError(err.response?.data?.message || 'Giriş yapılırken bir hata oluştu');
+      console.error('Login hatasi:', err);
+      setError(err.response?.data?.message || 'Giris yapilirken bir hata olustu');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary via-primary-dark to-dark flex items-center justify-center px-4">
+    <div className="min-h-screen py-6 sm:py-8 lg:py-10">
       <ScrollToTop />
-      <div className="max-w-md w-full">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <img 
-              src="/logo.png" 
-              alt="Lila Group" 
-              className="w-20 h-20 object-contain"
-            />
-          </div>
-          <h1 className="text-4xl font-bold text-white mb-2">Admin Panel</h1>
-          <p className="text-white text-opacity-90">Giriş Yapın</p>
-        </div>
-
-        {/* Login Card */}
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Error Message */}
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2">
-                <AlertCircle size={20} />
-                <span className="text-sm">{error}</span>
-              </div>
-            )}
-
-            {/* Username */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Kullanıcı Adı
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="text-gray-400" size={20} />
-                </div>
-                <input
-                  type="text"
-                  name="username"
-                  value={formData.username}
-                  onChange={handleChange}
-                  required
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                  placeholder="admin"
-                />
+      <PageShell width="full">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.05fr),480px] lg:items-stretch">
+          <SurfaceCard tone="hero" className="overflow-hidden p-6 sm:p-8 lg:p-10">
+            <div className="space-y-6">
+              <span className="gm-eyebrow border-white/20 bg-white/10 text-white">Yetkili panel</span>
+              <div className="space-y-4">
+                <h1 className="font-display text-5xl leading-none sm:text-6xl">Yonetim, veri ve operasyon tek panelde.</h1>
+                <p className="max-w-xl text-sm leading-7 text-white/82 sm:text-base">
+                  Admin shell mobile drawer, desktop kalici sidebar ve premium veri yogunlugu hedefiyle yeniden kuruldu.
+                </p>
               </div>
             </div>
+          </SurfaceCard>
 
-            {/* Password */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Şifre
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="text-gray-400" size={20} />
-                </div>
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                  placeholder="••••••••"
-                />
+          <SurfaceCard className="p-5 sm:p-6 lg:p-8">
+            <div className="space-y-5">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Admin girisi</p>
+                <h2 className="gm-display mt-2 text-4xl">Yetkili oturum</h2>
+                <p className="mt-2 text-sm leading-7 text-dark-lighter">Kullanici adi ve sifre ile yonetim paneline giris yapin.</p>
               </div>
+
+              {error && (
+                <div className="flex items-start gap-3 rounded-[22px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <Field label="Kullanici adi">
+                  <div className="relative">
+                    <User className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-dark-lighter" />
+                    <TextInput
+                      name="username"
+                      value={formData.username}
+                      onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                      placeholder="admin"
+                      className="pl-12"
+                      required
+                    />
+                  </div>
+                </Field>
+
+                <Field label="Sifre">
+                  <div className="relative">
+                    <Lock className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-dark-lighter" />
+                    <TextInput
+                      type="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      placeholder="••••••••"
+                      className="pl-12"
+                      required
+                    />
+                  </div>
+                </Field>
+
+                <Button type="submit" disabled={loading} className="w-full">
+                  {loading ? 'Giris yapiliyor...' : 'Giris yap'}
+                </Button>
+              </form>
             </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
-            </button>
-          </form>
-
-          <div className="mt-6 text-center text-sm text-gray-500">
-            Yetkili hesabınızla giriş yapın
-          </div>
+          </SurfaceCard>
         </div>
-
-        {/* Back to Site */}
-        <div className="text-center mt-6">
-          <a
-            href="/"
-            className="text-white text-opacity-90 hover:text-opacity-100 text-sm"
-          >
-            ← Ana Sayfaya Dön
-          </a>
-        </div>
-      </div>
+      </PageShell>
     </div>
   );
 }

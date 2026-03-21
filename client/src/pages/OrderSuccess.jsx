@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { CheckCircle, Home } from 'lucide-react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { CheckCircle, Home, ShoppingBag } from 'lucide-react';
+import StatusScreen from '../components/StatusScreen';
+import { SurfaceCard } from '../components/ui/primitives';
 
 function OrderSuccess() {
   const { orderNumber } = useParams();
@@ -13,96 +15,42 @@ function OrderSuccess() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-50 via-white to-gray-50 flex items-center justify-center px-4 py-8">
-      <div className="max-w-md w-full bg-white/80 backdrop-blur-xl rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.2)] border border-white/40 p-8 text-center animate-fadeIn">
-        <div className="mb-6">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="w-12 h-12 text-green-600" />
-          </div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            Sipariş Alındı! 🎉
-          </h1>
-          <p className="text-gray-600">
-            Siparişiniz başarıyla oluşturuldu ve en kısa sürede işleme alınacak.
-          </p>
-        </div>
-
-        <div className="bg-gray-50 rounded-xl p-6 mb-6">
-          <p className="text-sm text-gray-600 mb-2">Sipariş Numaranız</p>
-          {orderData && orderData.orderCount > 1 ? (
-            <>
-              <p className="text-2xl font-bold text-primary mb-3">{orderNumber}</p>
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
-                <p className="text-sm font-semibold text-green-800 mb-1">
-                  {orderData.orderCount} ayrı sipariş oluşturuldu
-                </p>
-                <div className="space-y-1 mt-2">
-                  {orderData.orders.map((order, idx) => (
-                    <p key={idx} className="text-xs text-green-700">
-                      • {order.restaurantName}: <span className="font-mono">{order.orderNumber}</span>
-                    </p>
-                  ))}
-                </div>
+    <StatusScreen
+      icon={CheckCircle}
+      tone="success"
+      title="Siparis alindi"
+      description="Siparisiniz basariyla olusturuldu ve en kisa surede isleme alinacak."
+      details={
+        <SurfaceCard tone="muted" className="mx-auto max-w-xl p-5 text-left">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-dark-lighter">Siparis numarasi</p>
+          <p className="mt-2 text-3xl font-black text-primary-dark">{orderNumber}</p>
+          {orderData?.orderCount > 1 && (
+            <div className="mt-4 space-y-2">
+              <p className="text-sm font-semibold text-dark">{orderData.orderCount} ayri siparis olusturuldu</p>
+              <div className="space-y-1 text-sm text-dark-lighter">
+                {orderData.orders.map((order, idx) => (
+                  <p key={idx}>
+                    {order.restaurantName}: <span className="font-mono text-dark">{order.orderNumber}</span>
+                  </p>
+                ))}
               </div>
-            </>
-          ) : (
-            <>
-              <p className="text-2xl font-bold text-primary">{orderNumber}</p>
-            </>
+            </div>
           )}
-          <p className="text-xs text-gray-500 mt-2">
-            Bu numarayı kaydedin, siparişinizi takip etmek için kullanabilirsiniz
-          </p>
-        </div>
-
-        <div className="space-y-3 text-left mb-6">
-          <div className="flex items-start space-x-3">
-            <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-              <span className="text-primary text-sm font-bold">1</span>
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-800">Sipariş Onaylandı</h3>
-              <p className="text-sm text-gray-600">Siparişiniz alındı ve kayıt edildi</p>
-            </div>
-          </div>
-          <div className="flex items-start space-x-3">
-            <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-              <span className="text-gray-600 text-sm font-bold">2</span>
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-800">Hazırlanıyor</h3>
-              <p className="text-sm text-gray-600">Siparişiniz mutfağa iletildi</p>
-            </div>
-          </div>
-          <div className="flex items-start space-x-3">
-            <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-              <span className="text-gray-600 text-sm font-bold">3</span>
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-800">Teslim Edilecek</h3>
-              <p className="text-sm text-gray-600">Siparişiniz yolda</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <p className="text-sm text-blue-800">
-            <strong>Not:</strong> Siparişinizle ilgili herhangi bir sorun yaşarsanız, 
-            lütfen bizimle iletişime geçin.
-          </p>
-        </div>
-
-        <button
-          onClick={() => navigate('/')}
-          className="w-full bg-gradient-to-r from-primary to-primary-dark text-white py-4 rounded-xl font-bold text-lg hover:shadow-lg transform hover:scale-[1.02] transition-all flex items-center justify-center space-x-2"
-        >
-          <Home className="w-5 h-5" />
-          <span>Ana Sayfaya Dön</span>
-        </button>
-      </div>
-    </div>
+        </SurfaceCard>
+      }
+      notes={<p>Siparis numaranizi saklayin. Siparisinizle ilgili destek taleplerinde bu numara kullanilacaktir.</p>}
+      primaryAction={{
+        label: 'Ana sayfaya don',
+        icon: <Home className="h-4 w-4" />,
+        onClick: () => navigate('/'),
+      }}
+      secondaryAction={{
+        label: 'Siparislerim',
+        icon: <ShoppingBag className="h-4 w-4" />,
+        onClick: () => navigate('/my-orders'),
+      }}
+    />
   );
 }
 
 export default OrderSuccess;
-

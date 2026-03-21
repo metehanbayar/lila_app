@@ -65,7 +65,7 @@ public class SetupWizardForm : Form
         {
             Location = new Point(10, yPos),
             Width = 420,
-            Text = "http://localhost:3000"
+            Text = "http://localhost:3300"
         };
         panel.Controls.Add(txtServerUrl);
         yPos += 35;

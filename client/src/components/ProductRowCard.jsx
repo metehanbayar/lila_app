@@ -1,9 +1,10 @@
-import { Heart, Plus, Sparkles, ChevronRight } from 'lucide-react';
-import React, { useState, memo } from 'react';
+import { ChevronRight, Heart, Plus, Sparkles } from 'lucide-react';
+import React, { memo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { addToFavorites, removeFromFavorites } from '../services/customerApi';
 import useCartStore from '../store/cartStore';
 import useCustomerStore from '../store/customerStore';
-import { addToFavorites, removeFromFavorites } from '../services/customerApi';
+import { Badge, cn } from './ui/primitives';
 
 const formatPrice = (value) => {
   const num = Number(value);
@@ -17,38 +18,35 @@ function ProductRowCard({ product, onProductClick, onAddToCart }) {
   const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
-  // Ürünün varyantları var mı kontrol et
   const hasVariants = product.variants && product.variants.length > 1;
+  const isActive = product.IsActive !== false;
+  const favorite = isFavorite(product.Id);
 
   const handleAddToCart = (e) => {
     e.stopPropagation();
-    if (!product.IsActive && product.IsActive !== undefined) return;
+    if (!isActive) return;
 
-    // Eğer varyant varsa modal aç (kullanıcı seçenek seçsin)
     if (hasVariants) {
-      if (onProductClick) onProductClick(product);
+      onProductClick?.(product);
       return;
     }
 
-    // Varyant yoksa direkt sepete ekle
     addItem(product);
     onAddToCart?.(product);
   };
 
-  const handleCardClick = () => {
-    if (onProductClick) onProductClick(product);
-  };
-
   const handleFavoriteToggle = async (e) => {
     e.stopPropagation();
+
     if (!isAuthenticated) {
       navigate('/login');
       return;
     }
+
     setIsFavoriteLoading(true);
-    const fav = isFavorite(product.Id);
+
     try {
-      if (fav) {
+      if (favorite) {
         await removeFromFavorites(product.Id);
         removeFromFavoritesLocal(product.Id);
       } else {
@@ -56,145 +54,115 @@ function ProductRowCard({ product, onProductClick, onAddToCart }) {
         addToFavoritesLocal(product.Id);
       }
     } catch (err) {
-      console.error('Favori işlemi hatası:', err);
+      console.error('Favori islemi hatasi:', err);
     } finally {
       setIsFavoriteLoading(false);
     }
   };
 
-  const isFav = isFavorite(product.Id);
-  const isActive = product.IsActive !== false;
-
   return (
-    <div
-      className={`group relative rounded-2xl overflow-hidden transition-all duration-300 cursor-pointer active:scale-[0.98] touch-manipulation ${isActive ? 'bg-white hover:shadow-lg' : 'bg-gray-50 opacity-70'
-        }`}
-      style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}
-      onClick={handleCardClick}
+    <article
+      onClick={() => onProductClick?.(product)}
+      className={cn(
+        'group relative overflow-hidden rounded-[28px] border p-3 transition-all duration-300 sm:p-4',
+        isActive
+          ? 'border-white/70 bg-white shadow-card hover:-translate-y-1 hover:shadow-card-hover'
+          : 'border-surface-border bg-surface-muted opacity-75',
+      )}
     >
-      <div className="flex gap-3 p-3">
-        {/* Görsel */}
-        <div className="relative w-24 h-24 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
+      <div className="grid gap-4 sm:grid-cols-[132px,minmax(0,1fr)]">
+        <div className="relative h-32 overflow-hidden rounded-[24px] bg-surface-muted sm:h-full">
           {product.ImageUrl ? (
             <>
-              {!imageLoaded && (
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-100 to-pink-100 animate-pulse" />
-              )}
+              {!imageLoaded && <div className="absolute inset-0 animate-pulse bg-[linear-gradient(135deg,#f2e6ef,#f2ede8)]" />}
               <img
                 src={product.ImageUrl}
                 alt={product.Name}
-                className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${!isActive ? 'grayscale' : ''
-                  } ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+                className={cn('h-full w-full object-cover transition-all duration-500 group-hover:scale-105', imageLoaded ? 'opacity-100' : 'opacity-0')}
                 loading="lazy"
                 onLoad={() => setImageLoaded(true)}
               />
             </>
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
-              <span className="text-3xl opacity-30">🍽️</span>
+            <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#f6ecef,#f6eee8)]">
+              <span className="font-display text-4xl text-primary/30">{product.Name?.charAt(0) || 'U'}</span>
             </div>
           )}
 
-          {/* Önerilen badge */}
-          {product.IsFeatured && (
-            <div className="absolute top-1.5 left-1.5 flex items-center gap-0.5 px-1.5 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[9px] font-bold rounded-md shadow-sm">
-              <Sparkles className="w-2.5 h-2.5" />
-              <span>Öne Çıkan</span>
-            </div>
-          )}
+          <div className="absolute left-2 top-2 flex flex-wrap gap-1">
+            {product.IsFeatured && (
+              <Badge tone="warning" className="bg-accent/90 text-white">
+                <Sparkles className="h-3 w-3" />
+                Onerilen
+              </Badge>
+            )}
+            {product.OldPrice && product.OldPrice > product.Price && (
+              <Badge tone="success">%{Math.round(((product.OldPrice - product.Price) / product.OldPrice) * 100)} indirim</Badge>
+            )}
+          </div>
 
-          {/* İndirim badge */}
-          {product.OldPrice && product.OldPrice > product.Price && (
-            <div className={`absolute ${product.IsFeatured ? 'top-7' : 'top-1.5'} left-1.5 px-1.5 py-0.5 bg-green-500 text-white text-[9px] font-bold rounded-md shadow-sm`}>
-              %{Math.round(((product.OldPrice - product.Price) / product.OldPrice) * 100)} İndirim
-            </div>
-          )}
-
-          {/* Favori butonu */}
           <button
             onClick={handleFavoriteToggle}
             disabled={isFavoriteLoading}
-            className={`absolute top-1.5 right-1.5 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 ${isFav
-              ? 'bg-pink-500 text-white shadow-md shadow-pink-500/30'
-              : 'bg-white/90 text-gray-500 hover:text-pink-500'
-              } ${isFavoriteLoading ? 'opacity-50' : ''}`}
+            className={cn(
+              'absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-2xl border transition-all duration-200',
+              favorite ? 'border-primary/20 bg-primary text-white' : 'border-white/60 bg-white/88 text-dark hover:text-primary',
+            )}
           >
-            <Heart className="w-3.5 h-3.5" fill={isFav ? 'currentColor' : 'none'} />
+            <Heart className="h-4 w-4" fill={favorite ? 'currentColor' : 'none'} />
           </button>
         </div>
 
-        {/* İçerik */}
-        <div className="flex-1 flex flex-col min-w-0 py-0.5">
-          {/* İsim */}
-          <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 leading-tight">
-            {product.Name}
-          </h3>
+        <div className="flex min-w-0 flex-col justify-between gap-3">
+          <div className="space-y-2">
+            <h3 className="line-clamp-2 text-base font-bold leading-6 text-dark sm:text-lg">{product.Name}</h3>
+            {product.Description && <p className="line-clamp-2 text-sm leading-6 text-dark-lighter">{product.Description}</p>}
+            {hasVariants && (
+              <div className="flex items-center gap-2">
+                <Badge tone="primary">{product.variants.length} secenek</Badge>
+              </div>
+            )}
+          </div>
 
-          {/* Açıklama */}
-          {product.Description && (
-            <p className="text-xs text-gray-500 line-clamp-1 mt-1">
-              {product.Description}
-            </p>
-          )}
-
-          {/* Varyant varsa bilgi göster */}
-          {hasVariants && (
-            <div className="flex items-center gap-1 mt-1">
-              <span className="text-[10px] text-purple-600 font-medium bg-purple-50 px-1.5 py-0.5 rounded">
-                {product.variants.length} seçenek
-              </span>
-            </div>
-          )}
-
-          {/* Fiyat ve Buton */}
-          <div className="flex items-center justify-between mt-auto pt-2">
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1.5">
-                <span className="text-base font-bold text-purple-600">
-                  {formatPrice(product.Price)} ₺
-                </span>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl font-black text-primary-dark">{formatPrice(product.Price)} TL</span>
                 {product.OldPrice && product.OldPrice > product.Price && (
-                  <span className="text-[10px] text-gray-400 line-through">
-                    {formatPrice(product.OldPrice)} ₺
-                  </span>
+                  <span className="text-sm text-dark-lighter line-through">{formatPrice(product.OldPrice)} TL</span>
                 )}
               </div>
-              {hasVariants && (
-                <span className="text-[10px] text-gray-400">başlayan</span>
-              )}
+              {hasVariants && <p className="text-xs font-medium uppercase tracking-[0.18em] text-dark-lighter">baslayan fiyat</p>}
             </div>
 
             <button
               onClick={handleAddToCart}
               disabled={!isActive}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 active:scale-95 ${isActive
-                ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md shadow-purple-500/20 hover:shadow-purple-500/40'
-                : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                }`}
+              className={cn(
+                'inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold transition-all duration-200',
+                isActive ? 'bg-primary text-white shadow-lg shadow-primary/20 hover:-translate-y-0.5' : 'bg-white text-dark-lighter',
+              )}
             >
               {isActive ? (
                 hasVariants ? (
                   <>
-                    <span>Seç</span>
-                    <ChevronRight className="w-3.5 h-3.5" strokeWidth={3} />
+                    Sec
+                    <ChevronRight className="h-4 w-4" strokeWidth={3} />
                   </>
                 ) : (
                   <>
-                    <Plus className="w-3.5 h-3.5" strokeWidth={3} />
-                    <span>Ekle</span>
+                    <Plus className="h-4 w-4" strokeWidth={3} />
+                    Ekle
                   </>
                 )
               ) : (
-                <span>Mevcut Değil</span>
+                'Mevcut degil'
               )}
             </button>
           </div>
         </div>
       </div>
-
-      {/* Hover shine effect */}
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 pointer-events-none" />
-    </div>
+    </article>
   );
 }
 

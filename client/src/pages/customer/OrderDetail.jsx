@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Package, MapPin, Phone, User, Calendar, FileText, ShoppingCart, Loader2, Check } from 'lucide-react';
-import { getMyOrderDetail } from '../../services/customerApi';
-import { getProductById } from '../../services/api';
-import useCartStore from '../../store/cartStore';
-import AppLayout from '../../components/AppLayout';
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { Calendar, Check, FileText, Loader2, MapPin, Phone, ShoppingCart, User } from 'lucide-react';
+import CustomerShell from '../../components/customer/CustomerShell';
 import Loading from '../../components/Loading';
+import { getProductById } from '../../services/api';
+import { getMyOrderDetail } from '../../services/customerApi';
+import useCartStore from '../../store/cartStore';
 import { safeSetTimeout } from '../../utils/performance';
+import { Badge, Button, SurfaceCard } from '../../components/ui/primitives';
 
 function OrderDetail() {
   const { orderNumber } = useParams();
@@ -23,6 +24,12 @@ function OrderDetail() {
     loadOrderDetail();
   }, [orderNumber]);
 
+  useEffect(() => {
+    if (!showToast) return undefined;
+    const timer = safeSetTimeout(() => setShowToast(false), 5000);
+    return () => clearTimeout(timer);
+  }, [showToast]);
+
   const loadOrderDetail = async () => {
     try {
       setLoading(true);
@@ -32,36 +39,64 @@ function OrderDetail() {
         setItems(response.data.items);
       }
     } catch (err) {
-      console.error('Sipariş detayı yüklenemedi:', err);
+      console.error('Siparis detayi yuklenemedi:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('tr-TR', {
+  const formatCurrency = (amount) =>
+    new Intl.NumberFormat('tr-TR', {
       style: 'currency',
       currency: 'TRY',
     }).format(amount);
-  };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString('tr-TR', {
+  const formatDate = (dateString) =>
+    new Date(dateString).toLocaleString('tr-TR', {
       day: '2-digit',
       month: 'long',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
     });
-  };
 
   const getStatusInfo = (status) => {
     const statuses = {
-      Pending: { label: 'Beklemede', color: 'yellow', description: 'Siparişiniz alındı, onay bekleniyor' },
-      Confirmed: { label: 'Onaylandı', color: 'blue', description: 'Siparişiniz onaylandı' },
-      Preparing: { label: 'Hazırlanıyor', color: 'purple', description: 'Siparişiniz hazırlanıyor' },
-      Delivered: { label: 'Teslim Edildi', color: 'green', description: 'Siparişiniz teslim edildi' },
-      Cancelled: { label: 'İptal', color: 'red', description: 'Sipariş iptal edildi' },
+      Pending: {
+        label: 'Beklemede',
+        cardClass: 'bg-amber-50 border-amber-200',
+        badgeClass: 'bg-amber-100 text-amber-800',
+        textClass: 'text-amber-800',
+        description: 'Siparisiniz alindi, onay bekleniyor.',
+      },
+      Confirmed: {
+        label: 'Onaylandi',
+        cardClass: 'bg-blue-50 border-blue-200',
+        badgeClass: 'bg-blue-100 text-blue-800',
+        textClass: 'text-blue-800',
+        description: 'Siparisiniz onaylandi.',
+      },
+      Preparing: {
+        label: 'Hazirlaniyor',
+        cardClass: 'bg-primary/10 border-primary/20',
+        badgeClass: 'bg-primary/15 text-primary-dark',
+        textClass: 'text-primary-dark',
+        description: 'Siparisiniz hazirlaniyor.',
+      },
+      Delivered: {
+        label: 'Teslim edildi',
+        cardClass: 'bg-green-50 border-green-200',
+        badgeClass: 'bg-green-100 text-green-800',
+        textClass: 'text-green-800',
+        description: 'Siparisiniz teslim edildi.',
+      },
+      Cancelled: {
+        label: 'Iptal',
+        cardClass: 'bg-red-50 border-red-200',
+        badgeClass: 'bg-red-100 text-red-700',
+        textClass: 'text-red-700',
+        description: 'Siparis iptal edildi.',
+      },
     };
     return statuses[status] || statuses.Pending;
   };
@@ -69,67 +104,49 @@ function OrderDetail() {
   const handleReorder = async () => {
     setReorderLoading(true);
     let count = 0;
-    
+
     try {
-      // Her bir sipariş item için ürün bilgisini al ve sepete ekle
       for (const item of items) {
         const productResponse = await getProductById(item.ProductId);
-        
+
         if (productResponse.success) {
           const product = productResponse.data;
-          
-          // Eğer varyant varsa bul
           let selectedVariant = null;
-          if (item.VariantId && product.variants && product.variants.length > 0) {
-            selectedVariant = product.variants.find(v => v.Id === item.VariantId);
+          if (item.VariantId && product.variants?.length) {
+            selectedVariant = product.variants.find((variant) => variant.Id === item.VariantId);
           }
-          
-          // Ürünü siparişteki miktar kadar sepete ekle
           addItem(product, selectedVariant, item.Quantity);
           count += item.Quantity;
         }
       }
-      
+
       setAddedCount(count);
       setShowToast(true);
     } catch (error) {
-      console.error('Tekrar sipariş hatası:', error);
-      alert('Ürünler sepete eklenirken bir hata oluştu');
+      console.error('Tekrar siparis hatasi:', error);
+      alert('Urunler sepete eklenirken bir hata olustu');
     } finally {
       setReorderLoading(false);
     }
   };
 
-  // Toast otomatik kapan
-  useEffect(() => {
-    if (showToast) {
-      const timer = safeSetTimeout(() => {
-        setShowToast(false);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [showToast]);
-
   if (loading) {
     return (
-      <AppLayout>
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <Loading />
-        </div>
-      </AppLayout>
+      <CustomerShell title="Siparis detayi" description="Siparis kalemleri ve teslimat bilgileri yukleniyor.">
+        <SurfaceCard tone="muted" className="p-6">
+          <Loading message="Siparis detaylari yukleniyor..." />
+        </SurfaceCard>
+      </CustomerShell>
     );
   }
 
   if (!order) {
     return (
-      <AppLayout>
-        <div className="px-2 sm:px-3 lg:px-4 py-8 sm:py-12 text-center">
-          <p className="text-xs sm:text-sm lg:text-base text-gray-600">Sipariş bulunamadı</p>
-          <Link to="/my-orders" className="text-xs sm:text-sm text-primary hover:text-primary-dark mt-3 sm:mt-4 inline-block">
-            ← Siparişlerime Dön
-          </Link>
-        </div>
-      </AppLayout>
+      <CustomerShell title="Siparis detayi" description="Bu siparis bulunamadi.">
+        <SurfaceCard tone="muted" className="p-8 text-center">
+          <p className="text-sm text-dark-lighter">Siparis bulunamadi.</p>
+        </SurfaceCard>
+      </CustomerShell>
     );
   }
 
@@ -137,34 +154,27 @@ function OrderDetail() {
 
   return (
     <>
-      {/* Toast Notification */}
       {showToast && (
-        <div className="fixed top-2 sm:top-4 right-2 sm:right-4 bg-white rounded-xl sm:rounded-2xl shadow-2xl border border-gray-100 z-[100] animate-slideInRight max-w-[85%] sm:max-w-sm">
-          <div className="p-3 sm:p-4 flex items-start gap-2 sm:gap-3">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
-              <Check className="w工具的-5 sm:w-6 sm:h-6 text-white" strokeWidth={3} />
+        <div className="fixed right-4 top-4 z-50 max-w-sm animate-slideInRight rounded-[28px] border border-white/70 bg-white/92 p-4 shadow-premium backdrop-blur-xl">
+          <div className="flex items-start gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-white shadow-lg shadow-secondary/20">
+              <Check className="h-5 w-5" strokeWidth={3} />
             </div>
-            <div className="flex-1 min-w-0">
-              <h4 className="text-xs sm:text-sm font-bold text-gray-900 mb-0.5 sm:mb-1">Sepete Eklendi!</h4>
-              <p className="text-[10px] sm:text-xs text-gray-600 truncate">
-                {addedCount} ürün sepete eklendi
-              </p>
+            <div className="min-w-0 flex-1">
+              <h4 className="text-sm font-bold text-dark">Sepete eklendi</h4>
+              <p className="mt-1 text-xs text-dark-lighter">{addedCount} urun sepete eklendi</p>
               <button
                 onClick={() => {
                   setShowToast(false);
-                  safeSetTimeout(() => navigate('/cart'), 300);
+                  safeSetTimeout(() => navigate('/cart'), 200);
                 }}
-                className="mt-1.5 sm:mt-2 text-[10px] sm:text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
+                className="mt-3 text-xs font-bold text-primary"
               >
-                Sepete Git →
+                Sepete git
               </button>
             </div>
-            <button
-              onClick={() => setShowToast(false)}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-              aria-label="Kapat"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <button onClick={() => setShowToast(false)} className="rounded-xl p-2 text-dark-lighter hover:bg-surface-muted">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -172,162 +182,100 @@ function OrderDetail() {
         </div>
       )}
 
-      <AppLayout>
-      <div className="px-2 sm:px-3 lg:px-4 py-2 sm:py-4 lg:py-6">
-        <div className="w-full max-w-full sm:max-w-[95%] lg:max-w-[90%] xl:max-w-3xl mx-auto space-y-3 sm:space-y-4 lg:space-y-6">
-          {/* Header */}
-          <div>
-            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800">Sipariş Detayı</h1>
-            <p className="text-xs sm:text-sm lg:text-base text-gray-600 mt-0.5 sm:mt-1">
-              Sipariş No: <span className="font-semibold text-primary">{order.OrderNumber}</span>
-            </p>
-          </div>
-
-          {/* Status */}
-          <div className={`bg-${statusInfo.color}-50 border border-${statusInfo.color}-200 rounded-lg sm:rounded-xl p-3 sm:p-4 lg:p-5`}>
-            <div className="flex items-start gap-2 sm:gap-3">
-              <div className={`w-10 h-10 sm:w-12 sm:h-12 bg-${statusInfo.color}-100 rounded-lg flex items-center justify-center flex-shrink-0`}>
-                <Package className={`text-${statusInfo.color}-600`} size={20} />
+      <CustomerShell title={`Siparis ${order.OrderNumber}`} description="Siparis ozeti, teslimat ve urun kalemleri ayni ekranda.">
+        <SurfaceCard className={`border p-5 sm:p-6 ${statusInfo.cardClass}`}>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge className={statusInfo.badgeClass}>{statusInfo.label}</Badge>
+                <span className="text-sm font-semibold text-dark-lighter">{formatDate(order.CreatedAt)}</span>
               </div>
-              <div className="flex-1 min-w-0">
-                <h3 className={`text-sm sm:text-base lg:text-lg font-semibold text-${statusInfo.color}-800`}>
-                  {statusInfo.label}
-                </h3>
-                <p className={`text-xs sm:text-sm text-${statusInfo.color}-700 mt-0.5 sm:mt-1`}>
-                  {statusInfo.description}
-                </p>
-                <div className="flex items-center gap-1.5 sm:gap-2 mt-1.5 sm:mt-2 text-[10px] sm:text-xs text-${statusInfo.color}-600">
-                  <Calendar size={12} />
-                  <span>{formatDate(order.CreatedAt)}</span>
-                </div>
-              </div>
+              <h2 className={`mt-3 text-2xl font-bold ${statusInfo.textClass}`}>{statusInfo.description}</h2>
             </div>
-          </div>
-
-          {/* Customer Info */}
-          <div className="bg-white rounded-lg sm:rounded-xl shadow-card p-3 sm:p-4 lg:p-6">
-            <h2 className="text-sm sm:text-base lg:text-lg font-bold text-gray-800 mb-3 sm:mb-4">Müşteri Bilgileri</h2>
-            
-            <div className="space-y-2.5 sm:space-y-3">
-              <div className="flex items-start gap-2 sm:gap-3">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <User size={16} className="text-gray-600" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] sm:text-xs lg:text-sm text-gray-500">Ad Soyad</p>
-                  <p className="text-xs sm:text-sm lg:text-base font-medium text-gray-900 mt-0.5 break-words">
-                    {order.CustomerName}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2 sm:gap-3">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Phone size={16} className="text-gray-600" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] sm:text-xs lg:text-sm text-gray-500">Telefon</p>
-                  <p className="text-xs sm:text-sm lg:text-base font-medium text-gray-900 mt-0.5 break-words">
-                    {order.CustomerPhone}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2 sm:gap-3">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <MapPin size={16} className="text-gray-600" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] sm:text-xs lg:text-sm text-gray-500">Teslimat Adresi</p>
-                  <p className="text-xs sm:text-sm lg:text-base font-medium text-gray-900 mt-0.5 break-words">
-                    {order.CustomerAddress}
-                  </p>
-                </div>
-              </div>
-
-              {order.Notes && (
-                <div className="flex items-start gap-2 sm:gap-3">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <FileText size={16} className="text-gray-600" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] sm:text-xs lg:text-sm text-gray-500">Notlar</p>
-                    <p className="text-xs sm:text-sm lg:text-base font-medium text-gray-900 mt-0.5 break-words">
-                      {order.Notes}
-                    </p>
-                  </div>
-                </div>
+            <Button onClick={handleReorder} disabled={reorderLoading}>
+              {reorderLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Sepete ekleniyor...
+                </>
+              ) : (
+                <>
+                  <ShoppingCart className="h-4 w-4" />
+                  Tekrar siparis et
+                </>
               )}
-            </div>
+            </Button>
           </div>
+        </SurfaceCard>
 
-          {/* Order Items */}
-          <div className="bg-white rounded-lg sm:rounded-xl shadow-card p-3 sm:p-4 lg:p-6">
-            <h2 className="text-sm sm:text-base lg:text-lg font-bold text-gray-800 mb-3 sm:mb-4">Sipariş Ürünleri</h2>
-            
-            <div className="space-y-2.5 sm:space-y-3">
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,0.9fr),minmax(0,1.1fr)]">
+          <SurfaceCard className="p-5 sm:p-6">
+            <div className="mb-4">
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Teslimat</p>
+              <h3 className="text-2xl font-bold text-dark">Musteri bilgileri</h3>
+            </div>
+            <div className="grid gap-4">
+              <InfoRow icon={User} label="Ad soyad" value={order.CustomerName} />
+              <InfoRow icon={Phone} label="Telefon" value={order.CustomerPhone} />
+              <InfoRow icon={MapPin} label="Adres" value={order.CustomerAddress} />
+              {order.Notes && <InfoRow icon={FileText} label="Notlar" value={order.Notes} />}
+            </div>
+          </SurfaceCard>
+
+          <SurfaceCard className="p-5 sm:p-6">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Siparis kalemleri</p>
+                <h3 className="text-2xl font-bold text-dark">{items.length} urun</h3>
+              </div>
+              <span className="inline-flex items-center gap-2 rounded-full bg-surface-muted px-3 py-2 text-sm font-semibold text-dark-lighter">
+                <Calendar className="h-4 w-4" />
+                {formatDate(order.CreatedAt)}
+              </span>
+            </div>
+
+            <div className="grid gap-3">
               {items.map((item) => (
-                <div key={item.Id} className="flex justify-between items-start gap-2 sm:gap-3 pb-2.5 sm:pb-3 border-b border-gray-100 last:border-0 last:pb-0">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-xs sm:text-sm lg:text-base font-medium text-gray-900 break-words">
-                      {item.ProductName}
-                      {item.VariantName && <span className="text-gray-600"> ({item.VariantName})</span>}
-                    </h3>
-                    <p className="text-[10px] sm:text-xs lg:text-sm text-gray-600 mt-0.5 sm:mt-1">
-                      {formatCurrency(item.ProductPrice)} x {item.Quantity}
-                    </p>
+                <div key={item.Id} className="rounded-[22px] border border-surface-border bg-surface-muted px-4 py-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="text-base font-bold text-dark">
+                        {item.ProductName}
+                        {item.VariantName && <span className="font-medium text-dark-lighter"> ({item.VariantName})</span>}
+                      </p>
+                      <p className="mt-2 text-sm text-dark-lighter">
+                        {formatCurrency(item.ProductPrice)} x {item.Quantity}
+                      </p>
+                    </div>
+                    <p className="text-lg font-black text-primary-dark">{formatCurrency(item.Subtotal)}</p>
                   </div>
-                  <p className="text-xs sm:text-sm lg:text-base font-semibold text-gray-900 flex-shrink-0">
-                    {formatCurrency(item.Subtotal)}
-                  </p>
                 </div>
               ))}
             </div>
 
-            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t-2 border-gray-200">
-              <div className="flex justify-between items-center">
-                <span className="text-sm sm:text-base lg:text-lg font-bold text-gray-800">Toplam</span>
-                <span className="text-base sm:text-lg lg:text-2xl font-bold text-primary">
-                  {formatCurrency(order.TotalAmount)}
-                </span>
-              </div>
+            <div className="mt-4 flex items-center justify-between rounded-[24px] border border-surface-border bg-white px-4 py-4">
+              <span className="text-base font-bold text-dark">Toplam</span>
+              <span className="text-2xl font-black text-primary-dark">{formatCurrency(order.TotalAmount)}</span>
             </div>
-
-            {/* Tekrar Sipariş Et Butonu */}
-            <button
-              onClick={handleReorder}
-              disabled={reorderLoading}
-              className="w-full mt-3 sm:mt-4 bg-secondary hover:bg-green-700 text-white py-2.5 sm:py-3 px-3 sm:px-4 rounded-lg flex items-center justify-center space-x-1.5 sm:space-x-2 transition-colors duration-200 text-xs sm:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {reorderLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
-                  <span>Sepete Ekleniyor...</span>
-                </>
-              ) : (
-                <>
-                  <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span>Aynısını Tekrar Sipariş Et</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Back Link */}
-          <div className="text-center pt-3 sm:pt-4">
-            <Link
-              to="/my-orders"
-              className="text-xs sm:text-sm text-gray-600 hover:text-primary transition-colors"
-            >
-              ← Siparişlerime Dön
-            </Link>
-          </div>
+          </SurfaceCard>
         </div>
-      </div>
-    </AppLayout>
+      </CustomerShell>
     </>
   );
 }
 
-export default OrderDetail;
+function InfoRow({ icon: Icon, label, value }) {
+  return (
+    <div className="flex items-start gap-3 rounded-[22px] border border-surface-border bg-surface-muted px-4 py-4">
+      <span className="flex h-11 w-11 items-center justify-center rounded-[18px] bg-white text-primary shadow-sm">
+        <Icon className="h-4 w-4" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-dark-lighter">{label}</p>
+        <p className="mt-1 break-words text-sm font-bold text-dark">{value}</p>
+      </div>
+    </div>
+  );
+}
 
+export default OrderDetail;

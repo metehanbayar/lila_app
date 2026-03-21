@@ -1,126 +1,108 @@
-import { useState, useEffect } from 'react';
-import { Sparkles, Utensils } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Clock3, Sparkles, UtensilsCrossed } from 'lucide-react';
 
 function SplashScreen({ onComplete }) {
   const [progress, setProgress] = useState(0);
   const [isExiting, setIsExiting] = useState(false);
 
   useEffect(() => {
-    // Splash ekran animasyonu
     const interval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) {
           clearInterval(interval);
-          // Animasyon bittikten sonra exit animasyonu
           setIsExiting(true);
           setTimeout(() => {
             onComplete();
-          }, 500);
+          }, 420);
           return 100;
         }
+
         return prev + 2;
       });
-    }, 25); // ~1.25 saniyede tamamlanır
+    }, 22);
 
     return () => clearInterval(interval);
   }, [onComplete]);
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center transition-all duration-500 ${isExiting ? 'opacity-0 scale-110' : 'opacity-100 scale-100'
-        }`}
+      className={`fixed inset-0 z-50 overflow-hidden transition-all duration-500 ${
+        isExiting ? 'scale-[1.03] opacity-0' : 'scale-100 opacity-100'
+      }`}
     >
-      {/* Animated Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-pink-600 to-rose-600">
-        {/* Animated circles */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-white/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-pink-300/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '0.5s' }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-400/10 rounded-full blur-3xl animate-float" />
+      <div className="absolute inset-0 bg-[linear-gradient(135deg,#2d1b28_0%,#6d365f_35%,#d16b53_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.22),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(255,244,236,0.18),transparent_30%)]" />
+      <div className="absolute -left-24 top-16 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
+      <div className="absolute bottom-8 right-[-4rem] h-80 w-80 rounded-full bg-[#f1c5b4]/20 blur-3xl" />
 
-        {/* Grid pattern overlay */}
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
-            backgroundSize: '40px 40px'
-          }}
-        />
-      </div>
-
-      {/* Content */}
-      <div className="relative z-10 flex flex-col items-center justify-center px-8">
-        {/* Logo Container */}
-        <div className="relative mb-10">
-          {/* Outer glow ring */}
-          <div className="absolute inset-0 bg-white/20 rounded-[40px] blur-2xl scale-150 animate-pulse" />
-
-          {/* Logo box */}
-          <div className="relative w-36 h-36 bg-white rounded-[32px] shadow-2xl flex items-center justify-center transform transition-all duration-700 hover:scale-105">
-            {/* Inner gradient */}
-            <div className="absolute inset-2 bg-gradient-to-br from-purple-50 to-pink-50 rounded-[24px]" />
-
-            {/* Icon */}
-            <Utensils className="relative w-16 h-16 text-transparent bg-clip-text bg-gradient-to-br from-purple-600 to-pink-600" style={{ stroke: 'url(#iconGradient)' }} />
-            <svg width="0" height="0">
-              <defs>
-                <linearGradient id="iconGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#9333ea" />
-                  <stop offset="100%" stopColor="#ec4899" />
-                </linearGradient>
-              </defs>
-            </svg>
+      <div className="relative flex h-full flex-col justify-between px-6 py-10 sm:px-10 sm:py-12">
+        <div className="flex items-center justify-between text-white/72">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.22em] backdrop-blur-md">
+            <Sparkles className="h-3.5 w-3.5" />
+            Globalmenu
           </div>
+          <div className="hidden items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-medium backdrop-blur-md sm:inline-flex">
+            <Clock3 className="h-4 w-4" />
+            Hizli hazirlaniyor
+          </div>
+        </div>
 
-          {/* Sparkle effects */}
-          <div className="absolute -top-3 -right-3 animate-bounce" style={{ animationDelay: '0s' }}>
-            <div className="w-8 h-8 bg-gradient-to-br from-yellow-400 to-orange-400 rounded-xl flex items-center justify-center shadow-lg shadow-yellow-400/40 rotate-12">
-              <Sparkles className="w-4 h-4 text-white" />
+        <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center">
+          <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr),320px]">
+            <div className="space-y-6 text-white">
+              <div className="inline-flex h-24 w-24 items-center justify-center rounded-[32px] border border-white/15 bg-white/12 shadow-[0_30px_80px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:h-28 sm:w-28">
+                <UtensilsCrossed className="h-11 w-11 sm:h-12 sm:w-12" />
+              </div>
+
+              <div className="space-y-4">
+                <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-white/62">Mobile first ordering</p>
+                <h1 className="font-display text-[clamp(3rem,12vw,6rem)] leading-[0.9]">
+                  Globalmenu
+                </h1>
+                <p className="max-w-xl text-sm leading-7 text-white/78 sm:text-base">
+                  Restoran, menu ve siparis akisini premium ama hizli bir yuzeyde topluyoruz.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-[32px] border border-white/12 bg-white/10 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:p-6">
+              <div className="space-y-5 text-white">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-white/62">Hazirlanan deneyim</p>
+                  <div className="mt-3 grid gap-3">
+                    <div className="rounded-[22px] border border-white/10 bg-white/8 p-4">
+                      <p className="text-sm font-semibold">Siparis akisi</p>
+                      <p className="mt-1 text-sm text-white/68">Sepet, checkout ve durum ekranlari yukleniyor.</p>
+                    </div>
+                    <div className="rounded-[22px] border border-white/10 bg-white/8 p-4">
+                      <p className="text-sm font-semibold">Responsive shell</p>
+                      <p className="mt-1 text-sm text-white/68">Telefon icin rahat, desktop icin ferah duzen kuruluyor.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-white/68">Yukleme</span>
+                    <span className="font-semibold">{progress}%</span>
+                  </div>
+                  <div className="h-2.5 overflow-hidden rounded-full bg-white/14">
+                    <div
+                      className="relative h-full rounded-full bg-[linear-gradient(90deg,#fff3ea_0%,#ffffff_35%,#f6d6c7_100%)] transition-all duration-300"
+                      style={{ width: `${progress}%` }}
+                    >
+                      <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.65),transparent)] animate-shimmer" />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          <div className="absolute -bottom-2 -left-2 animate-bounce" style={{ animationDelay: '0.3s' }}>
-            <div className="w-6 h-6 bg-gradient-to-br from-cyan-400 to-blue-400 rounded-lg flex items-center justify-center shadow-lg shadow-cyan-400/40 -rotate-12">
-              <Sparkles className="w-3 h-3 text-white" />
-            </div>
-          </div>
         </div>
 
-        {/* App Name */}
-        <h1 className="text-4xl sm:text-5xl font-black text-white mb-3 tracking-tight text-center drop-shadow-lg">
-          Global Menu
-        </h1>
-        <p className="text-white/80 text-base sm:text-lg mb-10 text-center max-w-xs">
-          Lezzetli yemekler, hızlı teslimat
-        </p>
-
-        {/* Progress Bar */}
-        <div className="w-72 h-2 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
-          <div
-            className="h-full bg-gradient-to-r from-white via-white to-white/80 rounded-full transition-all duration-300 ease-out relative"
-            style={{ width: `${progress}%` }}
-          >
-            {/* Shimmer effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent animate-shimmer" />
-          </div>
+        <div className="text-center text-xs font-medium tracking-[0.18em] text-white/42">
+          Warming up your menu surface
         </div>
-
-        {/* Loading text */}
-        <div className="mt-6 flex items-center gap-2">
-          <span className="text-white/60 text-sm font-medium">Yükleniyor</span>
-          <div className="flex gap-1">
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className="w-1.5 h-1.5 bg-white rounded-full animate-bounce"
-                style={{ animationDelay: `${i * 0.15}s` }}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Version info */}
-      <div className="absolute bottom-8 left-0 right-0 text-center">
-        <p className="text-white/40 text-xs font-medium">v2.0.0</p>
       </div>
     </div>
   );

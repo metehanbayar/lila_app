@@ -74,7 +74,7 @@ function Media() {
 
   const handleCopyUrl = (url) => {
     // Development ve production için doğru base URL'i al
-    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3300';
     // API URL'den /api kısmını çıkar
     const baseUrl = API_BASE_URL.replace('/api', '');
     const fullUrl = `${baseUrl}${url}`;
@@ -247,7 +247,7 @@ function Media() {
                     <span className="font-medium">URL:</span>{' '}
                     <code className="bg-gray-100 px-2 py-1 rounded text-xs break-all">
                       {(() => {
-                        const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3300';
                         const baseUrl = API_BASE_URL.replace('/api', '');
                         return `${baseUrl}${selectedImage.FileUrl}`;
                       })()}
@@ -264,4 +264,3 @@ function Media() {
 }
 
 export default Media;
-

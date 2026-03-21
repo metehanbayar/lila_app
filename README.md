@@ -64,7 +64,7 @@ npm run lint
 npm run check
 ```
 
-`client` varsayilan olarak `5173`, `server` varsayilan olarak `3000` portunda calisir.
+`client` varsayilan olarak `5173`, `server` varsayilan olarak `3300` portunda calisir.
 
 ## Uretim Notlari
 

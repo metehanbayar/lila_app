@@ -2,7 +2,6 @@
 node_modules/
 client/node_modules/
 server/node_modules/
-server/agent/node_modules/
 
 # Build outputs
 client/dist/

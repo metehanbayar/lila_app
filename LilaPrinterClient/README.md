@@ -57,7 +57,7 @@ Config dosyası kullanıcı profilinde saklanır:
 
 ### Bağlanmıyor
 
-- backend `http://localhost:3000/api/health` cevap veriyor mu kontrol edin
+- backend `http://localhost:3300/api/health` cevap veriyor mu kontrol edin
 - server URL doğru mu kontrol edin
 - firewall engeli var mı kontrol edin
 

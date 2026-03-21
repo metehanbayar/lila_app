@@ -11,7 +11,7 @@ public class AppConfig
     /// Backend sunucu URL'i
     /// </summary>
     [JsonPropertyName("serverUrl")]
-    public string ServerUrl { get; set; } = "http://localhost:3000";
+        public string ServerUrl { get; set; } = "http://localhost:3300";
 
     /// <summary>
     /// Restoran ID

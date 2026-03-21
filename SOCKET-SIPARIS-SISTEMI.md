@@ -84,7 +84,7 @@ for (const restaurantOrder of restaurantOrders) {
 ```javascript
 import { io } from 'socket.io-client';
 
-const socket = io('http://localhost:3000');
+const socket = io('http://localhost:3300');
 const activeRestaurantId = 1;
 
 socket.on('order:new', (order) => {

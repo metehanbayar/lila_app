@@ -39,7 +39,6 @@ desktop.ini
 
 # Printer agent (Railway'de gereksiz)
 LilaPrinterClient/
-server/agent/
 
 # Uploads (volume kullanacağız)
 server/uploads/*
