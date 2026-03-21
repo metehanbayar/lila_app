@@ -20,7 +20,7 @@ Admin kullanıcıları için veritabanına tablo eklemeniz gerekiyor:
 server/database/admin-schema.sql
 ```
 
-Bu, `AdminUsers` tablosunu oluşturacak ve varsayılan admin kullanıcısını ekleyecektir.
+Bu işlem `AdminUsers` tablosunu oluşturur ve seed admin kaydını ekler.
 
 ### 2. Backend Kurulumu
 
@@ -44,11 +44,9 @@ npm run dev
 
 ## 🔑 Giriş Bilgileri
 
-**Varsayılan Admin Kullanıcısı:**
-- **Kullanıcı Adı:** `admin`
-- **Şifre:** `admin123`
+Seed admin kullanıcısı `server/database/admin-schema.sql` içinde oluşturulur. Sabit giriş bilgileri dokümanda tutulmaz.
 
-⚠️ **ÖNEMLİ:** Gerçek üretim ortamında mutlaka bu şifreyi değiştirin!
+⚠️ **ÖNEMLİ:** Schema dosyasındaki seed bilgilerini canlıya almadan önce değiştirin veya kurulumdan hemen sonra güncelleyin.
 
 **Admin Panel URL:**
 ```

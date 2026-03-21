@@ -2,16 +2,30 @@
 node_modules/
 client/node_modules/
 server/node_modules/
+server/agent/node_modules/
 
 # Build outputs
 client/dist/
 client/build/
+server/temp/
+LilaPrinterClient/**/bin/
+LilaPrinterClient/**/obj/
 
 # Environment variables
-#.env
-#.env.local
-#.env.production
-#server/.env
+.env
+.env.*
+!.env.example
+client/.env
+client/.env.*
+!client/.env.example
+server/.env
+server/.env.*
+!server/.env.example
+
+# Certificates and secrets
+*.pem
+*.key
+*.crt
 
 # Logs
 *.log

@@ -121,9 +121,8 @@ function AdminLogin() {
             </button>
           </form>
 
-          {/* Info */}
           <div className="mt-6 text-center text-sm text-gray-500">
-            Varsayılan: admin / admin123
+            Yetkili hesabınızla giriş yapın
           </div>
         </div>
 
@@ -142,4 +141,3 @@ function AdminLogin() {
 }
 
 export default AdminLogin;
-

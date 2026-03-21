@@ -28,6 +28,9 @@ import otpRouter from './routes/otp.js';
 import testEmailRouter from './routes/test-email.js';
 import paymentRouter from './routes/payment.js';
 import { initializeSocketIO } from './services/socket-service.js';
+import { createCorsOriginValidator } from './config/runtime.js';
+import { validateAuthTokenConfig } from './services/auth-token.js';
+import { validatePaymentConfig } from './config/payment.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -45,8 +48,9 @@ let server; // HTTP server referansı; graceful shutdown için
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: createCorsOriginValidator(),
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
 // Body parser - Büyük dosyalar için limit artırıldı
@@ -139,6 +143,9 @@ app.use((err, req, res, next) => {
 // Sunucuyu başlat
 async function startServer() {
   try {
+    validateAuthTokenConfig();
+    validatePaymentConfig();
+
     // Veritabanı bağlantısını test et (geçici olarak devre dışı)
     try {
       await getConnection();
@@ -217,4 +224,3 @@ process.on('SIGTERM', async () => {
 });
 
 startServer();
-

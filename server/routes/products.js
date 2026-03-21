@@ -8,10 +8,10 @@ router.get('/categories', async (req, res) => {
   try {
     const pool = await getConnection();
     const result = await pool.request().query(`
-      SELECT Id, Name, Icon, Color
+      SELECT Id, Name, Icon, Color, SortOrder
       FROM Categories
       WHERE IsActive = 1
-      ORDER BY Name
+      ORDER BY SortOrder, Name
     `);
 
     res.json({
@@ -33,10 +33,10 @@ router.get('/search', async (req, res) => {
     const { q, restaurantId, categoryId } = req.query;
 
     const pool = await getConnection();
-    
+
     let query = `
       SELECT 
-        p.Id, p.Name, p.Description, p.Price, p.ImageUrl, 
+        p.Id, p.Name, p.Description, p.Price, p.OldPrice, p.ImageUrl, 
         p.RestaurantId, p.CategoryId, p.IsFeatured, p.IsActive,
         r.Name as RestaurantName, r.Color as RestaurantColor,
         c.Name as CategoryName
@@ -109,7 +109,16 @@ router.get('/search', async (req, res) => {
 router.get('/restaurant/:restaurantId', async (req, res) => {
   try {
     const { restaurantId } = req.params;
+    const { mode } = req.query; // 'order' veya 'view'
     const pool = await getConnection();
+
+    // Mode'a göre görünürlük filtresi
+    let visibilityFilter = '';
+    if (mode === 'order') {
+      visibilityFilter = 'AND p.ShowInOrderMenu = 1';
+    } else if (mode === 'view') {
+      visibilityFilter = 'AND p.ShowInViewMenu = 1';
+    }
 
     // Ürünleri getir
     const productsResult = await pool
@@ -118,11 +127,12 @@ router.get('/restaurant/:restaurantId', async (req, res) => {
       .query(`
         SELECT 
           p.Id, p.RestaurantId, p.CategoryId, p.Name, p.Description, 
-          p.Price, p.ImageUrl, p.IsFeatured, p.DisplayOrder, p.IsActive,
+          p.Price, p.OldPrice, p.ImageUrl, p.IsFeatured, p.DisplayOrder, p.IsActive,
+          p.ShowInOrderMenu, p.ShowInViewMenu,
           c.Name as CategoryName
         FROM Products p
         LEFT JOIN Categories c ON p.CategoryId = c.Id
-        WHERE p.RestaurantId = @restaurantId AND c.IsActive = 1
+        WHERE p.RestaurantId = @restaurantId AND c.IsActive = 1 ${visibilityFilter}
         ORDER BY p.IsActive DESC, p.DisplayOrder, p.Name
       `);
 
@@ -188,13 +198,13 @@ router.get('/restaurant/:restaurantId', async (req, res) => {
 router.get('/cross-sell', async (req, res) => {
   try {
     const { restaurantIds, excludeProductIds, categoryIds } = req.query;
-    
-    
+
+
     const pool = await getConnection();
-    
+
     let query = `
       SELECT TOP 12
-        p.Id, p.Name, p.Description, p.Price, p.ImageUrl,
+        p.Id, p.Name, p.Description, p.Price, p.OldPrice, p.ImageUrl,
         p.RestaurantId, p.CategoryId, p.IsFeatured, p.IsActive,
         r.Name as RestaurantName, r.Color as RestaurantColor,
         c.Name as CategoryName
@@ -213,73 +223,73 @@ router.get('/cross-sell', async (req, res) => {
     }
 
     // STRİCT: İlgili restoranlardan ÜRÜN OLDUĞUNDA sadece onların ürünlerini göster
-    const restIds = restaurantIds && restaurantIds.trim() !== '' 
+    const restIds = restaurantIds && restaurantIds.trim() !== ''
       ? restaurantIds.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id) && id > 0)
       : [];
-    
+
     const catIds = categoryIds && categoryIds.trim() !== ''
       ? categoryIds.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id) && id > 0)
       : [];
 
     // 🎯 AKILLI CROSS-SELL: Sepetteki kategorilere göre tamamlayıcı kategorileri belirle
     let recommendedCategoryIds = [];
-    const excludeIds = excludeProductIds && excludeProductIds.trim() !== '' 
+    const excludeIds = excludeProductIds && excludeProductIds.trim() !== ''
       ? excludeProductIds.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id) && id > 0)
       : [];
-    
+
     if (catIds.length > 0) {
       // Sepetteki kategorilerin isimlerini çek
       const categoryNames = await pool.request().query(`
         SELECT Id, Name FROM Categories WHERE Id IN (${catIds.join(',')})
       `);
-      
+
       // Kategori isimlerini lowercase yap ve tamamlayıcı kategorileri belirle
       const cartCategories = categoryNames.recordset.map(c => c.Name.toLowerCase());
-      
+
       // Tamamlayıcı kategori isimleri (hardcoded mapping)
       const recommendedCategoryNames = new Set();
-      
+
       // 🍕 Ana Yemekler: Pizza, Pide, Burger, Döner, Et Yemekleri, Tavuk Yemekleri, vs.
-      const hasMainDish = cartCategories.some(cat => 
-        cat.includes('pizza') || cat.includes('lila') || cat.includes('burger') || 
+      const hasMainDish = cartCategories.some(cat =>
+        cat.includes('pizza') || cat.includes('lila') || cat.includes('burger') ||
         cat.includes('döner') || cat.includes('lahmacun') || cat.includes('pide') ||
         cat.includes('steak house') || cat.includes('et yemek') || cat.includes('tavuk yemek') ||
         cat.includes('makarna') || cat.includes('menü') || cat.includes('sandviç') ||
         cat.includes('tost') || cat.includes('wrap') || cat.includes('döküm')
       );
-      
+
       // 🥤 İçecekler: Tüm içecek kategorileri
-      const hasDrink = cartCategories.some(cat => 
+      const hasDrink = cartCategories.some(cat =>
         cat.includes('içecek') || cat.includes('meşrubat') || cat.includes('limonata') ||
         cat.includes('fresher') || cat.includes('bubble tea') || cat.includes('smoothie') ||
         cat.includes('milkshake') || cat.includes('kahve') || cat.includes('çay') ||
         cat.includes('kış') || cat.includes('frozen')
       );
-      
+
       // 🍰 Tatlılar: Tüm tatlı kategorileri
-      const hasDessert = cartCategories.some(cat => 
+      const hasDessert = cartCategories.some(cat =>
         cat.includes('tatlı') || cat.includes('baklava') || cat.includes('pasta') ||
         cat.includes('dondurma') || cat.includes('sütlü')
       );
-      
+
       // 🥗 Salata ve Aperatifler
-      const hasSalad = cartCategories.some(cat => 
+      const hasSalad = cartCategories.some(cat =>
         cat.includes('salata') || cat.includes('çorba') || cat.includes('aperatif') ||
         cat.includes('ortaya')
       );
-      
+
       // ☕ Kahveler: Türk kahvesi, Filtre kahve, Dünya kahveleri, etc.
-      const hasCoffee = cartCategories.some(cat => 
-        cat.includes('türk kahve') || cat.includes('filtre kahve') || 
+      const hasCoffee = cartCategories.some(cat =>
+        cat.includes('türk kahve') || cat.includes('filtre kahve') ||
         cat.includes('dünya kahve') || cat.includes('klasik kahve') || cat.includes('soğuk kahve')
       );
-      
+
       // 🎯 DAHA AKILLI STRATEJİ: Sepet durumuna göre farklı öneriler
-      
+
       // Senaryo 1: Çok ürün varsa (>= 3 kategori veya çok farklı türler) → SADECE tatlı
       const hasMultipleCategories = catIds.length >= 3;
       const hasDiverseCart = (hasMainDish && hasDrink) || (hasMainDish && hasDessert) || (hasDrink && hasDessert);
-      
+
       if (hasMultipleCategories || hasDiverseCart) {
         // Sepet dolu → sadece en önemli eksik parçayı öner
         if (!hasDessert) {
@@ -331,14 +341,14 @@ router.get('/cross-sell', async (req, res) => {
           recommendedCategoryNames.add('meşrubat');
           recommendedCategoryNames.add('limonata');
         }
-        
+
         // Ana yemek varsa ama tatlı yoksa
         if (hasMainDish && !hasDessert) {
           recommendedCategoryNames.add('tatlı');
           recommendedCategoryNames.add('dondurma');
           recommendedCategoryNames.add('baklava');
         }
-        
+
         // İçecek varsa ama ana yemek yoksa
         if ((hasDrink || hasCoffee) && !hasMainDish) {
           recommendedCategoryNames.add('pizza');
@@ -346,14 +356,14 @@ router.get('/cross-sell', async (req, res) => {
           recommendedCategoryNames.add('döner');
           recommendedCategoryNames.add('sandviç');
         }
-        
+
         // İçecek varsa ama tatlı yoksa
         if ((hasDrink || hasCoffee) && !hasDessert) {
           recommendedCategoryNames.add('tatlı');
           recommendedCategoryNames.add('baklava');
           recommendedCategoryNames.add('dondurma');
         }
-        
+
         // Tatlı varsa ama içecek yoksa
         if (hasDessert && !hasDrink && !hasCoffee) {
           recommendedCategoryNames.add('içecek');
@@ -361,27 +371,27 @@ router.get('/cross-sell', async (req, res) => {
           recommendedCategoryNames.add('bubble tea');
         }
       }
-      
+
       // Eğer hiçbir kural eşleşmezse, tüm kategorileri öner (fallback)
       if (recommendedCategoryNames.size === 0) {
         recommendedCategoryNames.add('içecek');
         recommendedCategoryNames.add('tatlı');
         recommendedCategoryNames.add('bubble tea');
       }
-      
+
       // Tamamlayıcı kategori ID'lerini bul
       const categoryNamesArray = Array.from(recommendedCategoryNames);
-      
+
       if (categoryNamesArray.length > 0) {
         // MSSQL'de LIKE için OR conditions oluştur
         const likeConditions = categoryNamesArray
           .map(name => `LOWER(Name) LIKE '%${name}%'`)
           .join(' OR ');
-        
+
         const recommendedCats = await pool.request().query(`
           SELECT Id FROM Categories WHERE ${likeConditions}
         `);
-        
+
         if (recommendedCats.recordset.length > 0) {
           recommendedCategoryIds = recommendedCats.recordset.map(c => c.Id);
         }
@@ -395,7 +405,7 @@ router.get('/cross-sell', async (req, res) => {
     // Tek restoran varsa: O restorandan ürünler
     else if (restIds.length === 1) {
       query += ' AND p.RestaurantId = ' + restIds[0];
-      
+
       // 🎯 AKILLI CROSS-SELL: Tamamlayıcı kategorilerden ürün göster
       if (recommendedCategoryIds.length > 0) {
         query += ' AND p.CategoryId IN (' + recommendedCategoryIds.join(',') + ')';
@@ -407,7 +417,7 @@ router.get('/cross-sell', async (req, res) => {
     // Çoklu restoran varsa
     else {
       query += ' AND p.RestaurantId IN (' + restIds.join(',') + ')';
-      
+
       // 🎯 AKILLI CROSS-SELL: Tamamlayıcı kategorilerden ürün göster
       if (recommendedCategoryIds.length > 0) {
         query += ' AND p.CategoryId IN (' + recommendedCategoryIds.join(',') + ')';
@@ -480,11 +490,61 @@ router.get('/cross-sell', async (req, res) => {
   }
 });
 
+// Öne çıkan ürünleri getir (anasayfa slider için)
+router.get('/featured', async (req, res) => {
+  try {
+    const pool = await getConnection();
+    const result = await pool.request().query(`
+      SELECT TOP 10
+        p.Id, p.Name, p.Description, p.Price, p.OldPrice, p.ImageUrl, 
+        p.RestaurantId, p.CategoryId, p.IsFeatured, p.IsActive,
+        r.Name as RestaurantName, r.Slug as RestaurantSlug,
+        c.Name as CategoryName
+      FROM Products p
+      INNER JOIN Restaurants r ON p.RestaurantId = r.Id
+      LEFT JOIN Categories c ON p.CategoryId = c.Id
+      WHERE p.IsActive = 1 AND r.IsActive = 1 AND p.IsFeatured = 1
+      ORDER BY p.DisplayOrder, p.Id DESC
+    `);
+
+    // Varyantları getir (slider'da fiyat göstermek için gerekebilir)
+    if (result.recordset.length > 0) {
+      const productIds = result.recordset.map(p => p.Id);
+      const variantsResult = await pool
+        .request()
+        .query(`
+          SELECT 
+            Id, ProductId, Name, Price, IsDefault, DisplayOrder
+          FROM ProductVariants
+          WHERE ProductId IN (${productIds.join(',')}) 
+            AND IsActive = 1
+          ORDER BY ProductId, DisplayOrder, Id
+        `);
+
+      // Varyantları ürünlere ekle
+      result.recordset.forEach(product => {
+        product.variants = variantsResult.recordset.filter(v => v.ProductId === product.Id);
+      });
+    }
+
+    res.json({
+      success: true,
+      data: result.recordset,
+    });
+  } catch (error) {
+    console.error('Öne çıkan ürünler hatası:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Öne çıkan ürünler yüklenirken bir hata oluştu',
+    });
+  }
+});
+
 // Tek bir ürünün detayını getir (EN SON tanımlanmalı - wildcard route)
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // ID validasyonu
     const productId = parseInt(id);
     if (isNaN(productId) || productId <= 0) {
@@ -493,7 +553,7 @@ router.get('/:id', async (req, res) => {
         message: 'Geçersiz ürün ID',
       });
     }
-    
+
     const pool = await getConnection();
 
     const result = await pool
@@ -502,7 +562,7 @@ router.get('/:id', async (req, res) => {
       .query(`
         SELECT 
           p.Id, p.RestaurantId, p.CategoryId, p.Name, p.Description,
-          p.Price, p.ImageUrl, p.IsFeatured, p.IsActive,
+          p.Price, p.OldPrice, p.ImageUrl, p.IsFeatured, p.IsActive,
           r.Name as RestaurantName, r.Color as RestaurantColor,
           c.Name as CategoryName
         FROM Products p

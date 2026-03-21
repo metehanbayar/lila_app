@@ -8,11 +8,12 @@ const router = express.Router();
 router.get('/', adminAuth, async (req, res) => {
   try {
     const pool = await getConnection();
-    
+
     let query = `
       SELECT 
         p.Id, p.RestaurantId, p.CategoryId, p.Name, p.Description,
-        p.Price, p.ImageUrl, p.IsActive, p.IsFeatured, p.DisplayOrder,
+        p.Price, p.OldPrice, p.ImageUrl, p.IsActive, p.IsFeatured, p.DisplayOrder,
+        p.ShowInOrderMenu, p.ShowInViewMenu,
         p.CreatedAt, p.UpdatedAt,
         r.Name as RestaurantName, r.Slug as RestaurantSlug,
         c.Name as CategoryName
@@ -20,17 +21,17 @@ router.get('/', adminAuth, async (req, res) => {
       LEFT JOIN Restaurants r ON p.RestaurantId = r.Id
       LEFT JOIN Categories c ON p.CategoryId = c.Id
     `;
-    
+
     const request = pool.request();
-    
+
     // Restoran bazlı kullanıcı ise sadece kendi restoranının ürünlerini göster
     if (req.admin.RestaurantId) {
       query += ' WHERE p.RestaurantId = @restaurantId';
       request.input('restaurantId', sql.Int, req.admin.RestaurantId);
     }
-    
+
     query += ' ORDER BY r.Name, c.Name, p.DisplayOrder, p.Name';
-    
+
     const result = await request.query(query);
 
     res.json({
@@ -50,7 +51,7 @@ router.get('/', adminAuth, async (req, res) => {
 router.get('/restaurant/:restaurantId', adminAuth, async (req, res) => {
   try {
     const { restaurantId } = req.params;
-    
+
     // Restoran bazlı kullanıcı ise sadece kendi restoranının ürünlerini görebilir
     if (req.admin.RestaurantId && parseInt(restaurantId) !== req.admin.RestaurantId) {
       return res.status(403).json({
@@ -58,7 +59,7 @@ router.get('/restaurant/:restaurantId', adminAuth, async (req, res) => {
         message: 'Bu restorana erişim yetkiniz yok',
       });
     }
-    
+
     const pool = await getConnection();
 
     const result = await pool
@@ -67,7 +68,7 @@ router.get('/restaurant/:restaurantId', adminAuth, async (req, res) => {
       .query(`
         SELECT 
           p.Id, p.RestaurantId, p.CategoryId, p.Name, p.Description,
-          p.Price, p.ImageUrl, p.IsActive, p.IsFeatured, p.DisplayOrder,
+          p.Price, p.OldPrice, p.ImageUrl, p.IsActive, p.IsFeatured, p.DisplayOrder,
           c.Name as CategoryName
         FROM Products p
         LEFT JOIN Categories c ON p.CategoryId = c.Id
@@ -100,7 +101,7 @@ router.get('/:id', adminAuth, async (req, res) => {
       .query(`
         SELECT 
           p.Id, p.RestaurantId, p.CategoryId, p.Name, p.Description,
-          p.Price, p.ImageUrl, p.IsActive, p.IsFeatured, p.DisplayOrder,
+          p.Price, p.OldPrice, p.ImageUrl, p.IsActive, p.IsFeatured, p.DisplayOrder,
           p.CreatedAt, p.UpdatedAt,
           r.Name as RestaurantName,
           c.Name as CategoryName
@@ -149,9 +150,12 @@ router.post('/', adminAuth, async (req, res) => {
       name,
       description,
       price,
+      oldPrice,
       imageUrl,
       isFeatured,
       displayOrder,
+      showInOrderMenu,
+      showInViewMenu,
     } = req.body;
 
     if (!name || !price) {
@@ -163,7 +167,7 @@ router.post('/', adminAuth, async (req, res) => {
 
     // Restoran bazlı kullanıcı ise sadece kendi restoranı için ürün oluşturabilir
     const finalRestaurantId = req.admin.RestaurantId || restaurantId;
-    
+
     if (!finalRestaurantId) {
       return res.status(400).json({
         success: false,
@@ -188,18 +192,21 @@ router.post('/', adminAuth, async (req, res) => {
       .input('name', sql.NVarChar, name)
       .input('description', sql.NVarChar, description || null)
       .input('price', sql.Decimal(10, 2), price)
+      .input('oldPrice', sql.Decimal(10, 2), oldPrice || null)
       .input('imageUrl', sql.NVarChar, imageUrl || null)
       .input('isFeatured', sql.Bit, isFeatured || false)
       .input('displayOrder', sql.Int, displayOrder || 0)
+      .input('showInOrderMenu', sql.Bit, showInOrderMenu !== false)
+      .input('showInViewMenu', sql.Bit, showInViewMenu !== false)
       .query(`
         INSERT INTO Products (
-          RestaurantId, CategoryId, Name, Description, Price,
-          ImageUrl, IsFeatured, DisplayOrder
+          RestaurantId, CategoryId, Name, Description, Price, OldPrice,
+          ImageUrl, IsFeatured, DisplayOrder, ShowInOrderMenu, ShowInViewMenu
         )
         OUTPUT INSERTED.*
         VALUES (
-          @restaurantId, @categoryId, @name, @description, @price,
-          @imageUrl, @isFeatured, @displayOrder
+          @restaurantId, @categoryId, @name, @description, @price, @oldPrice,
+          @imageUrl, @isFeatured, @displayOrder, @showInOrderMenu, @showInViewMenu
         )
       `);
 
@@ -227,10 +234,13 @@ router.put('/:id', adminAuth, async (req, res) => {
       name,
       description,
       price,
+      oldPrice,
       imageUrl,
       isActive,
       isFeatured,
       displayOrder,
+      showInOrderMenu,
+      showInViewMenu,
     } = req.body;
 
     if (!name || !price) {
@@ -276,10 +286,13 @@ router.put('/:id', adminAuth, async (req, res) => {
       .input('name', sql.NVarChar, name)
       .input('description', sql.NVarChar, description || null)
       .input('price', sql.Decimal(10, 2), price)
+      .input('oldPrice', sql.Decimal(10, 2), oldPrice || null)
       .input('imageUrl', sql.NVarChar, imageUrl || null)
       .input('isActive', sql.Bit, isActive !== undefined ? isActive : true)
       .input('isFeatured', sql.Bit, isFeatured || false)
       .input('displayOrder', sql.Int, displayOrder || 0)
+      .input('showInOrderMenu', sql.Bit, showInOrderMenu !== false)
+      .input('showInViewMenu', sql.Bit, showInViewMenu !== false)
       .query(`
         UPDATE Products
         SET 
@@ -288,10 +301,13 @@ router.put('/:id', adminAuth, async (req, res) => {
           Name = @name,
           Description = @description,
           Price = @price,
+          OldPrice = @oldPrice,
           ImageUrl = @imageUrl,
           IsActive = @isActive,
           IsFeatured = @isFeatured,
           DisplayOrder = @displayOrder,
+          ShowInOrderMenu = @showInOrderMenu,
+          ShowInViewMenu = @showInViewMenu,
           UpdatedAt = GETDATE()
         OUTPUT INSERTED.*
         WHERE Id = @id

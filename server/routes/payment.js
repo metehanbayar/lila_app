@@ -5,13 +5,18 @@ import {
   checkEnrollment,
   processNonSecurePayment,
   process3DSecurePayment,
-  parsePARes,
 } from '../services/payment-service.js';
 import { getCallbackUrls } from '../config/payment.js';
 import { sendOrderEmail } from '../config/email.js';
 import { notifyNewOrder } from '../services/socket-service.js';
+import { isPaymentDebugEnabled } from '../config/runtime.js';
 
 const router = express.Router();
+const paymentDebugLog = (...args) => {
+  if (isPaymentDebugEnabled()) {
+    console.log(...args);
+  }
+};
 
 /**
  * Grup içindeki tüm siparişleri güncelle
@@ -42,7 +47,7 @@ async function updateOrderGroupPaymentStatus(groupId, paymentStatus, paymentTran
     query += ` WHERE GroupId = @groupId AND PaymentStatus = 'Pending'`;
     
     const result = await request.query(query);
-    console.log(`✅ Grup içindeki ${result.rowsAffected[0]} sipariş güncellendi: ${groupId}`);
+    paymentDebugLog(`Updated ${result.rowsAffected[0]} grouped orders for ${groupId}`);
     return result.rowsAffected[0];
   } catch (error) {
     console.error('❌ Grup güncelleme hatası:', error);
@@ -156,7 +161,7 @@ async function sendPaymentSuccessNotifications(orderId) {
       console.error('❌ Yazıcı bildirimi başarısız:', err)
     );
 
-    console.log(`✅ Ödeme başarılı bildirimleri gönderildi: ${order.OrderNumber}`);
+    paymentDebugLog(`Payment success notifications sent for ${order.OrderNumber}`);
   } catch (error) {
     console.error('❌ Ödeme başarılı bildirim hatası:', error);
   }
@@ -206,7 +211,7 @@ router.post('/initialize', async (req, res) => {
     const vposExpiry = `${String(expiryYear)}${String(expiryMonth).padStart(2, '0')}`; // YYYYMM (VPOS)
 
     // Callback URL'lerini al ve tek kullanımlık callbackToken üret
-    const callbacks = getCallbackUrls();
+    getCallbackUrls();
     const callbackToken = crypto.randomBytes(16).toString('hex');
     const baseCallbackUrl = `${req.protocol}://${req.get('host')}/api/payment/callback/3d-secure`;
     const successUrl = `${baseCallbackUrl}?cbt=${callbackToken}`;
@@ -300,7 +305,7 @@ router.post('/initialize', async (req, res) => {
 
     if (enrollmentResult.enrolled) {
       // Kart 3D Secure programına dahil - ACS'e yönlendir
-      console.log('✅ Enrollment başarılı - 3D Secure bilgileri:', {
+      paymentDebugLog('Enrollment succeeded:', {
         acsUrl: enrollmentResult.acsUrl,
         termUrl: enrollmentResult.termUrl,
         hasMd: !!enrollmentResult.md,
@@ -326,7 +331,7 @@ router.post('/initialize', async (req, res) => {
       });
     } else {
       // Kart 3D Secure programına dahil değil - Direkt ödeme yap (Half Secure)
-      console.log('⚠️ Kart 3D Secure programına dahil değil. Half Secure işlem yapılıyor...');
+      paymentDebugLog('Card is not enrolled in 3D Secure. Falling back to half secure flow.');
 
       // Transaction ID oluştur
       const transactionId = `TXN_${Date.now()}_${Math.random().toString(36).substring(7)}`;
@@ -483,11 +488,11 @@ async function handle3DSecureCallback(req, res) {
       cbt, // callbackToken (initialize sırasında URL query parametresi olarak eklendi)
     } = params;
 
-    console.log('📥 3D Secure Callback alındı');
-    console.log('📋 Request Method:', req.method);
-    console.log('📋 Request Body keys:', Object.keys(req.body || {}));
-    console.log('📋 Request Query keys:', Object.keys(req.query || {}));
-    console.log('📋 Callback parametreleri:', {
+    paymentDebugLog('3D Secure callback received');
+    paymentDebugLog('Callback request summary:', {
+      method: req.method,
+      bodyKeys: Object.keys(req.body || {}),
+      queryKeys: Object.keys(req.query || {}),
       Status,
       MdStatus,
       hasEci: !!Eci,
@@ -524,7 +529,7 @@ async function handle3DSecureCallback(req, res) {
       } else if (mdStatusValue === 7) {
         console.warn('⚠️ MdStatus = 7: Hatalı işlem');
       } else if (mdStatusValue === 1) {
-        console.log('✅ MdStatus = 1: Başarılı işlem');
+        paymentDebugLog('MdStatus=1');
       }
     }
 
@@ -568,9 +573,11 @@ async function handle3DSecureCallback(req, res) {
     }
 
     // Status Y veya A ise - işleme devam et
-    console.log('✅ 3D Secure Status başarılı:', Status);
-    console.log('📋 ECI:', Eci);
-    console.log('📋 CAVV:', Cavv ? '***VAR***' : 'YOK');
+    paymentDebugLog('3D Secure status accepted:', {
+      status: Status,
+      hasEci: !!Eci,
+      hasCavv: !!Cavv,
+    });
 
     // VerifyEnrollmentRequestId ile order'ı bul (dokümantasyon 5.2.2.1'e göre zorunlu)
     const pool = await getConnection();
@@ -593,7 +600,10 @@ async function handle3DSecureCallback(req, res) {
 
     const order = orderResult.recordset[0];
     const orderGroupId = order.GroupId; // Grup ID'yi sakla
-    console.log('✅ Sipariş bulundu:', order.Id, orderGroupId ? `(Grup: ${orderGroupId})` : '');
+    paymentDebugLog('Pending order resolved for callback:', {
+      orderId: order.Id,
+      groupId: orderGroupId || null,
+    });
 
     // Callback token doğrulaması (replay ve sahte çağrıları engelle)
     try {
@@ -659,7 +669,11 @@ async function handle3DSecureCallback(req, res) {
           finalEci = '06';
         }
       }
-      console.log(`📋 ECI hesaplandı (Brand: ${actualBrand || 'Bilinmeyen'}, Status: ${Status}):`, finalEci);
+      paymentDebugLog('ECI calculated:', {
+        brand: actualBrand || 'unknown',
+        status: Status,
+        eci: finalEci,
+      });
     }
 
     // ECI zorunlu kontrolü
@@ -920,4 +934,3 @@ router.post('/offline', async (req, res) => {
 });
 
 export default router;
-

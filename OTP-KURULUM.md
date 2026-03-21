@@ -1,185 +1,135 @@
-# OTP SMS Doğrulama Sistemi Kurulum Rehberi
+# OTP SMS Doğrulama Sistemi
 
-Bu dokümantasyon, sistemdeki OTP (One-Time Password) SMS doğrulama sisteminin kurulumu ve kullanımını açıklamaktadır.
+Bu doküman, mevcut OTP akışının nasıl çalıştığını ve hangi alanların zorunlu olduğunu özetler.
 
-## 📋 İçindekiler
+## Genel Akış
 
-1. [Özellikler](#özellikler)
-2. [Veritabanı Kurulumu](#veritabanı-kurulumu)
-3. [SMS Servisi Konfigürasyonu](#sms-servisi-konfigürasyonu)
-4. [Kullanım](#kullanım)
-5. [Geliştirme Modu](#geliştirme-modu)
-6. [API Endpoints](#api-endpoints)
+- `POST /api/otp/send` doğrulama kodu üretir ve veritabanına kaydeder.
+- `POST /api/otp/verify` kodu doğrular.
+- `POST /api/customer/register` ve `POST /api/customer/login` OTP doğrulamasından sonra müşteri oturumu açar.
+- Başarılı giriş ve kayıt yanıtlarında artık geri çözülebilir credential değil, sunucu tarafında imzalı Bearer token döner.
 
-## ✨ Özellikler
+## Gereksinimler
 
-- ✅ Telefon numarası ile kayıt olma
-- ✅ Telefon numarası ile giriş yapma (şifresiz)
-- ✅ 6 haneli OTP kodu
-- ✅ SMS ile kod gönderimi (NetGSM entegrasyonu)
-- ✅ 10 dakika geçerlilik süresi
-- ✅ 5 dakika içinde tekrar gönderim engeli
-- ✅ Geliştirme modu desteği
-- ✅ Otomatik kod temizleme
-
-## 🗄️ Veritabanı Kurulumu
-
-### 1. Migration Çalıştırma
-
-```bash
-# SQL Server Management Studio'da aşağıdaki dosyayı çalıştırın:
-server/database/migrations/add-otp-verification.sql
-```
-
-Migration dosyası şunları yapar:
-- `OTPVerification` tablosunu oluşturur
-- `Customers` tablosuna `PhoneVerified` alanını ekler
-- Gerekli indeksleri oluşturur
-
-### 2. Tablo Yapısı
-
-**OTPVerification Tablosu:**
-```sql
-- Id (INT, PRIMARY KEY)
-- Phone (NVARCHAR(20)) - Telefon numarası
-- OTPCode (NVARCHAR(6)) - 6 haneli kod
-- Purpose (NVARCHAR(50)) - 'register' veya 'login'
-- IsVerified (BIT) - Doğrulandı mı?
-- ExpiresAt (DATETIME) - Geçerlilik süresi
-- CreatedAt (DATETIME) - Oluşturulma tarihi
-- VerifiedAt (DATETIME) - Doğrulanma tarihi
-```
-
-## 📱 SMS Servisi Konfigürasyonu
-
-### Asist SMS Hesap Kurulumu
-
-1. **Asist SMS Hesabı Oluşturun:**
-   - https://www.asistiletisim.com.tr adresinden hesap açın
-   - SMS paketi satın alın
-
-2. **API Bilgilerini Alın:**
-   - Kullanıcı adı (Username)
-   - Şifre (Password)
-   - Kullanıcı Kodu (UserCode)
-   - Hesap ID (AccountId)
-   - Başlık (Originator) - Örn: "LILAGSTO"
-
-3. **Web Service Bilgileri:**
-   - WSDL URL: https://webservice.asistiletisim.com.tr/smsproxy.asmx?wsdl
-   - SOAP tabanlı web servisi
-   - Dokümantasyon: https://dosya.asistbt.com.tr/smsproxywebservice.pdf
-
-4. **.env Dosyasını Yapılandırın:**
-
-```env
-# SMS Configuration (Asist SMS)
-SMS_USERNAME=your_asist_username
-SMS_PASSWORD=your_asist_password
-SMS_USERCODE=your_usercode
-SMS_ACCOUNTID=your_accountid
-SMS_ORIGINATOR=LILAGSTO
-```
-
-### Alternatif SMS Servisleri
-
-Başka SMS servisleri kullanmak için `server/config/sms.js` dosyasını düzenleyin:
-- NetGSM
-- Twilio
-- Vonage (Nexmo)
-- İletimerkezi
-- Mobildev
-
-## 🚀 Kullanım
-
-### Kayıt Olma Akışı
-
-1. Kullanıcı telefon numarası ve ad soyad girer
-2. Sistem OTP kodu oluşturur ve SMS gönderir
-3. Kullanıcı 6 haneli kodu girer
-4. Kod doğrulanır
-5. Hesap oluşturulur ve otomatik giriş yapılır
-
-### Giriş Yapma Akışı
-
-1. Kullanıcı telefon numarası girer
-2. Sistem OTP kodu oluşturur ve SMS gönderir
-3. Kullanıcı 6 haneli kodu girer
-4. Kod doğrulanır
-5. Giriş yapılır
-
-## 🔧 Geliştirme Modu
-
-Geliştirme ortamında SMS göndermek yerine konsola yazdırılır ve OTP kodu API yanıtında döner.
-
-### Geliştirme Modunu Aktifleştirme
+`server/.env` içinde en az şu alanlar olmalı:
 
 ```env
 NODE_ENV=development
-```
+OTP_ENABLED=true
 
-veya SMS bilgilerini boş bırakın:
-```env
 SMS_USERNAME=
 SMS_PASSWORD=
+SMS_USERCODE=
+SMS_ACCOUNTID=
+SMS_ORIGINATOR=LILAGSTO
+
+AUTH_TOKEN_SECRET=change-this-in-production
+TOKEN_TTL_HOURS=168
 ```
 
-### Konsol Çıktısı Örneği:
+Notlar:
 
-```
-📱 SMS (DEV MODE):
-To: 05551234567
-Message: Lila Gusto giris kodunuz: 123456
-Bu kodu kimseyle paylasmayiniz.
----
-```
+- `NODE_ENV=development` veya SMS bilgileri boşsa gerçek SMS isteği atılmaz, akış simüle edilir.
+- Production ortamında `AUTH_TOKEN_SECRET` zorunludur ve güçlü olmalıdır.
+- Token ömrü `TOKEN_TTL_HOURS` ile belirlenir.
 
-## 📡 API Endpoints
+## Veritabanı
 
-### 1. OTP Gönder
+OTP için şu migration çalıştırılmalıdır:
 
-**POST** `/api/otp/send`
-
-**Request Body:**
-```json
-{
-  "phone": "05551234567",
-  "purpose": "login" // veya "register"
-}
+```bash
+server/database/migrations/add-otp-verification.sql
 ```
 
-**Response (Success):**
+Bu migration:
+
+- `OTPVerification` tablosunu oluşturur
+- `Customers` tablosuna `PhoneVerified` alanını ekler
+- gerekli indeksleri oluşturur
+
+## Development ve Demo Davranışı
+
+### Development modu
+
+`NODE_ENV=development` ise:
+
+- `/api/otp/send` yanıtında `otp` alanı döner
+- SMS servisi dış sağlayıcıya gitmeden başarılı kabul edilir
+
+Örnek:
+
 ```json
 {
   "success": true,
   "message": "Doğrulama kodu telefonunuza gönderildi",
-  "otp": "123456" // Sadece development modunda
+  "otp": "123456"
 }
 ```
 
-**Response (Rate Limited):**
+### OTP tamamen kapalıysa
+
+`OTP_ENABLED=false` ise sistem demo moda geçer:
+
+- `/api/otp/send` doğrudan `123456` döner
+- `/api/otp/verify` demo modda doğrulamayı başarılı kabul eder
+- müşteri kayıt ve giriş akışı OTP bariyerini pratikte atlayabilir, bu yüzden sadece geliştirme ortamında kullanılmalıdır
+
+## API Uçları
+
+### 1. OTP gönder
+
+`POST /api/otp/send`
+
+İstek:
+
+```json
+{
+  "phone": "05551234567",
+  "purpose": "login"
+}
+```
+
+`purpose` değeri `login` veya `register` olmalıdır.
+
+Başarılı yanıt:
+
+```json
+{
+  "success": true,
+  "message": "Doğrulama kodu telefonunuza gönderildi"
+}
+```
+
+Rate limit yanıtı:
+
 ```json
 {
   "success": false,
-  "message": "Lütfen 45 saniye sonra tekrar deneyin",
-  "waitTime": 45
+  "message": "Lütfen 240 saniye sonra tekrar deneyin",
+  "waitTime": 240
 }
 ```
 
-### 2. OTP Doğrula
+Not:
 
-**POST** `/api/otp/verify`
+- Aynı telefon ve aynı amaç için 5 dakika içinde tekrar OTP üretilemez.
 
-**Request Body:**
+### 2. OTP doğrula
+
+`POST /api/otp/verify`
+
+İstek:
+
 ```json
 {
   "phone": "05551234567",
   "otp": "123456",
-  "purpose": "login" // veya "register"
+  "purpose": "login"
 }
 ```
 
-**Response:**
+Başarılı yanıt:
+
 ```json
 {
   "success": true,
@@ -187,22 +137,26 @@ Bu kodu kimseyle paylasmayiniz.
 }
 ```
 
-### 3. Kayıt Ol (OTP ile)
+### 3. Kayıt ol
 
-**POST** `/api/customer/register`
+`POST /api/customer/register`
 
-**Request Body:**
+İstek:
+
 ```json
 {
   "phone": "05551234567",
   "fullName": "Ahmet Yılmaz",
-  "email": "ahmet@example.com", // Opsiyonel
-  "address": "İstanbul", // Opsiyonel
+  "email": "ahmet@example.com",
+  "dateOfBirth": "1995-01-15",
+  "gender": "male",
+  "referralCode": "WELCOME25",
   "otp": "123456"
 }
 ```
 
-**Response:**
+Başarılı yanıt:
+
 ```json
 {
   "success": true,
@@ -212,19 +166,19 @@ Bu kodu kimseyle paylasmayiniz.
       "id": 1,
       "email": "ahmet@example.com",
       "fullName": "Ahmet Yılmaz",
-      "phone": "05551234567",
-      "address": "İstanbul"
+      "phone": "05551234567"
     },
-    "token": "base64_encoded_token"
+    "token": "signed_bearer_token"
   }
 }
 ```
 
-### 4. Giriş Yap (OTP ile)
+### 4. Giriş yap
 
-**POST** `/api/customer/login`
+`POST /api/customer/login`
 
-**Request Body:**
+İstek:
+
 ```json
 {
   "phone": "05551234567",
@@ -232,7 +186,8 @@ Bu kodu kimseyle paylasmayiniz.
 }
 ```
 
-**Response:**
+Başarılı yanıt:
+
 ```json
 {
   "success": true,
@@ -242,104 +197,55 @@ Bu kodu kimseyle paylasmayiniz.
       "id": 1,
       "email": "ahmet@example.com",
       "fullName": "Ahmet Yılmaz",
-      "phone": "05551234567",
-      "address": "İstanbul",
-      "phoneVerified": true
+      "phone": "05551234567"
     },
-    "token": "base64_encoded_token"
+    "token": "signed_bearer_token"
   }
 }
 ```
 
-### 5. OTP Temizleme (Bakım)
+### 5. Temizlik endpoint'i
 
-**DELETE** `/api/otp/cleanup`
+`DELETE /api/otp/cleanup`
 
-Süresi dolmuş veya 7 günden eski doğrulanmış OTP'leri temizler.
+Bu uç:
 
-**Response:**
-```json
-{
-  "success": true,
-  "message": "15 kayıt temizlendi"
-}
-```
+- süresi dolmuş OTP kayıtlarını
+- 7 günden eski doğrulanmış kayıtları
 
-## 🔒 Güvenlik
+temizler.
 
-### Rate Limiting
-- Aynı telefon için 5 dakika içinde sadece 1 OTP gönderilebilir
-- API rate limiting aktif (production modunda)
+## Güvenlik Notları
 
-### OTP Özellikleri
-- 6 haneli rastgele kod
-- 10 dakika geçerlilik süresi
-- Tek kullanımlık (IsVerified kontrolü)
-- Şifreli olmayan connection'larda hash'lenmeli (gelecek geliştirme)
+- OTP kodu 6 hanelidir.
+- OTP süresi 10 dakikadır.
+- Kod tek kullanımlıktır.
+- Production ortamında OTP kodu yanıt gövdesine dönmez.
+- Müşteri oturumu için dönen token Bearer olarak kullanılmalıdır.
 
-### Telefon Numarası Validasyonu
-- Türkiye formatı: `05XXXXXXXXX` veya `5XXXXXXXXX`
-- Otomatik temizleme (boşluk ve tire kaldırma)
-- Uluslararası format desteği (90 ön eki)
+## Sorun Giderme
 
-## 🛠️ Bakım ve İzleme
+### SMS gitmiyor
 
-### Otomatik Temizleme (Önerilen)
+- `SMS_*` bilgilerini kontrol edin.
+- `SMS_ORIGINATOR` Asist tarafında tanımlı olmalı.
+- Sunucu IP adresi Asist tarafında yetkili olmalı.
+- `NODE_ENV=development` ise gerçek SMS gönderilmez; bu beklenen davranıştır.
 
-Cron job veya scheduled task ile günlük temizleme:
+### OTP doğrulanmıyor
 
-```bash
-# Linux/Mac crontab
-0 2 * * * curl -X DELETE http://localhost:3000/api/otp/cleanup
+- `purpose` değeri aynı kalmalı.
+- Kod süresi dolmuş olabilir.
+- Kod daha önce kullanılmış olabilir.
 
-# Windows Task Scheduler
-curl -X DELETE http://localhost:3000/api/otp/cleanup
-```
+### Register veya login token dönmüyor
 
-### Loglama
+- `server/routes/customer-auth.js` akışını kontrol edin.
+- Production ortamında `AUTH_TOKEN_SECRET` eksikse uygulama başlamaz.
 
-SMS gönderimi ve OTP doğrulaması loglanır:
-```
-✅ SMS gönderildi: 05551234567 - Mesaj ID: 001234567
-❌ SMS gönderme hatası: Kod 30
-```
+## İlgili Dosyalar
 
-## 🐛 Sorun Giderme
-
-### SMS Gönderilmiyor
-1. Asist SMS kredisi kontrol edin
-2. API bilgilerini doğrulayın (.env dosyası):
-   - Username, Password, UserCode, AccountId doğru mu?
-3. Originator (başlık) Asist'te tanımlı mı kontrol edin
-4. IP adresiniz Asist'e tanımlı mı kontrol edin (Hata kodu: -22)
-5. Telefon numarası formatını kontrol edin (90XXXXXXXXXX)
-
-### OTP Doğrulanmıyor
-1. Kodun süresinin dolmadığından emin olun (10 dakika)
-2. Kod daha önce kullanılmamış olmalı (IsVerified = 0)
-3. Purpose değeri tutmalı ('login' veya 'register')
-
-### Geliştirme Modunda Çalışmıyor
-1. `NODE_ENV=development` olduğundan emin olun
-2. Konsol loglarını kontrol edin
-3. API yanıtında `otp` alanını görüyor musunuz?
-
-## 📝 Notlar
-
-- Production ortamında mutlaka gerçek SMS servisi kullanın
-- OTP kodlarını asla loglamayın (production'da)
-- Telefon numaralarını hash'leyerek saklama düşünülebilir
-- JWT token sistemi entegre edilebilir
-- 2FA (Two-Factor Authentication) olarak genişletilebilir
-
-## 🔄 Gelecek Geliştirmeler
-
-- [ ] JWT token entegrasyonu
-- [ ] Biometric authentication desteği
-- [ ] Email OTP alternatifi
-- [ ] WhatsApp OTP entegrasyonu
-- [ ] OTP kod hash'leme
-- [ ] Brute force koruması
-- [ ] IP bazlı rate limiting
-- [ ] Çoklu SMS sağlayıcı desteği (fallback)
-
+- `server/routes/otp.js`
+- `server/routes/customer-auth.js`
+- `server/config/sms.js`
+- `server/services/auth-token.js`

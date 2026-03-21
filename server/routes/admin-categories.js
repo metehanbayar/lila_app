@@ -10,9 +10,9 @@ router.get('/', adminAuth, async (req, res) => {
     const pool = await getConnection();
     const result = await pool.request().query(`
       SELECT 
-        c.Id, c.Name, c.Icon, c.Color, c.IsActive, c.CreatedAt
+        c.Id, c.Name, c.Icon, c.Color, c.IsActive, c.SortOrder, c.CreatedAt
       FROM Categories c
-      ORDER BY c.Name
+      ORDER BY c.SortOrder, c.Name
     `);
 
     res.json({
@@ -34,10 +34,10 @@ router.get('/active', adminAuth, async (req, res) => {
     const pool = await getConnection();
 
     const result = await pool.request().query(`
-      SELECT Id, Name, Icon, Color
+      SELECT Id, Name, Icon, Color, SortOrder
       FROM Categories
       WHERE IsActive = 1
-      ORDER BY Name
+      ORDER BY SortOrder, Name
     `);
 
     res.json({
@@ -65,7 +65,7 @@ router.get('/:id', adminAuth, async (req, res) => {
       .request()
       .input('id', sql.Int, id)
       .query(`
-        SELECT Id, Name, Icon, Color, IsActive, CreatedAt
+        SELECT Id, Name, Icon, Color, IsActive, SortOrder, CreatedAt
         FROM Categories
         WHERE Id = @id
       `);
@@ -93,7 +93,7 @@ router.get('/:id', adminAuth, async (req, res) => {
 // Yeni kategori oluştur (global)
 router.post('/', adminAuth, async (req, res) => {
   try {
-    const { name, icon, color } = req.body;
+    const { name, icon, color, sortOrder } = req.body;
 
     if (!name) {
       return res.status(400).json({
@@ -122,10 +122,11 @@ router.post('/', adminAuth, async (req, res) => {
       .input('name', sql.NVarChar, name)
       .input('icon', sql.NVarChar, icon || 'Utensils')
       .input('color', sql.NVarChar, color || 'bg-gray-500')
+      .input('sortOrder', sql.Int, sortOrder || 0)
       .query(`
-        INSERT INTO Categories (Name, Icon, Color)
+        INSERT INTO Categories (Name, Icon, Color, SortOrder)
         OUTPUT INSERTED.*
-        VALUES (@name, @icon, @color)
+        VALUES (@name, @icon, @color, @sortOrder)
       `);
 
     res.status(201).json({
@@ -146,7 +147,7 @@ router.post('/', adminAuth, async (req, res) => {
 router.put('/:id', adminAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, icon, color, isActive } = req.body;
+    const { name, icon, color, isActive, sortOrder } = req.body;
 
     if (!name) {
       return res.status(400).json({
@@ -178,13 +179,15 @@ router.put('/:id', adminAuth, async (req, res) => {
       .input('icon', sql.NVarChar, icon || 'Utensils')
       .input('color', sql.NVarChar, color || 'bg-gray-500')
       .input('isActive', sql.Bit, isActive !== undefined ? isActive : true)
+      .input('sortOrder', sql.Int, sortOrder !== undefined ? sortOrder : 0)
       .query(`
         UPDATE Categories
         SET 
           Name = @name,
           Icon = @icon,
           Color = @color,
-          IsActive = @isActive
+          IsActive = @isActive,
+          SortOrder = @sortOrder
         OUTPUT INSERTED.*
         WHERE Id = @id
       `);

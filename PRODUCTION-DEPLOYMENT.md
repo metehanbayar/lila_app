@@ -1,89 +1,123 @@
-# 🚀 Production Deployment Rehberi
+# Production Deployment Rehberi
 
-## 1️⃣ Build Alma
+Bu rehber, güncel repo yapısına göre `client` build'i ve `server` API'sini canlıya alırken gereken minimum adımları özetler.
+
+## 1. Gerekli Env Alanları
+
+Canlı ortam için `server/.env` içinde en az şu alanlar doğru olmalıdır:
+
+```env
+NODE_ENV=production
+PORT=3000
+CORS_ORIGIN=https://yourdomain.com
+
+AUTH_TOKEN_SECRET=replace-with-a-long-random-secret-at-least-32-chars
+TOKEN_TTL_HOURS=168
+
+DB_SERVER=your-mssql-server
+DB_PORT=1433
+DB_DATABASE=LilaGroupMenu
+DB_USER=your-db-user
+DB_PASSWORD=your-db-password
+DB_ENCRYPT=true
+```
+
+Ödeme canlıda kullanılacaksa ayrıca:
+
+```env
+PAYMENT_ENVIRONMENT=production
+PAYMENT_SUCCESS_URL=https://yourdomain.com/payment/success
+PAYMENT_FAILURE_URL=https://yourdomain.com/payment/failure
+VAKIF_MERCHANT_ID=...
+VAKIF_MERCHANT_PASSWORD=...
+VAKIF_TERMINAL_NO=...
+VAKIF_TERMINAL_SAFE_ID=...
+VAKIF_TERMINAL_SAFE_KEY=...
+```
+
+Notlar:
+
+- `CORS_ORIGIN` production ortamında zorunludur.
+- `AUTH_TOKEN_SECRET` production ortamında zorunludur ve en az 32 karakter olmalıdır.
+- Payment canlıya alınacaksa callback URL'leri ve `VAKIF_*` alanları eksik bırakılamaz.
+
+## 2. Client Build
 
 ```bash
 cd client
 npm run build
 ```
 
-Bu komut `client/dist` klasöründe production build'i oluşturur.
+Çıktı:
 
-## 2️⃣ Firewall Kontrolü
-
-Port 5173'ün açık olduğundan emin olun:
-
-```bash
-# CentOS/RHEL
-sudo firewall-cmd --list-ports
-sudo firewall-cmd --permanent --add-port=5173/tcp
-sudo firewall-cmd --reload
-
-# Ubuntu/Debian
-sudo ufw status
-sudo ufw allow 5173/tcp
-sudo ufw reload
+```text
+client/dist
 ```
 
-## 3️⃣ Nginx ile Production Build Serve Etme
+## 3. Server Kontrolleri
 
-### Option A: Nginx Reverse Proxy (Önerilen)
+Canlıya almadan önce:
 
-Nginx'i dev server yerine build edilmiş dosyaları serve edecek şekilde yapılandırın:
+```bash
+cd server
+npm run check
+```
+
+## 4. Server Sürecini Başlat
+
+Örnek PM2 kullanımı:
+
+```bash
+cd server
+pm2 start server.js --name globalmenu-api
+pm2 save
+```
+
+Backend yerelde şu adreste dinlemelidir:
+
+```text
+http://127.0.0.1:3000
+```
+
+## 5. Nginx Örneği
+
+Önerilen model:
+
+- frontend dosyalarını Nginx doğrudan servis etsin
+- `/api`, `/uploads` ve `/socket.io` istekleri Node server'a proxy edilsin
+
+Örnek:
 
 ```nginx
 server {
     listen 80;
     listen [::]:80;
-    server_name 78.135.105.136; # veya domain adınız
-    
-    # Build edilmiş dosyaların bulunduğu klasör
+    server_name yourdomain.com;
+
     root /path/to/globalmenu/client/dist;
     index index.html;
-    
-    # Gzip compression
-    gzip on;
-    gzip_vary on;
-    gzip_min_length 1024;
-    gzip_types text/plain text/css text/xml text/javascript application/javascript application/json;
-    
-    # Security headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    
-    # React Router için SPA desteği
+
     location / {
         try_files $uri $uri/ /index.html;
     }
-    
-    # Static assets cache
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-    
-    # API proxy - Backend'e yönlendirme
+
     location /api/ {
         proxy_pass http://127.0.0.1:3000/;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
+        proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
     }
-    
-    # Uploads proxy
+
     location /uploads/ {
         proxy_pass http://127.0.0.1:3000/uploads/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }
-    
-    # Socket.IO proxy
+
     location /socket.io/ {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
@@ -95,44 +129,51 @@ server {
 }
 ```
 
-### Option B: PM2 + serve (Alternatif)
+## 6. SSL
 
-```bash
-# serve paketini global yükleyin
-npm install -g serve
-
-# Build edilmiş dosyaları serve edin
-cd client/dist
-serve -s . -l 5173
-```
-
-## 4️⃣ SSL/HTTPS Kurulumu (Opsiyonel)
-
-Certbot ile ücretsiz SSL sertifikası:
+Nginx üzerinden SSL açmak için örnek:
 
 ```bash
 sudo certbot --nginx -d yourdomain.com
 ```
 
-## 5️⃣ Kontrol Listesi
+## 7. Firewall
 
-- [ ] `client/dist` klasöründe build dosyaları var mı?
-- [ ] Nginx konfigürasyonu doğru mu?
-- [ ] Port 80/443 firewall'da açık mı?
-- [ ] Backend server (port 3000) çalışıyor mu?
-- [ ] Nginx yeniden başlatıldı mı? (`sudo systemctl reload nginx`)
+Production ortamında tipik ihtiyaç:
 
-## 🔍 Sorun Giderme
+- `80/tcp`
+- `443/tcp`
 
-### Site görünmüyor
-1. Nginx loglarını kontrol edin: `sudo tail -f /var/log/nginx/error.log`
-2. Port kontrolü: `sudo netstat -tulpn | grep :5173` veya `sudo ss -tulpn | grep :5173`
-3. Firewall kontrolü: `sudo firewall-cmd --list-all`
+Node server doğrudan internete açılmayacaksa `3000` sadece lokal erişimde kalmalıdır.
 
-### API çalışmıyor
-1. Backend server çalışıyor mu? `pm2 list` veya `ps aux | grep node`
-2. Backend portu açık mı? `curl http://localhost:3000/api/health`
+## 8. Kontrol Listesi
 
-### 404 hatası (sayfa yenileme sonrası)
-- Nginx konfigürasyonunda `try_files $uri $uri/ /index.html;` olduğundan emin olun
+- [ ] `client/dist` üretildi
+- [ ] `server/.env` production için dolduruldu
+- [ ] `npm run check` geçti
+- [ ] Node server çalışıyor
+- [ ] Nginx config yüklendi
+- [ ] SSL aktif edildi
+- [ ] `/api/health` başarılı dönüyor
 
+## Sorun Giderme
+
+### Site açılıyor ama API çalışmıyor
+
+- `pm2 logs globalmenu-api`
+- `curl http://127.0.0.1:3000/api/health`
+- Nginx `proxy_pass` hedefini kontrol edin
+
+### 404 sayfa yenileme hatası
+
+- `location /` içinde `try_files $uri $uri/ /index.html;` olmalı
+
+### CORS hatası
+
+- `CORS_ORIGIN` değerinin gerçek domain ile birebir eşleştiğini kontrol edin
+
+### Payment canlıda başlamıyor
+
+- `PAYMENT_ENVIRONMENT=production`
+- tüm `VAKIF_*` alanları dolu
+- callback URL'leri HTTPS ve doğru domain'e işaret ediyor

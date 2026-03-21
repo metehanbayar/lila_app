@@ -23,6 +23,7 @@ function Categories() {
     name: '',
     icon: 'Utensils',
     color: 'bg-gray-500',
+    sortOrder: 0,
     isActive: true,
   });
 
@@ -52,6 +53,7 @@ function Categories() {
         name: category.Name,
         icon: category.Icon || 'Utensils',
         color: category.Color || 'bg-gray-500',
+        sortOrder: category.SortOrder || 0,
         isActive: category.IsActive,
       });
     } else {
@@ -60,6 +62,7 @@ function Categories() {
         name: '',
         icon: 'Utensils',
         color: 'bg-gray-500',
+        sortOrder: 0,
         isActive: true,
       });
     }
@@ -103,8 +106,8 @@ function Categories() {
     { header: 'ID', field: 'Id' },
     {
       header: 'İkon',
-       render: (row) => {
-         const IconComponent = LucideIcons[row.Icon] || LucideIcons.Utensils;
+      render: (row) => {
+        const IconComponent = LucideIcons[row.Icon] || LucideIcons.Utensils;
         return (
           <div className={`w-10 h-10 rounded-lg ${row.Color || 'bg-gray-500'} flex items-center justify-center`}>
             <IconComponent className="w-6 h-6 text-white" />
@@ -126,13 +129,16 @@ function Categories() {
       header: 'Durum',
       render: (row) => (
         <span
-          className={`px-2 py-1 rounded-full text-xs font-medium ${
-            row.IsActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-          }`}
+          className={`px-2 py-1 rounded-full text-xs font-medium ${row.IsActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+            }`}
         >
           {row.IsActive ? 'Aktif' : 'Pasif'}
         </span>
       ),
+    },
+    {
+      header: 'Sıra',
+      field: 'SortOrder',
     },
   ];
 
@@ -161,7 +167,7 @@ function Categories() {
         {/* Bilgi Kutusu */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-sm text-blue-800">
-            <strong>Not:</strong> Kategoriler tüm restoranlar için ortaktır. 
+            <strong>Not:</strong> Kategoriler tüm restoranlar için ortaktır.
             Eklediğiniz her kategori tüm restoranlarda kullanılabilir.
           </p>
         </div>
@@ -217,6 +223,24 @@ function Categories() {
               onChange={(color) => setFormData({ ...formData, color })}
             />
 
+            {/* Sıralama */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Sıralama
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={formData.sortOrder}
+                onChange={(e) => setFormData({ ...formData, sortOrder: parseInt(e.target.value) || 0 })}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                placeholder="0"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Küçük değerler önce gösterilir (0 = en önce)
+              </p>
+            </div>
+
             {/* Aktif/Pasif */}
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
               <input
@@ -235,9 +259,9 @@ function Categories() {
             <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-gray-200">
               <p className="text-xs font-semibold text-gray-500 mb-3">ÖNİZLEME</p>
               <div className="flex items-center gap-3">
-                 <div className={`w-14 h-14 rounded-xl ${formData.color} flex items-center justify-center shadow-lg`}>
-                   {(() => {
-                     const IconComponent = LucideIcons[formData.icon] || LucideIcons.Utensils;
+                <div className={`w-14 h-14 rounded-xl ${formData.color} flex items-center justify-center shadow-lg`}>
+                  {(() => {
+                    const IconComponent = LucideIcons[formData.icon] || LucideIcons.Utensils;
                     return <IconComponent className="w-8 h-8 text-white" />;
                   })()}
                 </div>

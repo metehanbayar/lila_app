@@ -1,9 +1,9 @@
 import express from 'express';
 import { getConnection, sql } from '../config/database.js';
+import { issueToken, verifyToken } from '../services/auth-token.js';
 
 const router = express.Router();
 
-// Admin authentication middleware
 export const adminAuth = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
@@ -14,20 +14,26 @@ export const adminAuth = async (req, res, next) => {
       });
     }
 
-    // Basit token kontrolü (gerçek uygulamada JWT kullanılmalı)
-    const [username, password] = Buffer.from(token, 'base64').toString().split(':');
-    
+    const payload = verifyToken(token);
+    if (payload.role !== 'admin' || !payload.sub) {
+      throw new Error('Invalid admin token.');
+    }
+
+    const adminId = Number.parseInt(payload.sub, 10);
+    if (!Number.isInteger(adminId) || adminId <= 0) {
+      throw new Error('Invalid admin id in token.');
+    }
+
     const pool = await getConnection();
     const result = await pool
       .request()
-      .input('username', sql.NVarChar, username)
-      .input('password', sql.NVarChar, password)
+      .input('id', sql.Int, adminId)
       .query(`
         SELECT au.Id, au.Username, au.FullName, au.Email, au.IsActive, au.RestaurantId,
                r.Name as RestaurantName
         FROM AdminUsers au
         LEFT JOIN Restaurants r ON au.RestaurantId = r.Id
-        WHERE au.Username = @username AND au.Password = @password AND au.IsActive = 1
+        WHERE au.Id = @id AND au.IsActive = 1
       `);
 
     if (result.recordset.length === 0) {
@@ -48,7 +54,6 @@ export const adminAuth = async (req, res, next) => {
   }
 };
 
-// Admin login
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -82,7 +87,6 @@ router.post('/login', async (req, res) => {
 
     const admin = result.recordset[0];
 
-    // Last login güncelle
     await pool
       .request()
       .input('id', sql.Int, admin.Id)
@@ -92,8 +96,11 @@ router.post('/login', async (req, res) => {
         WHERE Id = @id
       `);
 
-    // Basit token oluştur (gerçek uygulamada JWT kullanılmalı)
-    const token = Buffer.from(`${username}:${password}`).toString('base64');
+    const token = issueToken({
+      role: 'admin',
+      sub: String(admin.Id),
+      username: admin.Username,
+    });
 
     res.json({
       success: true,
@@ -118,49 +125,41 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Dashboard istatistikleri
 router.get('/dashboard/stats', adminAuth, async (req, res) => {
   try {
     const pool = await getConnection();
 
-    // Toplam restoran sayısı
     const restaurantCount = await pool.request().query(`
       SELECT COUNT(*) as count FROM Restaurants WHERE IsActive = 1
     `);
 
-    // Toplam ürün sayısı
     const productCount = await pool.request().query(`
       SELECT COUNT(*) as count FROM Products WHERE IsActive = 1
     `);
 
-    // Toplam sipariş sayısı
     const orderCount = await pool.request().query(`
       SELECT COUNT(*) as count FROM Orders
     `);
 
-    // Bugünkü sipariş sayısı
     const todayOrderCount = await pool.request().query(`
-      SELECT COUNT(*) as count 
-      FROM Orders 
+      SELECT COUNT(*) as count
+      FROM Orders
       WHERE CAST(CreatedAt AS DATE) = CAST(GETDATE() AS DATE)
     `);
 
-    // Toplam ciro
     const totalRevenue = await pool.request().query(`
-      SELECT ISNULL(SUM(TotalAmount), 0) as total 
-      FROM Orders 
+      SELECT ISNULL(SUM(TotalAmount), 0) as total
+      FROM Orders
       WHERE Status != 'Cancelled'
     `);
 
-    // Bugünkü ciro
     const todayRevenue = await pool.request().query(`
-      SELECT ISNULL(SUM(TotalAmount), 0) as total 
-      FROM Orders 
+      SELECT ISNULL(SUM(TotalAmount), 0) as total
+      FROM Orders
       WHERE CAST(CreatedAt AS DATE) = CAST(GETDATE() AS DATE)
       AND Status != 'Cancelled'
     `);
 
-    // Sipariş durumları
     const ordersByStatus = await pool.request().query(`
       SELECT Status, COUNT(*) as count
       FROM Orders
@@ -188,13 +187,12 @@ router.get('/dashboard/stats', adminAuth, async (req, res) => {
   }
 });
 
-// Son siparişler
 router.get('/dashboard/recent-orders', adminAuth, async (req, res) => {
   try {
     const pool = await getConnection();
     const result = await pool.request().query(`
-      SELECT TOP 10 
-        Id, OrderNumber, CustomerName, CustomerPhone, 
+      SELECT TOP 10
+        Id, OrderNumber, CustomerName, CustomerPhone,
         TotalAmount, Status, CreatedAt
       FROM Orders
       ORDER BY CreatedAt DESC
@@ -214,4 +212,3 @@ router.get('/dashboard/recent-orders', adminAuth, async (req, res) => {
 });
 
 export default router;
-

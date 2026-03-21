@@ -1,159 +1,144 @@
-# 🗄️ Veritabanı Kurulum Rehberi
+# Veritabanı Kurulum Rehberi
 
-## 1️⃣ Veritabanını Oluşturduktan Sonra
+Bu rehber `server` tarafının MSSQL bağlantısını güncel repo yapısına göre hazırlar.
 
-### Azure SQL Database üzerinden örnek:
+## 1. Env Dosyasını Oluştur
 
-1. **Bağlantı bilgilerinizi alın:**
-   - Server: `yourserver.database.windows.net`
-   - Database: `LilaGroupMenu`
-   - Username: `sqladmin`
-   - Password: `YourPassword123!`
-
-2. **`.env` dosyası oluşturun:**
+`server` klasöründe örnek env dosyasını kopyalayın:
 
 ```bash
-cd server
+copy .env.example .env
+```
+
+PowerShell yerine Bash kullanıyorsanız:
+
+```bash
 cp .env.example .env
 ```
 
-3. **`.env` dosyasını düzenleyin:**
+## 2. Veritabanı Alanlarını Doldur
 
-```bash
-# Windows
-notepad .env
-
-# Linux/Mac
-nano .env
-
-# VSCode
-code .env
-```
-
-4. **Bilgilerinizi girin:**
+`server/.env` içinde en az şu alanları düzenleyin:
 
 ```env
-# Server Ayarları
-PORT=3300
+PORT=3000
 NODE_ENV=development
+CORS_ORIGIN=http://localhost:5173
 
-# MSSQL Veritabanı (Kendi bilgilerinizle değiştirin!)
-DB_SERVER=yourserver.database.windows.net
+DB_SERVER=your-mssql-server
 DB_PORT=1433
 DB_DATABASE=LilaGroupMenu
-DB_USER=sqladmin
-DB_PASSWORD=YourPassword123!
+DB_USER=your-db-user
+DB_PASSWORD=your-db-password
 DB_ENCRYPT=true
+DB_INSTANCE=
+DB_CONNECTION_STRING=
+```
 
-# Email (Gmail örneği)
+Notlar:
+
+- `DB_INSTANCE` sadece instance bazlı bağlantı gerekiyorsa doldurulmalıdır.
+- `DB_CONNECTION_STRING` özel bağlantı cümlesi kullanacaksanız eklenebilir.
+- Tek kaynak dosya `server/.env.example` dosyasıdır. Repo içinde artık ayrı `ORNEK-AZURE` veya `ORNEK-AWS` env dosyaları tutulmaz.
+
+## 3. Şemayı Yükle
+
+SSMS veya Azure Data Studio ile şu dosyaları sırayla çalıştırın:
+
+```text
+server/database/schema.sql
+server/database/seed.sql
+```
+
+Admin kullanıcı gerekiyorsa ayrıca:
+
+```text
+server/database/admin-schema.sql
+```
+
+OTP kullanacaksanız:
+
+```text
+server/database/migrations/add-otp-verification.sql
+```
+
+## 4. Bağlantıyı Doğrula
+
+Sunucu tarafında artık ESM kullanıldığı için eski `require(...)` test komutu geçerli değildir.
+
+Bunun yerine:
+
+```bash
+npm run check:smoke
+```
+
+veya tüm temel kontroller için:
+
+```bash
+npm run check
+```
+
+Bu komutlar:
+
+- env okunabiliyor mu
+- syntax geçerli mi
+- veritabanı bağlantısı kurulabiliyor mu
+
+kontrol eder.
+
+## 5. Firewall ve Ağ
+
+Azure SQL veya RDS kullanıyorsanız:
+
+- uygulamanın çalıştığı sunucu IP adresini whitelist'e ekleyin
+- 1433 erişimi açık olmalı
+- veritabanı kullanıcısının ilgili database üzerinde yetkisi olmalı
+
+## 6. E-posta Ayarları
+
+Sipariş e-postaları kullanılıyorsa şu alanları da doldurun:
+
+```env
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
 EMAIL_SECURE=false
-EMAIL_USER=yourmail@gmail.com
-EMAIL_PASSWORD=xxxx xxxx xxxx xxxx
-EMAIL_FROM=noreply@lilagroup.com
-EMAIL_TO=orders@lilagroup.com
-
-# CORS
-CORS_ORIGIN=http://localhost:5173
+EMAIL_USER=your-email@example.com
+EMAIL_PASSWORD=your-email-password
+EMAIL_FROM=no-reply@example.com
+EMAIL_TO=orders@example.com
 ```
 
-## 2️⃣ Şema ve Veri Yükleme
+## Kontrol Listesi
 
-### Azure Data Studio veya SSMS ile:
+- [ ] `server/.env` oluşturuldu
+- [ ] `DB_*` alanları dolduruldu
+- [ ] `schema.sql` çalıştırıldı
+- [ ] `seed.sql` çalıştırıldı
+- [ ] gerekliyse `admin-schema.sql` çalıştırıldı
+- [ ] gerekliyse OTP migration çalıştırıldı
+- [ ] `npm run check:smoke` başarılı geçti
 
-1. **Veritabanınıza bağlanın**
-2. **Şemayı yükleyin:**
-   - `database/schema.sql` dosyasını açın
-   - Tüm SQL'i seçin ve çalıştırın (F5)
-   
-3. **Örnek verileri yükleyin:**
-   - `database/seed.sql` dosyasını açın
-   - Tüm SQL'i seçin ve çalıştırın (F5)
+## Sorun Giderme
 
-### Komut satırından (sqlcmd):
+### Login failed for user
 
-```bash
-# Şema yükleme
-sqlcmd -S yourserver.database.windows.net -d LilaGroupMenu -U sqladmin -P 'YourPassword' -i database/schema.sql
+- kullanıcı adı veya şifre yanlış olabilir
+- SQL Server authentication kapalı olabilir
+- kullanıcının veritabanı yetkisi eksik olabilir
 
-# Seed data yükleme
-sqlcmd -S yourserver.database.windows.net -d LilaGroupMenu -U sqladmin -P 'YourPassword' -i database/seed.sql
-```
+### Cannot open database
 
-## 3️⃣ Bağlantıyı Test Etme
+- `DB_DATABASE` yanlış olabilir
+- veritabanı henüz oluşturulmamış olabilir
 
-```bash
-cd server
+### Connection timeout
 
-# Node.js ile test
-node -e "require('./config/database.js').getConnection().then(() => console.log('✅ Bağlantı başarılı!')).catch(err => console.error('❌ Hata:', err))"
-```
+- `DB_SERVER` veya `DB_PORT` yanlış olabilir
+- firewall 1433 trafiğini engelliyor olabilir
+- SQL Server dış erişime kapalı olabilir
 
-## 4️⃣ Firewall Ayarları (Önemli!)
+## İlgili Dosyalar
 
-### Azure SQL için:
-
-1. Azure Portal → SQL Database → Firewall ayarları
-2. **Plesk sunucu IP'sini ekleyin:**
-   - Name: `Plesk-Server`
-   - Start IP: `your-plesk-ip`
-   - End IP: `your-plesk-ip`
-   
-3. Geliştirme yaparken kendi IP'nizi de ekleyin
-
-### AWS RDS için:
-
-1. RDS → Security Groups
-2. Inbound rules'a ekleyin:
-   - Type: MSSQL (1433)
-   - Source: Plesk server IP
-
-## 5️⃣ Gmail App Password Oluşturma
-
-1. https://myaccount.google.com/ adresine gidin
-2. **Security** → **2-Step Verification** aktif edin
-3. **App passwords** oluşturun
-4. "Mail" ve "Other" seçin, isim verin
-5. Oluşan 16 haneli şifreyi `.env` dosyasındaki `EMAIL_PASSWORD`'e yazın
-
-Örnek: `abcd efgh ijkl mnop`
-
-## 6️⃣ Kontrol Listesi
-
-- [ ] Veritabanı oluşturuldu
-- [ ] `server/.env` dosyası oluşturuldu
-- [ ] Veritabanı bağlantı bilgileri `.env`'ye yazıldı
-- [ ] Email SMTP bilgileri `.env`'ye yazıldı
-- [ ] `schema.sql` çalıştırıldı (tablolar oluştu)
-- [ ] `seed.sql` çalıştırıldı (örnek veriler yüklendi)
-- [ ] Firewall'da Plesk IP whitelist'e eklendi
-- [ ] Bağlantı test edildi ✅
-
-## 🆘 Sorun Giderme
-
-### "Login failed for user" hatası:
-- Kullanıcı adı ve şifre doğru mu?
-- Firewall'da IP whitelist'e ekli mi?
-
-### "Cannot open database" hatası:
-- Database adı doğru mu? (`LilaGroupMenu`)
-- Kullanıcının veritabanına erişim yetkisi var mı?
-
-### "Connection timeout" hatası:
-- Server adresi doğru mu?
-- Port 1433 açık mı?
-- Firewall engeli var mı?
-
-### E-posta gönderilmiyor:
-- Gmail App Password kullanıyor musunuz?
-- SMTP bilgileri doğru mu?
-- 2FA aktif mi?
-
-## 📞 Yardım
-
-Sorun yaşarsanız:
-1. `server` klasöründeki `VERITABANI-KURULUM.md` dosyasını kontrol edin
-2. `.env.ORNEG-AZURE` veya `.env.ORNEG-AWS` dosyalarına bakın
-3. Backend loglarını kontrol edin: `pm2 logs lila-menu-api`
-
+- `server/.env.example`
+- `server/config/database.js`
+- `server/scripts/smoke-check.js`

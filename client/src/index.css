@@ -4,6 +4,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ========================================
+   Base Styles
+   ======================================== */
 * {
   margin: 0;
   padding: 0;
@@ -18,25 +21,50 @@ body {
   font-family: 'Poppins', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overscroll-behavior-y: none; /* Mobil app gibi bounce efektini kaldır */
+  overscroll-behavior-y: none;
+  background: linear-gradient(135deg, #fdf4ff 0%, #ffffff 50%, #f5f3ff 100%);
+  min-height: 100vh;
+  min-height: 100dvh;
+  /* iOS Safari için dinamik viewport height */
 }
 
-/* iOS Safari iç scroll momentum (inertial) desteği */
-.scroll-touch {
-  -webkit-overflow-scrolling: touch;
-}
+/* iOS Safari full height fix */
+@supports (-webkit-touch-callout: none) {
 
-/* Safe area support for mobile */
-@supports (padding: env(safe-area-inset-bottom)) {
-  .safe-area-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
+  html,
+  body {
+    min-height: -webkit-fill-available;
+  }
+
+  body {
+    min-height: 100dvh;
   }
 }
 
-/* Custom Scrollbar */
+/* iOS Safari input zoom fix - minimum 16px font-size */
+input,
+select,
+textarea {
+  font-size: 16px !important;
+}
+
+@supports (-webkit-touch-callout: none) {
+
+  /* iOS specific - prevent zoom on focus */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+    transform: translateZ(0);
+  }
+}
+
+/* ========================================
+   Scrollbar Styles
+   ======================================== */
 ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -44,12 +72,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #D1D5DB;
-  border-radius: 2px;
+  background: linear-gradient(180deg, #c084fc, #f472b6);
+  border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #9CA3AF;
+  background: linear-gradient(180deg, #a855f7, #ec4899);
 }
 
 /* Thin scrollbar for categories */
@@ -58,25 +86,25 @@ body {
   height: 3px;
 }
 
-.categories-scroll::-webkit-scrollbar-track {
-  background: transparent;
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-.categories-scroll::-webkit-scrollbar-thumb {
-  background: #D1D5DB;
-  border-radius: 1.5px;
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }
 
-.categories-scroll::-webkit-scrollbar-thumb:hover {
-  background: #9CA3AF;
-}
-
-/* Animations */
+/* ========================================
+   Animations
+   ======================================== */
 @keyframes fadeIn {
   from {
     opacity: 0;
     transform: translateY(15px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -90,9 +118,12 @@ body {
 @keyframes slideUp {
   from {
     transform: translateY(100%);
+    opacity: 0;
   }
+
   to {
     transform: translateY(0);
+    opacity: 1;
   }
 }
 
@@ -105,6 +136,7 @@ body {
     opacity: 0;
     transform: translateY(-20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -120,6 +152,7 @@ body {
     opacity: 0;
     transform: translateX(-30px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -135,6 +168,7 @@ body {
     opacity: 0;
     transform: translateX(100%);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -145,24 +179,12 @@ body {
   animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-@keyframes bounceSubtle {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-}
-
-.animate-bounce-subtle {
-  animation: bounceSubtle 0.6s ease-in-out forwards;
-}
-
 @keyframes scaleIn {
   from {
     opacity: 0;
     transform: scale(0.9);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -171,6 +193,22 @@ body {
 
 .animate-scaleIn {
   animation: scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes bounceSubtle {
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.animate-bounce-subtle {
+  animation: bounceSubtle 0.6s ease-in-out forwards;
 }
 
 /* Loading Spinner */
@@ -186,9 +224,12 @@ body {
 
 /* Pulse Animation */
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.7;
   }
@@ -201,29 +242,26 @@ body {
 /* Shimmer Effect */
 @keyframes shimmer {
   0% {
-    background-position: -1000px 0;
+    transform: translateX(-100%);
   }
+
   100% {
-    background-position: 1000px 0;
+    transform: translateX(100%);
   }
 }
 
 .animate-shimmer {
   animation: shimmer 2s infinite;
-  background: linear-gradient(
-    to right,
-    transparent 0%,
-    rgba(255, 255, 255, 0.3) 50%,
-    transparent 100%
-  );
-  background-size: 1000px 100%;
 }
 
 /* Float Animation */
 @keyframes float {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0px);
   }
+
   50% {
     transform: translateY(-10px);
   }
@@ -233,9 +271,109 @@ body {
   animation: float 3s ease-in-out infinite;
 }
 
-/* Smooth transitions */
-* {
-  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+/* Gradient Animation */
+@keyframes gradient {
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient 3s ease infinite;
+}
+
+/* Page Enter Animation */
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-pageEnter {
+  animation: pageEnter 0.3s ease-out;
+}
+
+/* Skeleton Loading Animation */
+@keyframes skeleton {
+  0% {
+    background-position: -200px 0;
+  }
+
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+.animate-skeleton {
+  animation: skeleton 1.5s ease-in-out infinite;
+  background: linear-gradient(90deg, #f0f0f0 0px, #f8f8f8 40px, #f0f0f0 80px);
+  background-size: 200px 100%;
+}
+
+/* Ripple effect */
+@keyframes ripple {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+.animate-ripple {
+  animation: ripple 0.6s ease-out;
+}
+
+/* ========================================
+   Utility Classes
+   ======================================== */
+
+/* Glass Morphism */
+.glass {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.glass-light {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.glass-dark {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Touch Feedback */
+.touch-feedback:active {
+  transform: scale(0.97);
+  transition: transform 0.1s ease;
+}
+
+/* iOS Safari scroll momentum */
+.scroll-touch {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Safe area support for mobile */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
 /* Modal sepete ekle barını BottomNav'ın tam üstüne hizala */
@@ -245,11 +383,11 @@ body {
 
 @media (min-width: 1024px) {
   .bottom-above-nav {
-    bottom: 1.5rem; /* lg:bottom-6 eşdeğeri - desktopta BottomNav yok */
+    bottom: 1.5rem;
   }
 }
 
-/* Modal içerik alt boşluğu: sadece CTA bar yüksekliği (~96px) */
+/* Modal içerik alt boşluğu */
 .modal-content-safe-bottom {
   padding-bottom: calc(96px + env(safe-area-inset-bottom));
 }
@@ -260,29 +398,9 @@ body {
   }
 }
 
-/* 100svh yardımcı sınıf (Safari ve mobil tarayıcı güvenli yükseklik) */
+/* 100svh yardımcı sınıf */
 .h-svh {
   height: 100svh;
-}
-
-/* Bounce animation for marker */
-@keyframes bounce {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-/* Hide scrollbar utility */
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
 }
 
 /* Smooth scroll snap for horizontal scrolling */
@@ -303,128 +421,40 @@ body {
   }
 }
 
-/* Smooth gradient animation */
-@keyframes gradient {
-  0%, 100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
+/* Premium Shadow Classes */
+.shadow-premium {
+  box-shadow: 0 20px 60px -15px rgba(0, 0, 0, 0.15),
+    0 10px 30px -10px rgba(0, 0, 0, 0.1);
 }
 
-.animate-gradient {
-  background-size: 200% 200%;
-  animation: gradient 3s ease infinite;
+.shadow-glow-purple {
+  box-shadow: 0 0 40px rgba(168, 85, 247, 0.4);
 }
 
-/* Touch feedback */
-.touch-feedback:active {
-  transform: scale(0.97);
-  transition: transform 0.1s ease;
+.shadow-glow-pink {
+  box-shadow: 0 0 40px rgba(236, 72, 153, 0.4);
 }
 
-/* Ripple effect */
-@keyframes ripple {
-  to {
-    transform: scale(4);
-    opacity: 0;
-  }
+/* Gradient Text */
+.text-gradient {
+  background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-.animate-ripple {
-  animation: ripple 0.6s ease-out;
+/* Smooth transitions */
+* {
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.ripple::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 100%;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 50%;
-  transform: translate(-50%, -50%) scale(0);
-  animation: ripple 0.6s ease-out;
+/* Button hover glow effect */
+.btn-glow:hover {
+  box-shadow: 0 0 30px rgba(168, 85, 247, 0.5);
 }
 
-/* Reverse spin animation */
-@keyframes spin-reverse {
-  from {
-    transform: rotate(360deg);
-  }
-  to {
-    transform: rotate(0deg);
-  }
+/* Card hover lift effect */
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
 }
-
-.animate-spin-reverse {
-  animation: spin-reverse 1s linear infinite;
-}
-
-/* Page transition animations */
-@keyframes pageEnter {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-pageEnter {
-  animation: pageEnter 0.3s ease-out;
-}
-
-/* Skelton Loading Animation */
-@keyframes skeleton {
-  0% {
-    background-position: -200px 0;
-  }
-  100% {
-    background-position: calc(200px + 100%) 0;
-  }
-}
-
-.animate-skeleton {
-  animation: skeleton 1.5s ease-in-out infinite;
-  background: linear-gradient(
-    90deg,
-    #f0f0f0 0px,
-    #f8f8f8 40px,
-    #f0f0f0 80px
-  );
-  background-size: 200px 100%;
-}
-
-/* Fade In Up Animation */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Slide Up Animation */
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(100%);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-slideUp {
-  animation: slideUp 0.3s ease-out;
-}
-

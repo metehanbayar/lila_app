@@ -17,9 +17,9 @@ const toNum = (v) => {
 
 // Türk telefon numarası normalizasyonu
 const normalizePhone = (p) => {
-  let s = (p||'').replace(/[^\d]/g,'');
-  if (s.startsWith('90') && s.length===12) s = s.slice(2); // 90xxxxxxxxxx -> xxxxxxxxxx
-  if (s.startsWith('0')  && s.length===11) s = s.slice(1);
+  let s = (p || '').replace(/[^\d]/g, '');
+  if (s.startsWith('90') && s.length === 12) s = s.slice(2); // 90xxxxxxxxxx -> xxxxxxxxxx
+  if (s.startsWith('0') && s.length === 11) s = s.slice(1);
   return s;
 };
 
@@ -27,13 +27,13 @@ function Checkout() {
   const navigate = useNavigate();
   const { items, getTotalAmount, clearCart, appliedCoupon: storeAppliedCoupon } = useCartStore();
   const { customer, isAuthenticated } = useCustomerStore();
-  
+
   // Adım yönetimi
   const [currentStep, setCurrentStep] = useState(1); // 1: Bilgiler, 2: Ödeme
-  
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   // Kupon durumu (local kupon input'u için)
   const [couponCode, setCouponCode] = useState('');
   const [localAppliedCoupon, setLocalAppliedCoupon] = useState(null);
@@ -63,7 +63,7 @@ function Checkout() {
   });
 
   const [paymentErrors, setPaymentErrors] = useState({});
-  const [paymentMethod, setPaymentMethod] = useState('online'); // online | cash_on_delivery | card_on_delivery | pickup
+  const [paymentMethod, setPaymentMethod] = useState('cash_on_delivery'); // online | cash_on_delivery | card_on_delivery | pickup
 
   // Kayıtlı kullanıcı bilgilerini otomatik doldur
   useEffect(() => {
@@ -108,10 +108,10 @@ function Checkout() {
     }
 
     // customerAddress string olmalı, obje ise fullAddress al
-    const addressString = typeof formData.customerAddress === 'string' 
-      ? formData.customerAddress 
+    const addressString = typeof formData.customerAddress === 'string'
+      ? formData.customerAddress
       : formData.customerAddress?.fullAddress || formData.customerAddress?.FullAddress || '';
-    
+
     if (!addressString.trim()) {
       errors.customerAddress = 'Adres gereklidir';
     } else if (addressString.trim().length < 10) {
@@ -131,7 +131,7 @@ function Checkout() {
     try {
       const subtotal = getTotalAmount();
       const response = await validateCoupon(couponCode.trim(), subtotal);
-      
+
       if (response.success) {
         setLocalAppliedCoupon(response.data);
         setCouponError('');
@@ -152,12 +152,12 @@ function Checkout() {
 
   const handleLocationConfirm = (address) => {
     // Address string olmalı ama güvenlik için kontrol edelim
-    const addressString = typeof address === 'string' 
-      ? address 
+    const addressString = typeof address === 'string'
+      ? address
       : address?.fullAddress || address?.FullAddress || String(address);
-    
+
     setFormData((prev) => ({ ...prev, customerAddress: addressString }));
-    
+
     // Hata varsa temizle
     if (formErrors.customerAddress) {
       setFormErrors((prev) => ({ ...prev, customerAddress: '' }));
@@ -166,12 +166,12 @@ function Checkout() {
 
   const handleAddressSelect = (address) => {
     // Address bir obje olabilir {addressName, fullAddress} veya string olabilir
-    const addressString = typeof address === 'string' 
-      ? address 
+    const addressString = typeof address === 'string'
+      ? address
       : address?.fullAddress || address?.FullAddress || '';
-    
+
     setFormData((prev) => ({ ...prev, customerAddress: addressString }));
-    
+
     // Hata varsa temizle
     if (formErrors.customerAddress) {
       setFormErrors((prev) => ({ ...prev, customerAddress: '' }));
@@ -206,7 +206,7 @@ function Checkout() {
     }
 
     setPaymentData((prev) => ({ ...prev, [name]: formattedValue }));
-    
+
     // Hata varsa temizle
     if (paymentErrors[name]) {
       setPaymentErrors((prev) => ({ ...prev, [name]: '' }));
@@ -252,7 +252,7 @@ function Checkout() {
   // İlk adım tamamlandı - Sadece validasyon, sipariş oluşturma Step2'de
   const handleStep1Submit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -264,7 +264,7 @@ function Checkout() {
   // Ödeme adımı - Ödeme işlemini başlat
   const handleStep2Submit = async (e) => {
     e.preventDefault();
-    
+
     // Offline yöntem seçildiyse kart validasyonu yapma
     const isOffline = paymentMethod !== 'online';
     if (!isOffline && !validatePayment()) {
@@ -286,13 +286,13 @@ function Checkout() {
       const totalAmount = Math.max(0, Number(subtotal) - Number(discountAmount || 0));
 
       // customerAddress string olmalı, obje ise fullAddress al
-      const addressString = typeof formData.customerAddress === 'string' 
-        ? formData.customerAddress 
+      const addressString = typeof formData.customerAddress === 'string'
+        ? formData.customerAddress
         : formData.customerAddress?.fullAddress || formData.customerAddress?.FullAddress || '';
-      
+
       // Telefon numarasını normalize et
       const normalizedPhone = normalizePhone(formData.customerPhone);
-      
+
       // Siparişi oluştur (henüz ödeme yapılmadı, PaymentStatus = Pending)
       const orderData = {
         ...formData,
@@ -318,7 +318,7 @@ function Checkout() {
 
       // İlk siparişin ID'sini kaydet (çoklu sipariş durumunda)
       const firstOrderId = orderResponse.data.orders[0]?.orderId || orderResponse.data.orders[0]?.Id;
-      
+
 
       if (isOffline) {
         // Offline ödeme seçildi: kapıda/gel-al
@@ -382,7 +382,7 @@ function Checkout() {
 
           // Form'u body'ye ekle ve gönder
           document.body.appendChild(form);
-          
+
           // Form submit'i gecikmeyle yap (bazı tarayıcılarda sorun çıkarabiliyor)
           setTimeout(() => {
             try {
@@ -396,8 +396,8 @@ function Checkout() {
           clearCart();
           const orderNumber = paymentResponse.paymentResult?.transactionId || 'SUCCESS';
           navigate(`/order-success/${orderNumber}`, {
-            state: { 
-              orderData: { 
+            state: {
+              orderData: {
                 orders: [{ orderNumber: orderNumber }],
                 paymentResult: paymentResponse.paymentResult
               }
@@ -409,7 +409,7 @@ function Checkout() {
         const errorMessage = paymentResponse.message || 'Ödeme başlatılamadı';
         const errorCode = paymentResponse.errorCode || paymentResponse.errorDetails?.errorCode;
         const errorDetails = paymentResponse.errorDetails;
-        
+
         let fullErrorMessage = errorMessage;
         if (errorCode) {
           fullErrorMessage += ` (Hata Kodu: ${errorCode})`;
@@ -417,20 +417,20 @@ function Checkout() {
         if (errorDetails?.errorMessage && errorDetails.errorMessage !== errorMessage) {
           fullErrorMessage += ` - ${errorDetails.errorMessage}`;
         }
-        
+
         setError(fullErrorMessage);
       }
     } catch (err) {
       const errorResponse = err.response?.data;
       let errorMessage = errorResponse?.message || 'Ödeme işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin.';
-      
+
       if (errorResponse?.errorCode) {
         errorMessage += ` (Hata Kodu: ${errorResponse.errorCode})`;
       }
       if (errorResponse?.errorDetails?.errorMessage) {
         errorMessage += ` - ${errorResponse.errorDetails.errorMessage}`;
       }
-      
+
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -487,13 +487,11 @@ function Checkout() {
           <button
             onClick={() => currentStep >= 1 && setCurrentStep(1)}
             disabled={currentStep < 1}
-            className={`flex items-center gap-2 transition-all disabled:cursor-not-allowed ${
-              currentStep >= 1 ? 'text-primary cursor-pointer hover:opacity-80' : 'text-gray-400'
-            }`}
+            className={`flex items-center gap-2 transition-all disabled:cursor-not-allowed ${currentStep >= 1 ? 'text-primary cursor-pointer hover:opacity-80' : 'text-gray-400'
+              }`}
           >
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${
-              currentStep >= 1 ? 'bg-primary text-white hover:bg-primary-dark' : 'bg-gray-200'
-            }`}>
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${currentStep >= 1 ? 'bg-primary text-white hover:bg-primary-dark' : 'bg-gray-200'
+              }`}>
               1
             </div>
             <span className="text-sm font-medium">Teslimat</span>
@@ -502,13 +500,11 @@ function Checkout() {
           <button
             onClick={() => currentStep >= 2 && setCurrentStep(2)}
             disabled={currentStep < 2}
-            className={`flex items-center gap-2 transition-all disabled:cursor-not-allowed ${
-              currentStep >= 2 ? 'text-primary cursor-pointer hover:opacity-80' : 'text-gray-400'
-            }`}
+            className={`flex items-center gap-2 transition-all disabled:cursor-not-allowed ${currentStep >= 2 ? 'text-primary cursor-pointer hover:opacity-80' : 'text-gray-400'
+              }`}
           >
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${
-              currentStep >= 2 ? 'bg-primary text-white hover:bg-primary-dark' : 'bg-gray-200'
-            }`}>
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${currentStep >= 2 ? 'bg-primary text-white hover:bg-primary-dark' : 'bg-gray-200'
+              }`}>
               2
             </div>
             <span className="text-sm font-medium">Ödeme</span>
@@ -539,8 +535,8 @@ function Checkout() {
 
         {/* Form */}
         <div>
-            {currentStep === 1 ? (
-              <form onSubmit={handleStep1Submit} className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+          {currentStep === 1 ? (
+            <form onSubmit={handleStep1Submit} className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
               {error && (
                 <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-2.5 rounded-lg">
                   {error}
@@ -559,11 +555,10 @@ function Checkout() {
                     name="customerName"
                     value={formData.customerName}
                     onChange={handleChange}
-                    className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 transition-colors ${
-                      formErrors.customerName
+                    className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 transition-colors ${formErrors.customerName
                         ? 'border-red-500 focus:ring-red-500/20'
                         : 'border-gray-300 focus:ring-primary/20 focus:border-primary'
-                    }`}
+                      }`}
                     placeholder="Adınız ve Soyadınız"
                   />
                   {formErrors.customerName && (
@@ -582,11 +577,10 @@ function Checkout() {
                     name="customerPhone"
                     value={formData.customerPhone}
                     onChange={handleChange}
-                    className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 transition-colors ${
-                      formErrors.customerPhone
+                    className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 transition-colors ${formErrors.customerPhone
                         ? 'border-red-500 focus:ring-red-500/20'
                         : 'border-gray-300 focus:ring-primary/20 focus:border-primary'
-                    }`}
+                      }`}
                     placeholder="0555 123 45 67"
                   />
                   {formErrors.customerPhone && (
@@ -600,29 +594,28 @@ function Checkout() {
                     <MapPin className="w-4 h-4 text-primary" />
                     <span>Teslimat Adresi</span>
                   </label>
-                  
+
                   <div className="flex gap-2 min-w-0">
                     <button
                       type="button"
                       onClick={() => setShowLocationModal(true)}
-                      className={`flex-1 min-w-0 flex items-center justify-start gap-2 px-4 py-2.5 border-2 border-dashed rounded-lg transition-colors text-sm ${
-                        formErrors.customerAddress
+                      className={`flex-1 min-w-0 flex items-center justify-start gap-2 px-4 py-2.5 border-2 border-dashed rounded-lg transition-colors text-sm ${formErrors.customerAddress
                           ? 'border-red-500 bg-red-50 text-red-700'
                           : formData.customerAddress
-                          ? 'border-primary/30 bg-primary/5 text-primary hover:bg-primary/10'
-                          : 'border-primary/30 bg-primary/5 text-primary hover:bg-primary/10'
-                      }`}
+                            ? 'border-primary/30 bg-primary/5 text-primary hover:bg-primary/10'
+                            : 'border-primary/30 bg-primary/5 text-primary hover:bg-primary/10'
+                        }`}
                     >
                       <MapPin className="w-4 h-4 flex-shrink-0" />
                       <span className="font-medium text-left flex-1 min-w-0 truncate">
-                        {formData.customerAddress 
-                          ? (typeof formData.customerAddress === 'string' 
-                              ? formData.customerAddress 
-                              : formData.customerAddress?.fullAddress || formData.customerAddress?.FullAddress || String(formData.customerAddress))
+                        {formData.customerAddress
+                          ? (typeof formData.customerAddress === 'string'
+                            ? formData.customerAddress
+                            : formData.customerAddress?.fullAddress || formData.customerAddress?.FullAddress || String(formData.customerAddress))
                           : 'Haritadan Seç'}
                       </span>
                     </button>
-                    
+
                     {isAuthenticated && (
                       <button
                         type="button"
@@ -634,7 +627,7 @@ function Checkout() {
                       </button>
                     )}
                   </div>
-                  
+
                   {formErrors.customerAddress && (
                     <p className="mt-1 text-xs text-red-600">{formErrors.customerAddress}</p>
                   )}
@@ -657,36 +650,37 @@ function Checkout() {
                 </div>
               </div>
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full mt-5 bg-primary text-white py-3 rounded-lg font-semibold hover:bg-primary-dark transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>İşleniyor...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Devam Et</span>
-                      <ArrowLeft className="w-4 h-4 rotate-180" />
-                    </>
-                  )}
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={handleStep2Submit} className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                {error && (
-                  <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-2.5 rounded-lg">
-                    {error}
-                  </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full mt-5 bg-primary text-white py-3 rounded-lg font-semibold hover:bg-primary-dark transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>İşleniyor...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Devam Et</span>
+                    <ArrowLeft className="w-4 h-4 rotate-180" />
+                  </>
                 )}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleStep2Submit} className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+              {error && (
+                <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-2.5 rounded-lg">
+                  {error}
+                </div>
+              )}
 
-                {/* Ödeme Yöntemi Seçimi */}
-                <div className="mb-5">
-                  <div className="flex gap-1 p-1 bg-gray-100 rounded-lg">
-                    <button
+              {/* Ödeme Yöntemi Seçimi */}
+              <div className="mb-5">
+                <div className="flex gap-1 p-1 bg-gray-100 rounded-lg">
+                  {/* Online ödemeyi şimdilik gizleme */}
+                  {/* <button
                       type="button"
                       onClick={() => setPaymentMethod('online')}
                       className={`flex-1 flex flex-col items-center gap-1.5 p-3 rounded-md transition-all ${
@@ -697,56 +691,53 @@ function Checkout() {
                     >
                       <CreditCard className={`w-5 h-5 ${paymentMethod === 'online' ? 'text-primary' : ''}`} />
                       <span className="text-xs font-medium">Online</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('cash_on_delivery')}
-                      className={`flex-1 flex flex-col items-center gap-1.5 p-3 rounded-md transition-all ${
-                        paymentMethod === 'cash_on_delivery'
-                          ? 'bg-white text-primary shadow-sm'
-                          : 'text-gray-600 hover:text-gray-900'
+                    </button> */}
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('cash_on_delivery')}
+                    className={`flex-1 flex flex-col items-center gap-1.5 p-3 rounded-md transition-all ${paymentMethod === 'cash_on_delivery'
+                        ? 'bg-white text-primary shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
                       }`}
-                    >
-                      <Wallet className={`w-5 h-5 ${paymentMethod === 'cash_on_delivery' ? 'text-primary' : ''}`} />
-                      <span className="text-xs font-medium">Kapıda Nakit</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('card_on_delivery')}
-                      className={`flex-1 flex flex-col items-center gap-1.5 p-3 rounded-md transition-all ${
-                        paymentMethod === 'card_on_delivery'
-                          ? 'bg-white text-primary shadow-sm'
-                          : 'text-gray-600 hover:text-gray-900'
+                  >
+                    <Wallet className={`w-5 h-5 ${paymentMethod === 'cash_on_delivery' ? 'text-primary' : ''}`} />
+                    <span className="text-xs font-medium">Kapıda Nakit</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('card_on_delivery')}
+                    className={`flex-1 flex flex-col items-center gap-1.5 p-3 rounded-md transition-all ${paymentMethod === 'card_on_delivery'
+                        ? 'bg-white text-primary shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
                       }`}
-                    >
-                      <CreditCard className={`w-5 h-5 ${paymentMethod === 'card_on_delivery' ? 'text-primary' : ''}`} />
-                      <span className="text-xs font-medium">Kapıda Kart</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('pickup')}
-                      className={`flex-1 flex flex-col items-center gap-1.5 p-3 rounded-md transition-all ${
-                        paymentMethod === 'pickup'
-                          ? 'bg-white text-primary shadow-sm'
-                          : 'text-gray-600 hover:text-gray-900'
+                  >
+                    <CreditCard className={`w-5 h-5 ${paymentMethod === 'card_on_delivery' ? 'text-primary' : ''}`} />
+                    <span className="text-xs font-medium">Kapıda Kart</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('pickup')}
+                    className={`flex-1 flex flex-col items-center gap-1.5 p-3 rounded-md transition-all ${paymentMethod === 'pickup'
+                        ? 'bg-white text-primary shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
                       }`}
-                    >
-                      <Store className={`w-5 h-5 ${paymentMethod === 'pickup' ? 'text-primary' : ''}`} />
-                      <span className="text-xs font-medium">Gel Al</span>
-                    </button>
+                  >
+                    <Store className={`w-5 h-5 ${paymentMethod === 'pickup' ? 'text-primary' : ''}`} />
+                    <span className="text-xs font-medium">Gel Al</span>
+                  </button>
+                </div>
+              </div>
+
+              {paymentMethod === 'online' && (
+                <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="flex items-center gap-2">
+                    <Lock className="w-4 h-4 text-blue-600" />
+                    <p className="text-xs text-blue-900 font-medium">256-bit SSL ile güvenle korunuyor</p>
                   </div>
                 </div>
+              )}
 
-                {paymentMethod === 'online' && (
-                  <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <div className="flex items-center gap-2">
-                      <Lock className="w-4 h-4 text-blue-600" />
-                      <p className="text-xs text-blue-900 font-medium">256-bit SSL ile güvenle korunuyor</p>
-                    </div>
-                  </div>
-                )}
-
-                {paymentMethod === 'online' && (
+              {paymentMethod === 'online' && (
                 <div className="space-y-4">
                   {/* Kart Sahibi Adı */}
                   <div>
@@ -759,11 +750,10 @@ function Checkout() {
                       name="cardHolderName"
                       value={paymentData.cardHolderName}
                       onChange={handlePaymentChange}
-                      className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 transition-colors ${
-                        paymentErrors.cardHolderName
+                      className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 transition-colors ${paymentErrors.cardHolderName
                           ? 'border-red-500 focus:ring-red-500/20'
                           : 'border-gray-300 focus:ring-primary/20 focus:border-primary'
-                      }`}
+                        }`}
                       placeholder="Kart üzerindeki isim"
                     />
                     {paymentErrors.cardHolderName && (
@@ -782,11 +772,10 @@ function Checkout() {
                       name="cardNumber"
                       value={paymentData.cardNumber}
                       onChange={handlePaymentChange}
-                      className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 transition-colors font-mono ${
-                        paymentErrors.cardNumber
+                      className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 transition-colors font-mono ${paymentErrors.cardNumber
                           ? 'border-red-500 focus:ring-red-500/20'
                           : 'border-gray-300 focus:ring-primary/20 focus:border-primary'
-                      }`}
+                        }`}
                       placeholder="1234 5678 9012 3456"
                       maxLength="19"
                     />
@@ -806,11 +795,10 @@ function Checkout() {
                         name="expiryMonth"
                         value={paymentData.expiryMonth}
                         onChange={handlePaymentChange}
-                        className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 transition-colors text-center font-mono ${
-                          paymentErrors.expiryMonth
+                        className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 transition-colors text-center font-mono ${paymentErrors.expiryMonth
                             ? 'border-red-500 focus:ring-red-500/20'
                             : 'border-gray-300 focus:ring-primary/20 focus:border-primary'
-                        }`}
+                          }`}
                         placeholder="MM"
                         maxLength="2"
                       />
@@ -827,11 +815,10 @@ function Checkout() {
                         name="expiryYear"
                         value={paymentData.expiryYear}
                         onChange={handlePaymentChange}
-                        className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 transition-colors text-center font-mono ${
-                          paymentErrors.expiryYear
+                        className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 transition-colors text-center font-mono ${paymentErrors.expiryYear
                             ? 'border-red-500 focus:ring-red-500/20'
                             : 'border-gray-300 focus:ring-primary/20 focus:border-primary'
-                        }`}
+                          }`}
                         placeholder="YY"
                         maxLength="2"
                       />
@@ -848,11 +835,10 @@ function Checkout() {
                         name="cvv"
                         value={paymentData.cvv}
                         onChange={handlePaymentChange}
-                        className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 transition-colors text-center font-mono ${
-                          paymentErrors.cvv
+                        className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 transition-colors text-center font-mono ${paymentErrors.cvv
                             ? 'border-red-500 focus:ring-red-500/20'
                             : 'border-gray-300 focus:ring-primary/20 focus:border-primary'
-                        }`}
+                          }`}
                         placeholder="123"
                         maxLength="4"
                       />
@@ -862,29 +848,29 @@ function Checkout() {
                     </div>
                   </div>
                 </div>
-                )}
+              )}
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full mt-5 bg-primary text-white py-3 rounded-lg font-semibold hover:bg-primary-dark transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>{paymentMethod === 'online' ? 'İşleniyor...' : 'Onaylanıyor...'}</span>
-                    </>
-                  ) : (
-                    <>
-                      {paymentMethod === 'online' && <Lock className="w-4 h-4" />}
-                      <span>
-                        {paymentMethod === 'online' ? `Ödeme Yap • ${Math.max(0, totalAmount).toFixed(2)} ₺` : `Onayla • ${Math.max(0, totalAmount).toFixed(2)} ₺`}
-                      </span>
-                    </>
-                  )}
-                </button>
-              </form>
-            )}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full mt-5 bg-primary text-white py-3 rounded-lg font-semibold hover:bg-primary-dark transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>{paymentMethod === 'online' ? 'İşleniyor...' : 'Onaylanıyor...'}</span>
+                  </>
+                ) : (
+                  <>
+                    {paymentMethod === 'online' && <Lock className="w-4 h-4" />}
+                    <span>
+                      {paymentMethod === 'online' ? `Ödeme Yap • ${Math.max(0, totalAmount).toFixed(2)} ₺` : `Onayla • ${Math.max(0, totalAmount).toFixed(2)} ₺`}
+                    </span>
+                  </>
+                )}
+              </button>
+            </form>
+          )}
         </div>
       </div>
 

@@ -27,8 +27,17 @@ export const getRestaurantBySlug = async (slug) => {
 };
 
 // Ürünler
-export const getProductsByRestaurant = async (restaurantId) => {
-  const response = await api.get(`/products/restaurant/${restaurantId}`);
+export const getFeaturedProducts = async () => {
+  const response = await api.get('/products/featured');
+  return response.data;
+};
+
+export const getProductsByRestaurant = async (restaurantId, mode = null) => {
+  const params = {};
+  if (mode) {
+    params.mode = mode; // 'order' veya 'view'
+  }
+  const response = await api.get(`/products/restaurant/${restaurantId}`, { params });
   return response.data;
 };
 
@@ -88,7 +97,7 @@ export const getCrossSellProducts = async (restaurantIds = [], excludeProductIds
     const validRestaurantIds = restaurantIds.filter(id => id != null && id !== undefined);
     const validExcludeIds = excludeProductIds.filter(id => id != null && id !== undefined);
     const validCategoryIds = categoryIds.filter(id => id != null && id !== undefined);
-    
+
     if (validRestaurantIds.length > 0) {
       params.restaurantIds = validRestaurantIds.join(',');
     }
@@ -98,7 +107,7 @@ export const getCrossSellProducts = async (restaurantIds = [], excludeProductIds
     if (validCategoryIds.length > 0) {
       params.categoryIds = validCategoryIds.join(',');
     }
-    
+
     const response = await api.get('/products/cross-sell', { params });
     return response.data || { success: true, data: [] };
   } catch (error) {
@@ -113,7 +122,7 @@ export const checkMinimumOrder = async (restaurantIds) => {
     if (!restaurantIds || restaurantIds.length === 0) {
       return { success: true, data: [] };
     }
-    
+
     const response = await api.post('/restaurants/check-min-order', { restaurantIds });
     return response.data || { success: true, data: [] };
   } catch (error) {

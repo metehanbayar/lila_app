@@ -10,10 +10,9 @@ CREATE TABLE AdminUsers (
     LastLogin DATETIME
 );
 
--- Varsayılan admin kullanıcısı (şifre: admin123)
--- Not: Gerçek uygulamada mutlaka şifreyi değiştirin!
+-- Seed admin kullanıcısı
+-- Not: Bu şifreyi kullanıma almadan önce değiştirin.
 INSERT INTO AdminUsers (Username, Password, FullName, Email) 
-VALUES ('admin', 'admin123', 'Sistem Yöneticisi', 'admin@lilagroup.com');
+VALUES ('admin', 'ChangeMeAfterSetup_2026!', 'Sistem Yöneticisi', 'admin@lilagroup.com');
 
 GO
-

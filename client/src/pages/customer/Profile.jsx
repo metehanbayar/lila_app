@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  ShoppingBag, 
-  Edit2, 
-  Heart, 
+import {
+  User,
+  Mail,
+  Phone,
+  ShoppingBag,
+  Edit2,
+  Heart,
   BookMarked,
   Calendar,
   UserCheck,
@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import useCustomerStore from '../../store/customerStore';
 import { updateProfile, getFavorites, getMyOrders } from '../../services/customerApi';
-import AppLayout from '../../components/AppLayout';
 import AddressManager from '../../components/AddressManager';
 
 function Profile() {
@@ -48,13 +47,13 @@ function Profile() {
         getFavorites(),
         getMyOrders(1, 1)
       ]);
-      
+
       if (favoritesRes.success) {
         setFavoritesCount(favoritesRes.data.length);
         const favoriteIds = favoritesRes.data.map(p => p.Id);
         setFavorites(favoriteIds);
       }
-      
+
       if (ordersRes.success) {
         setOrdersCount(ordersRes.total || 0);
       }
@@ -69,13 +68,13 @@ function Profile() {
 
     try {
       const fullName = `${formData.firstName} ${formData.lastName}`.trim();
-      const dataToSend = { 
-        fullName, 
+      const dataToSend = {
+        fullName,
         email: formData.email,
         dateOfBirth: formData.dateOfBirth || null,
         gender: formData.gender || null
       };
-      
+
       const response = await updateProfile(dataToSend);
       if (response.success) {
         updateStoreProfile(response.data);
@@ -97,7 +96,7 @@ function Profile() {
     .substring(0, 2) || 'K';
 
   return (
-    <AppLayout>
+    <>
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
         {/* Header Section with Gradient */}
         <div className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-white">
@@ -402,12 +401,11 @@ function Profile() {
         </div>
       </div>
 
-      {/* Address Manager Modal */}
       <AddressManager
         isOpen={showAddressManager}
         onClose={() => setShowAddressManager(false)}
       />
-    </AppLayout>
+    </>
   );
 }
 

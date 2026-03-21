@@ -62,9 +62,8 @@ function SortableProductRow({ product, onEdit, onDelete }) {
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-4 p-4 bg-white border rounded-lg ${
-        isDragging ? 'shadow-lg z-50' : 'shadow-sm'
-      }`}
+      className={`flex items-center gap-4 p-4 bg-white border rounded-lg ${isDragging ? 'shadow-lg z-50' : 'shadow-sm'
+        }`}
     >
       <div
         {...attributes}
@@ -73,7 +72,7 @@ function SortableProductRow({ product, onEdit, onDelete }) {
       >
         <GripVertical className="text-gray-400" size={20} />
       </div>
-      
+
       {product.ImageUrl && (
         <img
           src={product.ImageUrl}
@@ -81,18 +80,18 @@ function SortableProductRow({ product, onEdit, onDelete }) {
           className="w-16 h-16 object-cover rounded"
         />
       )}
-      
+
       <div className="flex-1">
         <div className="font-semibold text-gray-900">{product.Name}</div>
         <div className="text-sm text-gray-600">
           {product.RestaurantName} {product.CategoryName && `• ${product.CategoryName}`}
         </div>
       </div>
-      
+
       <div className="font-semibold text-primary">
         {formatCurrency(product.Price)}
       </div>
-      
+
       <div className="flex gap-2">
         <button
           onClick={() => onEdit(product)}
@@ -131,6 +130,9 @@ function Products() {
     isFeatured: false,
     displayOrder: 0,
     isActive: true,
+    showInOrderMenu: true,
+    showInViewMenu: true,
+    oldPrice: '',
   });
   const [variants, setVariants] = useState([]);
 
@@ -185,6 +187,9 @@ function Products() {
         isFeatured: product.IsFeatured,
         displayOrder: product.DisplayOrder || 0,
         isActive: product.IsActive,
+        showInOrderMenu: product.ShowInOrderMenu !== false,
+        showInViewMenu: product.ShowInViewMenu !== false,
+        oldPrice: product.OldPrice || '',
       });
       // Varyantları yükle
       await loadVariants(product.Id);
@@ -201,6 +206,9 @@ function Products() {
         isFeatured: false,
         displayOrder: 0,
         isActive: true,
+        showInOrderMenu: true,
+        showInViewMenu: true,
+        oldPrice: '',
       });
       setVariants([createEmptyVariant()]);
     }
@@ -277,7 +285,7 @@ function Products() {
         ...formData,
         categoryId: formData.categoryId || null,
       };
-      
+
       let productId;
       if (editingProduct) {
         await updateProduct(editingProduct.Id, data);
@@ -323,9 +331,9 @@ function Products() {
     try {
       const newStatus = !product.IsActive;
       await updateProductStatus(product.Id, newStatus);
-      
+
       // UI'ı hemen güncelle
-      setProducts(products.map(p => 
+      setProducts(products.map(p =>
         p.Id === product.Id ? { ...p, IsActive: newStatus } : p
       ));
     } catch (err) {
@@ -374,7 +382,7 @@ function Products() {
     if (oldIndex === -1 || newIndex === -1) return;
 
     const newOrder = arrayMove(filteredProducts, oldIndex, newIndex);
-    
+
     // UI'ı hemen güncelle
     const updatedProducts = products.map(product => {
       const newProduct = newOrder.find(np => np.Id === product.Id);
@@ -384,7 +392,7 @@ function Products() {
       }
       return product;
     });
-    
+
     setProducts(updatedProducts);
 
     // Backend'e gönder
@@ -422,21 +430,27 @@ function Products() {
       header: 'Öne Çıkan',
       render: (row) => (
         <span
-          className={`px-2 py-1 rounded-full text-xs font-medium ${
-            row.IsFeatured ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'
-          }`}
+          className={`px-2 py-1 rounded-full text-xs font-medium ${row.IsFeatured ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-800'
+            }`}
         >
-          {row.IsFeatured ? 'Evet' : 'Hayır'}
+          {row.IsFeatured ? '★ Öne Çıkan' : 'Hayır'}
         </span>
       ),
+    },
+    {
+      header: 'Eski Fiyat',
+      render: (row) => row.OldPrice ? (
+        <span className="text-gray-400 line-through text-sm">
+          {formatCurrency(row.OldPrice)}
+        </span>
+      ) : '-',
     },
     {
       header: 'Durum',
       render: (row) => (
         <span
-          className={`px-2 py-1 rounded-full text-xs font-medium ${
-            row.IsActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-          }`}
+          className={`px-2 py-1 rounded-full text-xs font-medium ${row.IsActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+            }`}
         >
           {row.IsActive ? 'Aktif' : 'Pasif'}
         </span>
@@ -683,6 +697,22 @@ function Products() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Eski Fiyat (₺)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.oldPrice}
+                  onChange={(e) => setFormData({ ...formData, oldPrice: e.target.value })}
+                  placeholder="Üstü çizili gösterilecek fiyat"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Sıralama
                 </label>
                 <input
@@ -802,6 +832,41 @@ function Products() {
                 <label htmlFor="isActive" className="ml-2 text-sm text-gray-700">
                   Aktif
                 </label>
+              </div>
+            </div>
+
+            {/* Ürün Görünürlük Ayarları */}
+            <div className="border-t pt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Ürün Görünürlüğü
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex items-center p-3 bg-blue-50 rounded-lg">
+                  <input
+                    type="checkbox"
+                    id="showInOrderMenu"
+                    checked={formData.showInOrderMenu}
+                    onChange={(e) => setFormData({ ...formData, showInOrderMenu: e.target.checked })}
+                    className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <label htmlFor="showInOrderMenu" className="ml-3">
+                    <span className="block text-sm font-medium text-gray-900">Sipariş Menüsünde Göster</span>
+                    <span className="block text-xs text-gray-500">/restaurant/... sayfasında</span>
+                  </label>
+                </div>
+                <div className="flex items-center p-3 bg-purple-50 rounded-lg">
+                  <input
+                    type="checkbox"
+                    id="showInViewMenu"
+                    checked={formData.showInViewMenu}
+                    onChange={(e) => setFormData({ ...formData, showInViewMenu: e.target.checked })}
+                    className="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                  />
+                  <label htmlFor="showInViewMenu" className="ml-3">
+                    <span className="block text-sm font-medium text-gray-900">Görüntüleme Menüsünde Göster</span>
+                    <span className="block text-xs text-gray-500">/menu/... sayfasında</span>
+                  </label>
+                </div>
               </div>
             </div>
 

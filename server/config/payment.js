@@ -1,77 +1,109 @@
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { isProduction as isNodeProduction } from './runtime.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// .env dosyasını server klasöründen yükle
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
-// Vakıf Bankası VPOS724 Sanal POS Konfigürasyonu
 const paymentConfig = {
-  // Ortam: 'test' veya 'production'
-  environment: process.env.PAYMENT_ENVIRONMENT || 'production', // Production (gerçek) ortam
-
-  // Vakıf Bankası Üye İşyeri Bilgileri
-  merchant: {
-    merchantId: process.env.VAKIF_MERCHANT_ID || '000000000001111', // Test için örnek
-    merchantPassword: process.env.VAKIF_MERCHANT_PASSWORD || 'test_password', // Test için
-    terminalNo: process.env.VAKIF_TERMINAL_NO || '00000001', // Test için örnek
-  },
-
-  // Test Ortamı URL'leri (Vakıf Bankası Resmi Dokümantasyon)
   test: {
-    // 3D Secure Enrollment (Port: 443 veya 4443 - Port belirtmeden 443 kullanılır)
-    mpiEnrollmentUrl: process.env.VAKIF_TEST_MPI_URL || 'https://3dsecuretest.vakifbank.com.tr/MPIAPI/MPI_Enrollment.aspx',
-    // Sanal POS ServisUrl (Port: 4443)
+    mpiEnrollmentUrl:
+      process.env.VAKIF_TEST_MPI_URL ||
+      'https://3dsecuretest.vakifbank.com.tr/MPIAPI/MPI_Enrollment.aspx',
     vposUrl: 'https://onlineodemetest.vakifbank.com.tr:4443/VposService/v3/Vposreq.aspx',
   },
-
-  // Production Ortamı URL'leri (Vakıf Bankası Resmi Dokümantasyon)
   production: {
-    // 3D Secure Enrollment (Port: 443 veya 4443)
-    mpiEnrollmentUrl: process.env.VAKIF_PROD_MPI_URL || 'https://3dsecure.vakifbank.com.tr/MPIAPI/MPI_Enrollment.aspx',
-    // Sanal POS ServisUrl (Port: 4443)
+    mpiEnrollmentUrl:
+      process.env.VAKIF_PROD_MPI_URL ||
+      'https://3dsecure.vakifbank.com.tr/MPIAPI/MPI_Enrollment.aspx',
     vposUrl: 'https://onlineodeme.vakifbank.com.tr:4443/VposService/v3/Vposreq.aspx',
-  },
-
-  // Para Birimi Kodu (949 = TRY)
-  currencyCode: process.env.PAYMENT_CURRENCY_CODE || '949',
-
-  // Callback URL'leri (frontend'den alınacak)
-  callbacks: {
-    successUrl: process.env.PAYMENT_SUCCESS_URL || 'http://localhost:5173/payment/success',
-    failureUrl: process.env.PAYMENT_FAILURE_URL || 'http://localhost:5173/payment/failure',
   },
 };
 
-// Mevcut ortam URL'lerini al
+function getPaymentEnvironment() {
+  return process.env.PAYMENT_ENVIRONMENT || 'test';
+}
+
+function getMerchantConfigInternal() {
+  return {
+    merchantId: process.env.VAKIF_MERCHANT_ID || '',
+    merchantPassword: process.env.VAKIF_MERCHANT_PASSWORD || '',
+    terminalNo: process.env.VAKIF_TERMINAL_NO || '',
+  };
+}
+
+function getCallbackConfig() {
+  return {
+    successUrl: process.env.PAYMENT_SUCCESS_URL || 'http://localhost:5173/payment/success',
+    failureUrl: process.env.PAYMENT_FAILURE_URL || 'http://localhost:5173/payment/failure',
+  };
+}
+
+export function validatePaymentConfig() {
+  const environment = getPaymentEnvironment();
+
+  if (!['test', 'production'].includes(environment)) {
+    throw new Error('PAYMENT_ENVIRONMENT must be either "test" or "production".');
+  }
+
+  if (!isNodeProduction() && environment !== 'production') {
+    return;
+  }
+
+  const merchant = getMerchantConfigInternal();
+  const callbacks = getCallbackConfig();
+  const requiredEntries = [
+    ['VAKIF_MERCHANT_ID', merchant.merchantId],
+    ['VAKIF_MERCHANT_PASSWORD', merchant.merchantPassword],
+    ['VAKIF_TERMINAL_NO', merchant.terminalNo],
+    ['PAYMENT_SUCCESS_URL', callbacks.successUrl],
+    ['PAYMENT_FAILURE_URL', callbacks.failureUrl],
+  ];
+
+  for (const [key, value] of requiredEntries) {
+    if (!value) {
+      throw new Error(`${key} must be set in production.`);
+    }
+  }
+
+  if (
+    callbacks.successUrl.includes('localhost') ||
+    callbacks.failureUrl.includes('localhost')
+  ) {
+    throw new Error('Payment callback URLs cannot point to localhost in production.');
+  }
+}
+
 export function getPaymentUrls() {
-  return paymentConfig.environment === 'production'
-    ? paymentConfig.production
-    : paymentConfig.test;
+  validatePaymentConfig();
+  return getPaymentEnvironment() === 'production' ? paymentConfig.production : paymentConfig.test;
 }
 
-// Merchant bilgilerini al
 export function getMerchantConfig() {
-  return paymentConfig.merchant;
+  validatePaymentConfig();
+  return getMerchantConfigInternal();
 }
 
-// Currency code'u al
 export function getCurrencyCode() {
-  return paymentConfig.currencyCode;
+  return process.env.PAYMENT_CURRENCY_CODE || '949';
 }
 
-// Callback URL'lerini al
 export function getCallbackUrls() {
-  return paymentConfig.callbacks;
+  validatePaymentConfig();
+  return getCallbackConfig();
 }
 
-// Ortam kontrolü
 export function isProduction() {
-  return paymentConfig.environment === 'production';
+  return getPaymentEnvironment() === 'production';
 }
 
-export default paymentConfig;
-
+export default {
+  ...paymentConfig,
+  environment: getPaymentEnvironment(),
+  merchant: getMerchantConfigInternal(),
+  currencyCode: getCurrencyCode(),
+  callbacks: getCallbackConfig(),
+};

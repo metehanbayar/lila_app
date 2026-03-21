@@ -11,6 +11,7 @@ import SplashScreen from './components/SplashScreen';
 // Public pages
 import Home from './pages/Home';
 import RestaurantMenu from './pages/RestaurantMenu';
+import ViewMenu from './pages/ViewMenu'; // Sadece görüntüleme menüsü ekle
 import Search from './pages/Search';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
@@ -48,6 +49,7 @@ const router = createBrowserRouter([
   // Public
   { path: '/', element: <AppLayout><Home /></AppLayout> },
   { path: '/restaurant/:slug', element: <AppLayout><RestaurantMenu /></AppLayout> },
+  { path: '/menu/:slug', element: <ViewMenu /> }, // Sadece görüntüleme menüsü (Layout yok)
   { path: '/search', element: <AppLayout><Search /></AppLayout> },
   { path: '/cart', element: <AppLayout><Cart /></AppLayout> },
   { path: '/checkout', element: <AppLayout><Checkout /></AppLayout> },
@@ -58,10 +60,10 @@ const router = createBrowserRouter([
   // Customer
   { path: '/login', element: <Login /> },
   { path: '/register', element: <Register /> },
-  { path: '/profile', element: <CustomerProtectedRoute><Profile /></CustomerProtectedRoute> },
-  { path: '/my-orders', element: <CustomerProtectedRoute><OrderHistory /></CustomerProtectedRoute> },
-  { path: '/my-orders/:orderNumber', element: <CustomerProtectedRoute><OrderDetail /></CustomerProtectedRoute> },
-  { path: '/favorites', element: <CustomerProtectedRoute><Favorites /></CustomerProtectedRoute> },
+  { path: '/profile', element: <CustomerProtectedRoute><AppLayout><Profile /></AppLayout></CustomerProtectedRoute> },
+  { path: '/my-orders', element: <CustomerProtectedRoute><AppLayout><OrderHistory /></AppLayout></CustomerProtectedRoute> },
+  { path: '/my-orders/:orderNumber', element: <CustomerProtectedRoute><AppLayout><OrderDetail /></AppLayout></CustomerProtectedRoute> },
+  { path: '/favorites', element: <CustomerProtectedRoute><AppLayout><Favorites /></AppLayout></CustomerProtectedRoute> },
 
   // Admin
   { path: '/admin/login', element: <AdminLogin /> },
@@ -86,16 +88,16 @@ function App() {
   // localStorage'dan daha önce splash ekranı gösterilip gösterilmediğini kontrol et
   const [showSplash, setShowSplash] = useState(() => {
     const lastSplashTime = localStorage.getItem('lastSplashTime');
-    
+
     if (!lastSplashTime) {
       return true; // Hiç görülmemişse göster
     }
-    
+
     // Son splash zamannından bu yana ne kadar süre geçti?
     const lastTime = parseInt(lastSplashTime);
     const now = Date.now();
     const hoursPassed = (now - lastTime) / (1000 * 60 * 60); // Saat cinsinden
-    
+
     // Eğer 24 saat geçtiyse tekrar göster
     return hoursPassed >= 4;
   });

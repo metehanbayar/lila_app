@@ -1,152 +1,111 @@
-import { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import BottomNav from './BottomNav';
-import LocationPickerModal from './LocationPickerModal';
-import AddressManager from './AddressManager';
+import Header from './Header';
 import ScrollToTop from './ScrollToTop';
-import { ArrowLeft, MapPin, ChevronRight } from 'lucide-react';
+import { Home, ShoppingCart, User, Search, Heart } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import useCartStore from '../store/cartStore';
 import useCustomerStore from '../store/customerStore';
-import { getAddresses } from '../services/customerApi';
 
-function AppLayout({ children, showBottomNav = true, showBackButton = false, title = '' }) {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const isHomePage = location.pathname === '/';
-  const { isAuthenticated } = useCustomerStore();
-  const [showLocationModal, setShowLocationModal] = useState(false);
-  const [showAddressManager, setShowAddressManager] = useState(false);
-  const [selectedAddress, setSelectedAddress] = useState(null);
+function AppLayout({ children }) {
+    const navigate = useNavigate();
+    const location = useLocation();
+    const totalItems = useCartStore((state) => state.getTotalItems());
+    const { isAuthenticated } = useCustomerStore();
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadUserAddresses();
-    } else {
-      // Giriş yapılmamışsa adresi temizle
-      setSelectedAddress(null);
-    }
-  }, [isAuthenticated]);
+    const isActive = (path) => {
+        if (path === '/') return location.pathname === '/';
+        return location.pathname.startsWith(path);
+    };
 
-  const loadUserAddresses = async () => {
-    // Ekstra güvenlik kontrolü
-    if (!isAuthenticated) {
-      return;
-    }
-    
-    try {
-      const response = await getAddresses();
-      if (response.success && response.data && response.data.length > 0) {
-        const defaultAddress = response.data.find(addr => addr.isDefault);
-        if (defaultAddress && defaultAddress.addressName && defaultAddress.fullAddress) {
-          const addressParts = defaultAddress.fullAddress.split(',');
-          const neighborhood = addressParts.length > 1 ? addressParts[1]?.trim() : defaultAddress.fullAddress;
-          
-          setSelectedAddress({
-            formatted_address: `${defaultAddress.addressName} - ${neighborhood}`
-          });
-        }
-      }
-    } catch (err) {
-      console.error('Adresler yüklenemedi:', err);
-    }
-  };
+    return (
+        <div className="min-h-screen flex flex-col bg-gradient-to-b from-purple-50 via-white to-gray-50">
+            <ScrollToTop />
+            <Header />
 
-  const handleLocationSelect = (address) => {
-    setSelectedAddress(address);
-    setShowLocationModal(false);
-  };
+            <main className="flex-grow animate-pageEnter pb-20 lg:pb-0">
+                {children}
+            </main>
 
-  const handleAddressSelect = (address) => {
-    if (address) {
-      let addressName = '';
-      let fullAddress = '';
-      
-      if (typeof address === 'string') {
-        fullAddress = address;
-      } else if (address.addressName && address.fullAddress) {
-        addressName = address.addressName;
-        fullAddress = address.fullAddress;
-      } else if (address.FullAddress) {
-        fullAddress = address.FullAddress;
-      }
-      
-      const addressParts = fullAddress.split(',');
-      const neighborhood = addressParts.length > 1 ? addressParts[1]?.trim() : fullAddress;
-      const displayText = addressName ? `${addressName} - ${neighborhood}` : neighborhood;
-      
-      setSelectedAddress({
-        formatted_address: displayText
-      });
-    }
-    setShowAddressManager(false);
-  };
+            {/* Mobile Bottom Navigation */}
+            <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
+                {/* Glass background */}
+                <div className="absolute inset-0 bg-white/95 backdrop-blur-xl border-t border-gray-200/50 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]" />
 
-  return (
-    <div className={`min-h-screen bg-gradient-to-b from-purple-50 via-white to-gray-50 flex flex-col ${!showBottomNav ? 'h-screen' : ''}`}>
-      <ScrollToTop />
-      {/* Unified Header - Sabit Layout */}
-      <header className="bg-white/80 backdrop-blur-xl border-b border-white/30 sticky top-0 z-40 px-4 py-3 shadow-sm">
-        <div className="flex items-center gap-3">
-          {/* Sol Bölüm - Logo */}
-          <Link to="/" className="flex items-center flex-shrink-0">
-            <img 
-              src="/logo.png" 
-              alt="Lila Group" 
-              className="w-10 h-10 object-contain"
-            />
-          </Link>
+                {/* Safe area padding */}
+                <div className="relative px-4 safe-area-bottom">
+                    <div className="flex items-center justify-between h-16 max-w-md mx-auto">
+                        <BottomNavButton
+                            onClick={() => navigate('/')}
+                            isActive={isActive('/')}
+                            icon={<Home className="w-5 h-5" />}
+                            label="Ana Sayfa"
+                        />
 
-          <div className="flex-1"></div>
+                        <BottomNavButton
+                            onClick={() => navigate('/search')}
+                            isActive={isActive('/search')}
+                            icon={<Search className="w-5 h-5" />}
+                            label="Ara"
+                        />
 
-          {/* Sağ Bölüm - Adres Seçici */}
-          <button
-            onClick={() => {
-              if (isAuthenticated) {
-                setShowAddressManager(true);
-              } else {
-                setShowLocationModal(true);
-              }
-            }}
-            className="flex items-center gap-2 group flex-shrink-0"
-          >
-            <div className="p-1.5 bg-purple-50 rounded-lg flex-shrink-0">
-              <MapPin className="w-4 h-4 text-purple-600" />
-            </div>
-            <div className="text-left min-w-0 max-w-[160px]">
-              <div className="text-[10px] text-gray-500 font-medium">Teslimat</div>
-              <div className="font-semibold text-gray-900 text-xs truncate flex items-center gap-1">
-                <span className="truncate">
-                  {selectedAddress?.formatted_address || (isAuthenticated ? 'Adres seçin' : 'Konum seçin')}
-                </span>
-                <ChevronRight className="w-3 h-3 text-gray-400 group-hover:translate-x-1 transition-transform flex-shrink-0" />
-              </div>
-            </div>
-          </button>
+                        {/* Center Cart Button */}
+                        <div className="relative -mt-5">
+                            <button
+                                onClick={() => navigate('/cart')}
+                                className={`relative flex items-center justify-center w-14 h-14 rounded-full transition-all duration-300 ${isActive('/cart')
+                                    ? 'bg-gradient-to-br from-purple-600 to-pink-600 shadow-xl shadow-purple-500/40 scale-105'
+                                    : 'bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg shadow-purple-500/30 hover:scale-105'
+                                    }`}
+                            >
+                                <ShoppingCart className="w-5 h-5 text-white" />
+                                {totalItems > 0 && (
+                                    <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-gradient-to-r from-rose-500 to-pink-500 text-white text-[11px] font-bold rounded-full flex items-center justify-center shadow-lg shadow-rose-500/40 animate-scaleIn border-2 border-white">
+                                        {totalItems > 9 ? '9+' : totalItems}
+                                    </span>
+                                )}
+                            </button>
+                            <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-medium text-gray-500 whitespace-nowrap">
+                                Sepet
+                            </span>
+                        </div>
+
+                        <BottomNavButton
+                            onClick={() => navigate('/favorites')}
+                            isActive={isActive('/favorites')}
+                            icon={<Heart className="w-5 h-5" />}
+                            label="Favoriler"
+                        />
+
+                        <BottomNavButton
+                            onClick={() => navigate(isAuthenticated ? '/profile' : '/login')}
+                            isActive={isActive('/profile') || isActive('/login')}
+                            icon={<User className="w-5 h-5" />}
+                            label={isAuthenticated ? 'Profil' : 'Giriş'}
+                        />
+                    </div>
+                </div>
+            </nav>
         </div>
-      </header>
+    );
+}
 
-      {/* Main Content */}
-      <main className={`flex-1 pb-16 lg:pb-0 ${!showBottomNav ? 'overflow-hidden' : ''}`}>
-        {children}
-      </main>
-
-      {/* Bottom Navigation - Mobil için */}
-      {showBottomNav && <BottomNav />}
-
-      {/* Konum Modal */}
-      <LocationPickerModal
-        isOpen={showLocationModal}
-        onClose={() => setShowLocationModal(false)}
-        onConfirm={handleLocationSelect}
-      />
-
-      {/* Adres Yöneticisi Modal */}
-      <AddressManager
-        isOpen={showAddressManager}
-        onClose={() => setShowAddressManager(false)}
-        onSelectAddress={handleAddressSelect}
-      />
-    </div>
-  );
+function BottomNavButton({ onClick, isActive, icon, label }) {
+    return (
+        <button
+            onClick={onClick}
+            className="flex flex-col items-center justify-center min-w-[56px] py-1 transition-all duration-300"
+        >
+            <div className={`p-2 rounded-xl transition-all duration-300 ${isActive
+                ? 'bg-purple-100 text-purple-600'
+                : 'text-gray-400 hover:text-gray-600'
+                }`}>
+                {icon}
+            </div>
+            <span className={`text-[10px] font-medium mt-0.5 transition-colors ${isActive ? 'text-purple-600' : 'text-gray-400'
+                }`}>
+                {label}
+            </span>
+        </button>
+    );
 }
 
 export default AppLayout;

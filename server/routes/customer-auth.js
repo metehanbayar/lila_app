@@ -1,14 +1,13 @@
 import express from 'express';
 import { getConnection, sql } from '../config/database.js';
+import { issueToken, verifyToken } from '../services/auth-token.js';
 
 const router = express.Router();
 
-// OTP sistemini devre dışı bırakma kontrolü
 const isOTPEnabled = () => {
   return process.env.OTP_ENABLED !== 'false';
 };
 
-// Customer authentication middleware
 export const customerAuth = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
@@ -19,19 +18,24 @@ export const customerAuth = async (req, res, next) => {
       });
     }
 
-    // Token'dan telefon bilgisini çıkar
-    const [identifier] = Buffer.from(token, 'base64').toString().split(':');
-    
+    const payload = verifyToken(token);
+    if (payload.role !== 'customer' || !payload.sub) {
+      throw new Error('Invalid customer token.');
+    }
+
+    const customerId = Number.parseInt(payload.sub, 10);
+    if (!Number.isInteger(customerId) || customerId <= 0) {
+      throw new Error('Invalid customer id in token.');
+    }
+
     const pool = await getConnection();
-    
-    // Telefon veya email ile kullanıcı bul
     const result = await pool
       .request()
-      .input('identifier', sql.NVarChar, identifier)
+      .input('id', sql.Int, customerId)
       .query(`
         SELECT Id, Email, FirstName, LastName, Phone, DateOfBirth, Gender, ReferralCode
         FROM Customers
-        WHERE (Phone = @identifier OR Email = @identifier) AND IsActive = 1
+        WHERE Id = @id AND IsActive = 1
       `);
 
     if (result.recordset.length === 0) {
@@ -41,7 +45,6 @@ export const customerAuth = async (req, res, next) => {
       });
     }
 
-    // fullName'i oluştur
     const customer = result.recordset[0];
     customer.FullName = `${customer.FirstName || ''} ${customer.LastName || ''}`.trim();
 
@@ -56,12 +59,10 @@ export const customerAuth = async (req, res, next) => {
   }
 };
 
-// Müşteri kaydı (OTP ile)
 router.post('/register', async (req, res) => {
   try {
     const { phone, fullName, email, dateOfBirth, gender, referralCode, otp } = req.body;
 
-    // Validasyon
     if (!phone || !fullName || !otp) {
       return res.status(400).json({
         success: false,
@@ -72,11 +73,9 @@ router.post('/register', async (req, res) => {
     const cleanPhone = phone.replace(/\s/g, '');
     const pool = await getConnection();
 
-    // OTP devre dışıysa, doğrulama kontrolünü atla
     if (!isOTPEnabled()) {
-      console.log('⚠️ OTP DEVRE DIŞI - Kayıt işlemi OTP olmadan devam ediyor');
+      console.log('OTP disabled, registration continues without OTP enforcement.');
     } else {
-      // OTP doğrulaması
       const otpResult = await pool
         .request()
         .input('phone', sql.NVarChar, cleanPhone)
@@ -85,8 +84,8 @@ router.post('/register', async (req, res) => {
         .query(`
           SELECT TOP 1 Id, ExpiresAt, IsVerified
           FROM OTPVerification
-          WHERE Phone = @phone 
-            AND OTPCode = @otpCode 
+          WHERE Phone = @phone
+            AND OTPCode = @otpCode
             AND Purpose = @purpose
           ORDER BY CreatedAt DESC
         `);
@@ -115,7 +114,6 @@ router.post('/register', async (req, res) => {
       }
     }
 
-    // Telefon zaten kayıtlı mı?
     const checkPhone = await pool
       .request()
       .input('phone', sql.NVarChar, cleanPhone)
@@ -130,7 +128,6 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    // E-posta varsa ve kayıtlı mı kontrol et
     if (email) {
       const checkEmail = await pool
         .request()
@@ -147,12 +144,10 @@ router.post('/register', async (req, res) => {
       }
     }
 
-    // fullName'i parçala
     const nameParts = fullName.trim().split(' ');
     const firstName = nameParts[0] || '';
     const lastName = nameParts.slice(1).join(' ') || '';
 
-    // Referral code kontrolü ve referrer'ı bul
     let referredBy = null;
     if (referralCode) {
       const referrerCheck = await pool
@@ -161,13 +156,12 @@ router.post('/register', async (req, res) => {
         .query(`
           SELECT Id FROM Customers WHERE ReferralCode = @refCode
         `);
-      
+
       if (referrerCheck.recordset.length > 0) {
         referredBy = referrerCheck.recordset[0].Id;
       }
     }
 
-    // Yeni müşteri kaydı (OTP ile)
     const result = await pool
       .request()
       .input('email', sql.NVarChar, email || null)
@@ -183,10 +177,9 @@ router.post('/register', async (req, res) => {
         VALUES (@email, @firstName, @lastName, @phone, @dateOfBirth, @gender, @referredBy)
       `);
 
-    // Yeni müşteri için referral code oluştur
     const newCustomerId = result.recordset[0].Id;
-    const newReferralCode = 'REF' + String(newCustomerId).padStart(6, '0');
-    
+    const newReferralCode = `REF${String(newCustomerId).padStart(6, '0')}`;
+
     await pool
       .request()
       .input('id', sql.Int, newCustomerId)
@@ -196,11 +189,11 @@ router.post('/register', async (req, res) => {
       `);
 
     const customer = result.recordset[0];
-
-    // Token oluştur (telefon bazlı)
-    const token = Buffer.from(`${cleanPhone}:otp`).toString('base64');
-
-    // fullName'i oluştur
+    const token = issueToken({
+      role: 'customer',
+      sub: String(customer.Id),
+      phone: customer.Phone,
+    });
     const customerFullName = `${customer.FirstName} ${customer.LastName}`.trim();
 
     res.status(201).json({
@@ -225,7 +218,6 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Müşteri girişi (OTP ile)
 router.post('/login', async (req, res) => {
   try {
     const { phone, otp } = req.body;
@@ -240,11 +232,7 @@ router.post('/login', async (req, res) => {
     const cleanPhone = phone.replace(/\s/g, '');
     const pool = await getConnection();
 
-    // OTP devre dışıysa, doğrulama kontrolünü atla
-    if (!isOTPEnabled()) {
-      // OTP devre dışı
-    } else {
-      // OTP doğrulaması
+    if (isOTPEnabled()) {
       const otpResult = await pool
         .request()
         .input('phone', sql.NVarChar, cleanPhone)
@@ -253,8 +241,8 @@ router.post('/login', async (req, res) => {
         .query(`
           SELECT TOP 1 Id, ExpiresAt, IsVerified
           FROM OTPVerification
-          WHERE Phone = @phone 
-            AND OTPCode = @otpCode 
+          WHERE Phone = @phone
+            AND OTPCode = @otpCode
             AND Purpose = @purpose
           ORDER BY CreatedAt DESC
         `);
@@ -283,7 +271,6 @@ router.post('/login', async (req, res) => {
       }
     }
 
-    // Müşteri bilgilerini getir
     const result = await pool
       .request()
       .input('phone', sql.NVarChar, cleanPhone)
@@ -309,10 +296,8 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // fullName'i oluştur
     const customerFullName = `${customer.FirstName || ''} ${customer.LastName || ''}`.trim();
 
-    // Last login güncelle
     await pool
       .request()
       .input('id', sql.Int, customer.Id)
@@ -322,8 +307,11 @@ router.post('/login', async (req, res) => {
         WHERE Id = @id
       `);
 
-    // Token oluştur
-    const token = Buffer.from(`${cleanPhone}:otp`).toString('base64');
+    const token = issueToken({
+      role: 'customer',
+      sub: String(customer.Id),
+      phone: customer.Phone,
+    });
 
     res.json({
       success: true,
@@ -347,7 +335,6 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Profil bilgisi getir
 router.get('/profile', customerAuth, async (req, res) => {
   try {
     res.json({
@@ -363,7 +350,6 @@ router.get('/profile', customerAuth, async (req, res) => {
   }
 });
 
-// Profil güncelle
 router.put('/profile', customerAuth, async (req, res) => {
   try {
     const { fullName, email, dateOfBirth, gender } = req.body;
@@ -375,7 +361,6 @@ router.put('/profile', customerAuth, async (req, res) => {
       });
     }
 
-    // fullName'i parçala
     const nameParts = fullName.trim().split(' ');
     const firstName = nameParts[0] || '';
     const lastName = nameParts.slice(1).join(' ') || '';
@@ -391,7 +376,7 @@ router.put('/profile', customerAuth, async (req, res) => {
       .input('gender', sql.NVarChar, gender || null)
       .query(`
         UPDATE Customers
-        SET 
+        SET
           FirstName = @firstName,
           LastName = @lastName,
           Email = @email,
@@ -402,7 +387,6 @@ router.put('/profile', customerAuth, async (req, res) => {
         WHERE Id = @id
       `);
 
-    // Response için fullName'i oluştur
     const updatedCustomer = result.recordset[0];
     updatedCustomer.FullName = `${updatedCustomer.FirstName} ${updatedCustomer.LastName}`.trim();
 
@@ -421,4 +405,3 @@ router.put('/profile', customerAuth, async (req, res) => {
 });
 
 export default router;
-

@@ -1,5 +1,6 @@
 import { Server } from 'socket.io';
 import { getConnection, sql } from '../config/database.js';
+import { createCorsOriginValidator } from '../config/runtime.js';
 
 let io;
 
@@ -9,8 +10,9 @@ let io;
 export function initializeSocketIO(httpServer) {
   io = new Server(httpServer, {
     cors: {
-      origin: process.env.CORS_ORIGIN || '*',
+      origin: createCorsOriginValidator(),
       methods: ['GET', 'POST'],
+      allowedHeaders: ['Authorization'],
     },
     transports: ['websocket', 'polling'],
   });
@@ -120,4 +122,3 @@ export async function notifyNewOrder(orderId, restaurantOrders) {
 
 
 export { io };
-

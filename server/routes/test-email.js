@@ -1,7 +1,18 @@
 import express from 'express';
 import { testEmailConnection, sendTestEmail } from '../config/email.js';
+import { adminAuth } from './admin.js';
+import { isProduction } from '../config/runtime.js';
 
 const router = express.Router();
+
+router.use((req, res, next) => {
+  if (!isProduction()) {
+    next();
+    return;
+  }
+
+  adminAuth(req, res, next);
+});
 
 // Mail bağlantısını test et
 router.get('/test-connection', async (req, res) => {

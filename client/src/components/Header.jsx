@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Home, ShoppingCart, User, Search, MapPin, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { MapPin, ChevronDown, ShoppingCart } from 'lucide-react';
 import useCartStore from '../store/cartStore';
 import useCustomerStore from '../store/customerStore';
 import { getAddresses } from '../services/customerApi';
@@ -14,41 +14,39 @@ function Header() {
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showAddressManager, setShowAddressManager] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState(null);
-  const [userAddresses, setUserAddresses] = useState([]);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
       loadUserAddresses();
     } else {
-      // Giriş yapılmamışsa adresi temizle
       setSelectedAddress(null);
-      setUserAddresses([]);
     }
   }, [isAuthenticated]);
 
   const loadUserAddresses = async () => {
-    // Ekstra güvenlik kontrolü
-    if (!isAuthenticated) {
-      return;
-    }
-    
+    if (!isAuthenticated) return;
     try {
       const response = await getAddresses();
       if (response.success && response.data && response.data.length > 0) {
-        setUserAddresses(response.data);
         const defaultAddress = response.data.find(addr => addr.isDefault);
         if (defaultAddress && defaultAddress.addressName && defaultAddress.fullAddress) {
           const addressParts = defaultAddress.fullAddress.split(',');
           const neighborhood = addressParts.length > 1 ? addressParts[1]?.trim() : defaultAddress.fullAddress;
-          
           setSelectedAddress({
             formatted_address: `${defaultAddress.addressName} - ${neighborhood}`
           });
         }
       }
-    } catch (err) {
-      // Adres yükleme hatası
-    }
+    } catch (err) { }
   };
 
   const handleLocationSelect = (address) => {
@@ -58,9 +56,8 @@ function Header() {
 
   const handleAddressSelect = (address) => {
     if (address) {
-      let addressName = '';
       let fullAddress = '';
-      
+      let addressName = '';
       if (typeof address === 'string') {
         fullAddress = address;
       } else if (address.addressName && address.fullAddress) {
@@ -69,107 +66,83 @@ function Header() {
       } else if (address.FullAddress) {
         fullAddress = address.FullAddress;
       }
-      
       const addressParts = fullAddress.split(',');
       const neighborhood = addressParts.length > 1 ? addressParts[1]?.trim() : fullAddress;
       const displayText = addressName ? `${addressName} - ${neighborhood}` : neighborhood;
-      
-      setSelectedAddress({
-        formatted_address: displayText
-      });
+      setSelectedAddress({ formatted_address: displayText });
     }
     setShowAddressManager(false);
   };
 
   return (
     <>
-      <header className="bg-white shadow-sm sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between gap-3">
-            {/* Logo */}
-            <Link to="/" className="flex items-center flex-shrink-0">
-              <img 
-                src="/logo.png" 
-                alt="Lila Group" 
-                className="w-10 h-10 object-contain"
-              />
-            </Link>
+      <header
+        className={`sticky top-0 z-40 transition-all duration-300 overflow-visible ${isScrolled
+            ? 'bg-white/95 backdrop-blur-xl shadow-sm'
+            : 'bg-white'
+          }`}
+      >
+        <div className="container mx-auto px-4 relative">
+          <div className="flex items-center justify-between h-12 gap-4">
 
-            {/* Adres Seçici - Ortada */}
+            {/* Sol: Konum Seçici */}
             <button
-              onClick={() => {
-                if (isAuthenticated) {
-                  setShowAddressManager(true);
-                } else {
-                  setShowLocationModal(true);
-                }
-              }}
-              className="flex items-center gap-2 flex-1 max-w-xs group bg-yellow-100 border-2 border-red-500"
-              style={{ minHeight: '50px' }}
+              onClick={() => isAuthenticated ? setShowAddressManager(true) : setShowLocationModal(true)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors max-w-[140px] sm:max-w-xs"
             >
-              <div className="p-1.5 bg-purple-50 rounded-lg">
-                <MapPin className="w-4 h-4 text-purple-600" />
-              </div>
-              <div className="flex-1 text-left min-w-0">
-                <div className="text-[10px] text-gray-500 font-medium">Teslimat</div>
-                <div className="font-semibold text-gray-900 text-xs truncate flex items-center gap-1">
-                  {selectedAddress?.formatted_address || (isAuthenticated ? 'Adres seçin' : 'Konum seçin')}
-                  <ChevronRight className="w-3 h-3 text-gray-400 group-hover:translate-x-1 transition-transform flex-shrink-0" />
-                </div>
-              </div>
+              <MapPin className="w-4 h-4 text-purple-600 flex-shrink-0" />
+              <span className="text-xs sm:text-sm text-gray-700 truncate">
+                {selectedAddress?.formatted_address || 'Konum seçin'}
+              </span>
+              <ChevronDown className="w-3 h-3 text-gray-400 flex-shrink-0" />
             </button>
 
-            {/* Navigation */}
-            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+            {/* Orta: Logo - Büyük ve taşan */}
+            <div className="absolute left-1/2 -translate-x-1/2 top-0 z-50">
               <button
                 onClick={() => navigate('/')}
-                className="p-2 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors"
-                aria-label="Ana Sayfa"
+                className="relative group"
               >
-                <Home className="w-5 h-5 text-gray-600" />
-              </button>
+                {/* Glow effect */}
+                <div className="absolute inset-0 bg-purple-500/30 rounded-full blur-xl scale-110 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-              <button
-                onClick={() => navigate('/search')}
-                className="p-2 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors"
-                aria-label="Ürün Ara"
-              >
-                <Search className="w-5 h-5 text-gray-600" />
-              </button>
-
-              <button
-                onClick={() => navigate(isAuthenticated ? '/profile' : '/login')}
-                className="p-2 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors"
-                aria-label={isAuthenticated ? "Profil" : "Giriş Yap"}
-              >
-                <User className={`w-5 h-5 ${isAuthenticated ? 'text-primary' : 'text-gray-600'}`} />
-              </button>
-
-              <button
-                onClick={() => navigate('/cart')}
-                className="relative p-2 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors"
-                aria-label="Sepet"
-              >
-                <ShoppingCart className="w-5 h-5 text-gray-600" />
-                {totalItems > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-primary text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                    {totalItems > 9 ? '9+' : totalItems}
-                  </span>
-                )}
+                {/* Logo container - taşan efekt */}
+                <div className="relative w-16 h-16 sm:w-20 sm:h-20 -mt-1 rounded-full bg-white shadow-xl shadow-purple-500/20 border-4 border-white overflow-hidden transform transition-transform duration-300 group-hover:scale-105">
+                  <img
+                    src="/logo.png"
+                    alt="Logo"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
               </button>
             </div>
+
+            {/* Sağ: Sepet */}
+            <button
+              onClick={() => navigate('/cart')}
+              className="relative flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-full transition-colors"
+            >
+              <ShoppingCart className="w-4 h-4" />
+              <span className="text-xs font-medium hidden sm:inline">Sepet</span>
+              {totalItems > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-lg">
+                  {totalItems > 9 ? '9+' : totalItems}
+                </span>
+              )}
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Konum Modal */}
+      {/* Logo için ekstra boşluk */}
+      <div className="h-6 sm:h-8" />
+
       <LocationPickerModal
         isOpen={showLocationModal}
         onClose={() => setShowLocationModal(false)}
         onConfirm={handleLocationSelect}
       />
 
-      {/* Adres Yöneticisi Modal */}
       <AddressManager
         isOpen={showAddressManager}
         onClose={() => setShowAddressManager(false)}
@@ -180,4 +153,3 @@ function Header() {
 }
 
 export default Header;
-

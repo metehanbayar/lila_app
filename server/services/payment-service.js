@@ -5,8 +5,8 @@ import {
   getPaymentUrls,
   getMerchantConfig,
   getCurrencyCode,
-  getCallbackUrls,
 } from '../config/payment.js';
+import { isPaymentDebugEnabled } from '../config/runtime.js';
 
 // XML Parser ve Builder yapılandırması
 const xmlParser = new XMLParser({
@@ -23,6 +23,12 @@ const xmlBuilder = new XMLBuilder({
   attributeNamePrefix: '@_',
   textNodeName: '#text',
 });
+
+const paymentDebugLog = (...args) => {
+  if (isPaymentDebugEnabled()) {
+    console.log(...args);
+  }
+};
 
 /**
  * 3D Secure Enrollment Kontrolü
@@ -57,7 +63,7 @@ export async function checkEnrollment(params) {
 
     // Debug: Merchant bilgilerini logla (password hariç)
     if (process.env.NODE_ENV !== 'production') {
-      console.log('🔐 Merchant Config:', {
+      paymentDebugLog('Merchant config:', {
         merchantId: merchant.merchantId,
         terminalNo: merchant.terminalNo,
         passwordSet: merchant.merchantPassword ? 'YES' : 'NO',
@@ -84,14 +90,14 @@ export async function checkEnrollment(params) {
       ...(brandName && { BrandName: brandName }),
     });
 
-    console.log('🔐 3D Secure Enrollment kontrolü yapılıyor...');
-    console.log('📋 Request ID:', verifyEnrollmentRequestId);
-    console.log('💳 Kart No:', pan.substring(0, 4) + '****' + pan.substring(pan.length - 4));
-    console.log('🏢 Merchant ID:', merchant.merchantId);
-    console.log('🏧 Terminal No:', merchant.terminalNo);
-    console.log('🌐 MPI URL:', urls.mpiEnrollmentUrl);
-    console.log('💰 Tutar:', purchaseAmount, 'Currency:', currency);
-    console.log('📤 Request Params:', {
+    paymentDebugLog('3D Secure enrollment request:', {
+      requestId: verifyEnrollmentRequestId,
+      maskedPan: pan.substring(0, 4) + '****' + pan.substring(pan.length - 4),
+      merchantId: merchant.merchantId,
+      terminalNo: merchant.terminalNo,
+      mpiUrl: urls.mpiEnrollmentUrl,
+      amount: purchaseAmount,
+      currency,
       Pan: pan.substring(0, 4) + '****',
       ExpiryDate: expiryDate,
       PurchaseAmount: purchaseAmount.toFixed(2),
@@ -131,7 +137,7 @@ export async function checkEnrollment(params) {
     const responseXml = response.data;
     const parsedResponse = xmlParser.parse(responseXml);
 
-    console.log('📥 Enrollment Response:', JSON.stringify(parsedResponse, null, 2));
+    paymentDebugLog('Enrollment response:', parsedResponse);
 
     // Vakıf Bankası response formatı: IPaySecure -> Message -> VERes
     const ipaySecure = parsedResponse?.IPaySecure || parsedResponse?.ipaySecure;
@@ -165,10 +171,11 @@ export async function checkEnrollment(params) {
     // Özel durum: Status "E" olsa bile ACS URL varsa kart 3D Secure'a kayıtlı demektir
     // Bazı durumlarda "Issuer Exception" (hata kodu 7) gelse bile ACS URL'leri döner
     if ((status === 'E' || status === 'e') && acsUrl && termUrl && md) {
-      console.log('⚠️ Status "E" ama ACS URL mevcut - 3D Secure akışına devam ediliyor');
-      console.log('📋 ACS URL:', acsUrl);
-      console.log('📋 TermUrl:', termUrl);
-      console.log('📋 MD:', md.substring(0, 50) + '...');
+      paymentDebugLog('Enrollment returned ACS data despite status E.', {
+        acsUrl,
+        termUrl,
+        hasMd: !!md,
+      });
       
       return {
         success: true,
@@ -314,9 +321,10 @@ export async function processNonSecurePayment(params) {
     const xmlString = xmlBuilder.build(vposRequest);
     const requestBody = `prmstr=${encodeURIComponent(xmlString)}`;
 
-    console.log('💳 Non-Secure ödeme işlemi gönderiliyor...');
-    console.log('📋 Transaction ID:', transactionId);
-    console.log('💰 Tutar:', amount);
+    paymentDebugLog('Submitting non-secure payment.', {
+      transactionId,
+      amount,
+    });
 
     // Sanal POS servisine istek gönder
     const response = await axios.post(
@@ -334,7 +342,7 @@ export async function processNonSecurePayment(params) {
     const responseText = response.data;
     const parsedResponse = xmlParser.parse(responseText);
 
-    console.log('📥 VPOS Response:', JSON.stringify(parsedResponse, null, 2));
+    paymentDebugLog('Non-secure VPOS response:', parsedResponse);
 
     // Response yapısını kontrol et
     const vposResponse = parsedResponse?.VposResponse || parsedResponse?.vposResponse || parsedResponse;
@@ -445,10 +453,11 @@ export async function process3DSecurePayment(params) {
     const xmlString = xmlBuilder.build(vposRequest);
     const requestBody = `prmstr=${encodeURIComponent(xmlString)}`;
 
-    console.log('🔐 3D Secure ödeme işlemi gönderiliyor...');
-    console.log('📋 Transaction ID:', transactionId);
-    console.log('💰 Tutar:', amount);
-    console.log('🔑 ECI:', eci);
+    paymentDebugLog('Submitting 3D Secure payment.', {
+      transactionId,
+      amount,
+      eci,
+    });
 
     // Sanal POS servisine istek gönder
     const response = await axios.post(
@@ -466,7 +475,7 @@ export async function process3DSecurePayment(params) {
     const responseText = response.data;
     const parsedResponse = xmlParser.parse(responseText);
 
-    console.log('📥 3D Secure VPOS Response:', JSON.stringify(parsedResponse, null, 2));
+    paymentDebugLog('3D Secure VPOS response:', parsedResponse);
 
     // Response yapısını kontrol et
     const vposResponse = parsedResponse?.VposResponse || parsedResponse?.vposResponse || parsedResponse;
@@ -551,4 +560,3 @@ export default {
   process3DSecurePayment,
   parsePARes,
 };
-
