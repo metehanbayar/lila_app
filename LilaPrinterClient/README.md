@@ -1,205 +1,82 @@
-# 🖨️ Lila Printer Client
+# Lila Printer Client
 
-Windows uygulaması - Socket.IO ile otomatik sipariş yazdırma
+Windows tray uygulaması olarak çalışır ve `order:new` event'lerini dinleyip fiş yazdırır.
 
-## ✅ TAMAMLANAN BÖLÜMLER
+## Çalışma Mantığı
 
-### 1. Temel Altyapı
-- ✅ Proje yapısı oluşturuldu
-- ✅ NuGet paketleri eklendi (SocketIOClient, Newtonsoft.Json)
-- ✅ Klasör yapısı hazır (Services, Models, UI, Utils, Resources)
+- ilk açılışta config yoksa kurulum sihirbazı açılır
+- config varsa uygulama system tray'e yerleşir
+- Socket.IO ile backend'e bağlanır
+- restoran filtresi istemci tarafında `RestaurantId` ile yapılır
+- yeni sipariş gelince seçili yazıcıya fiş basılır
 
-### 2. Veri Modelleri
-- ✅ OrderData.cs - Sipariş veri modeli
-- ✅ OrderItem.cs - Sipariş kalemi modeli
-- ✅ AppConfig.cs - Uygulama yapılandırması
+## Temel Özellikler
 
-### 3. Servisler
-- ✅ ConfigService.cs - Yapılandırma yönetimi
-- ✅ SocketService.cs - Socket.IO bağlantı ve iletişim
-- ✅ PrinterService.cs - Yazıcı işlemleri ve fiş yazdırma
+- ilk kurulum sihirbazı
+- ayarlar formu
+- tray menüsü
+- test yazdırma
+- template indirme desteği
+- otomatik sipariş yazdırma
 
-### 4. UI
-- ✅ TrayApplicationContext.cs - System tray uygulaması
-- ✅ SetupWizardForm.cs - İlk kurulum sihirbazı
-- ✅ Program.cs - Ana giriş noktası
-
-## 🚀 NASIL KULLANILIR
-
-### İlk Çalıştırma
-
-1. Uygulamayı çalıştır:
-   ```bash
-   dotnet run
-   ```
-
-2. İlk açılışta kurulum wizard'ı açılır:
-   - Sunucu URL gir (örn: `http://localhost:3000`)
-   - Restoran ID gir (örn: `1`)
-   - Restoran adı gir (örn: `Lila Gourmet`)
-   - Yazıcı seç (listeden)
-   - Test Yazdır
-   - Kaydet
-
-3. Uygulama sistem tepsisine gider (tray icon)
-
-4. Artık siparişler otomatik yazdırılacak!
-
-### System Tray Menüsü
-
-- **Durum:** Bağlantı durumunu gösterir
-- **Ayarlar:** Ayarlar sayfası (yakında)
-- **Test Yazdır:** Test fişi yazdırır
-- **Çıkış:** Uygulamadan çıkar
-
-## 🧪 TEST ETME
-
-### 1. Backend Başlat
-
-```bash
-cd server
-npm run dev
-```
-
-Backend `http://localhost:3000` adresinde çalışmalı.
-
-### 2. Client Başlat
+## Başlatma
 
 ```bash
 cd LilaPrinterClient/LilaPrinterClient
 dotnet run
 ```
 
-### 3. Test Siparişi Gönder
-
-Postman ile:
-
-```http
-POST http://localhost:3000/api/orders
-Content-Type: application/json
-
-{
-  "customerName": "Test Müşteri",
-  "customerPhone": "0555 123 4567",
-  "customerAddress": "Test Adres",
-  "notes": "Test sipariş",
-  "items": [
-    {
-      "productId": 1,
-      "quantity": 2
-    }
-  ],
-  "customerId": 1
-}
-```
-
-### 4. Sonuç
-
-- Client console'da sipariş bilgisi görünmeli
-- Yazıcıdan fiş çıkmalı
-- Balloon notification gösterilmeli
-
-## 📦 EXE OLUŞTURMA
-
-### Development Build
+Backend ayrıca çalışıyor olmalıdır:
 
 ```bash
-dotnet build -c Release
+cd server
+npm run dev
 ```
 
-EXE: `bin\Release\net6.0-windows\LilaPrinterClient.exe`
+## Kurulumda İstenen Bilgiler
 
-### Tek EXE (Self-Contained)
+- server URL
+- restaurant ID
+- restaurant adı
+- yazıcı adı
 
-```bash
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
-```
+Config dosyası kullanıcı profilinde saklanır:
 
-EXE: `bin\Release\net6.0-windows\win-x64\publish\LilaPrinterClient.exe`
-
-**Boyut:** ~80-100 MB (tüm .NET runtime dahil)
-
-### Trimmed (Küçük Boyut)
-
-```bash
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true
-```
-
-**Boyut:** ~40-60 MB
-
-## 📁 CONFIG DOSYASI
-
-Uygulama ayarları şurada saklanır:
-
-```
+```text
 %AppData%\LilaPrinterClient\config.json
 ```
 
-Örnek içerik:
+## Tray Menüsü
 
-```json
-{
-  "serverUrl": "http://localhost:3000",
-  "restaurantId": 1,
-  "restaurantName": "Lila Gourmet",
-  "printerName": "EPSON TM-T88V",
-  "autoStart": true,
-  "autoPrint": true
-}
-```
+- durum
+- ayarlar
+- test yazdır
+- çıkış
 
-## 🐛 SORUN GİDERME
+## Sorun Giderme
 
-### "Yazıcı bulunamadı" hatası
+### Bağlanmıyor
 
-- Yazıcınız açık ve bağlı mı kontrol edin
-- Windows yazıcı ayarlarından yazıcıyı görebiliyor musunuz?
-
-### "Bağlantı hatası"
-
-- Backend çalışıyor mu? (`http://localhost:3000/api/health`)
-- Sunucu URL doğru mu?
-- Firewall engelliyor olabilir
+- backend `http://localhost:3000/api/health` cevap veriyor mu kontrol edin
+- server URL doğru mu kontrol edin
+- firewall engeli var mı kontrol edin
 
 ### Sipariş gelmiyor
 
-- Console'da "Socket.IO bağlandı" mesajı var mı?
-- Restoran ID doğru mu?
-- Backend'de sipariş oluşturulurken `notifyNewOrder()` çağrılıyor mu?
+- restaurant ID doğru mu kontrol edin
+- backend sipariş oluşturunca socket event yayınlıyor mu kontrol edin
 
-## 📝 YAPILACAKLAR (TODO)
+### Yazdırmıyor
 
-- [ ] Özel tray icon ekle (Resources/icon.ico)
-- [ ] Ayarlar formu ekle (yazıcı, sunucu değiştirme)
-- [ ] Windows başlangıcında otomatik başlat (registry)
-- [ ] Offline mode (bağlantı kopunca siparişleri kuyruğa al)
-- [ ] Loglama (Serilog ile dosyaya log)
-- [ ] Ses bildirimi (sipariş geldiğinde)
-- [ ] Çoklu yazıcı desteği (mutfak + kasa)
-- [ ] Auto-update mekanizması
-- [ ] Fiş template'i özelleştirilebilir yap
-- [ ] Logo ekle (fiş başlığına)
+- yazıcı adı doğru mu kontrol edin
+- Windows yazıcıya erişebiliyor mu kontrol edin
+- tray menüsünden test yazdırma deneyin
 
-## 🎯 SONRAKI ADIMLAR
+## İlgili Dosyalar
 
-1. **Backend'i başlat** ve test et
-2. **Client'ı çalıştır** ve kurulumu tamamla
-3. **Test siparişi gönder** ve yazdırmayı kontrol et
-4. **EXE oluştur** ve diğer bilgisayarlarda test et
-5. **Production kurulum** için hazırla
-
-## 📞 DESTEK
-
-Sorun yaşarsanız:
-
-1. Console çıktısını kontrol edin
-2. Config dosyasını kontrol edin (`%AppData%\LilaPrinterClient\config.json`)
-3. Backend loglarına bakın
-4. Backend'de Socket.IO çalışıyor mu kontrol edin
-
----
-
-**Geliştirici:** Lila Group
-**Versiyon:** 1.0.0
-**Tarih:** 15 Ekim 2024
-
+- `LilaPrinterClient/LilaPrinterClient/Program.cs`
+- `LilaPrinterClient/LilaPrinterClient/UI/SetupWizardForm.cs`
+- `LilaPrinterClient/LilaPrinterClient/UI/SettingsForm.cs`
+- `LilaPrinterClient/LilaPrinterClient/UI/TrayApplicationContext.cs`
+- `LilaPrinterClient/LilaPrinterClient/Services/SocketService.cs`
+- `LilaPrinterClient/LilaPrinterClient/Services/PrinterService.cs`

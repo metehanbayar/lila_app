@@ -215,7 +215,7 @@ DELETE /api/admin/orders/:id
 
 1. **Şifre Değiştirme:** Varsayılan admin şifresini mutlaka değiştirin
 2. **HTTPS:** Üretim ortamında mutlaka HTTPS kullanın
-3. **JWT Token:** Mevcut basit token sistemi geliştirme içindir. Üretimde JWT kullanın
+3. **Token Güvenliği:** Admin oturumu imzalı token ile çalışır. Production ortamında `AUTH_TOKEN_SECRET` güçlü ve gizli tutulmalıdır.
 4. **Rate Limiting:** API'de rate limiting aktiftir (15 dakikada max 100 istek)
 5. **SQL Injection:** Tüm sorgular parametreli olarak hazırlanmıştır
 
