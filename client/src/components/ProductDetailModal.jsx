@@ -75,11 +75,11 @@ function ProductDetailModal({
 
   return createPortal(
     <div className="fixed inset-0 z-[1000] flex items-end bg-dark/70 backdrop-blur-md sm:items-center sm:justify-center sm:p-5" role="dialog" aria-modal="true">
-      <button className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Urun modalini kapat" />
+      <button type="button" className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Urun modalini kapat" />
 
-      <div className="relative flex h-[92vh] w-full flex-col overflow-hidden rounded-t-[28px] bg-[#f8f2ee] shadow-premium sm:h-auto sm:max-h-[90vh] sm:max-w-4xl sm:rounded-[32px]">
+      <div className="relative flex w-full max-h-[86vh] flex-col overflow-hidden rounded-t-[28px] bg-[#f8f2ee] shadow-premium sm:max-h-[88vh] sm:max-w-3xl sm:rounded-[32px]">
         <div className="flex items-center justify-between gap-3 border-b border-surface-border bg-white/92 px-4 py-4 backdrop-blur-xl sm:px-5">
-          <button onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-2xl bg-surface-muted text-dark transition-all hover:bg-white hover:shadow-card" aria-label="Kapat">
+          <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-2xl bg-surface-muted text-dark transition-all hover:bg-white hover:shadow-card" aria-label="Kapat">
             <X className="h-4 w-4" />
           </button>
 
@@ -89,6 +89,7 @@ function ProductDetailModal({
 
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={handlePrevious}
               disabled={!canGoPrevious}
               className="flex h-10 w-10 items-center justify-center rounded-2xl border border-surface-border bg-white text-dark disabled:cursor-not-allowed disabled:opacity-35"
@@ -97,6 +98,7 @@ function ProductDetailModal({
               <ChevronLeft className="h-4 w-4" />
             </button>
             <button
+              type="button"
               onClick={handleNext}
               disabled={!canGoNext}
               className="flex h-10 w-10 items-center justify-center rounded-2xl border border-surface-border bg-white text-dark disabled:cursor-not-allowed disabled:opacity-35"
@@ -128,7 +130,7 @@ function ProductDetailModal({
                     <h2 className="text-2xl font-black tracking-tight text-dark">{product.Name}</h2>
                     {(product.CategoryName || product.RestaurantName) && (
                       <p className="mt-2 text-sm leading-6 text-dark-lighter">
-                        {[product.CategoryName, product.RestaurantName].filter(Boolean).join(' • ')}
+                        {[product.CategoryName, product.RestaurantName].filter(Boolean).join(' - ')}
                       </p>
                     )}
                   </div>
@@ -147,6 +149,7 @@ function ProductDetailModal({
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
                     {product.variants.map((variant) => (
                       <button
+                        type="button"
                         key={variant.Id}
                         onClick={() => setSelectedVariant(variant)}
                         className={cn(
@@ -170,6 +173,7 @@ function ProductDetailModal({
                   <div className="mt-3 flex items-center justify-between gap-3">
                     <div className="inline-flex items-center gap-2 rounded-full border border-surface-border bg-surface-muted px-2 py-2">
                       <button
+                        type="button"
                         onClick={() => setQuantity((current) => Math.max(1, current - 1))}
                         className="rounded-full p-1.5 text-dark"
                         aria-label="Adet azalt"
@@ -178,6 +182,7 @@ function ProductDetailModal({
                       </button>
                       <span className="w-8 text-center text-lg font-black text-dark">{quantity}</span>
                       <button
+                        type="button"
                         onClick={() => setQuantity((current) => Math.min(10, current + 1))}
                         className="rounded-full p-1.5 text-dark"
                         aria-label="Adet artir"
@@ -187,6 +192,7 @@ function ProductDetailModal({
                     </div>
 
                     <button
+                      type="button"
                       onClick={handleAddToCart}
                       disabled={!isActive}
                       className={cn(
@@ -202,14 +208,14 @@ function ProductDetailModal({
                       ) : (
                         <>
                           <ShoppingCart className="h-4 w-4" />
-                          {isActive ? `Sepete ekle • ${(currentPrice * quantity).toFixed(2)} TL` : 'Urun mevcut degil'}
+                          {isActive ? `Sepete ekle - ${(currentPrice * quantity).toFixed(2)} TL` : 'Urun mevcut degil'}
                         </>
                       )}
                     </button>
                   </div>
 
                   {justAdded && (
-                    <button onClick={() => navigate('/cart')} className="mt-3 text-sm font-bold text-primary">
+                    <button type="button" onClick={() => navigate('/cart')} className="mt-3 text-sm font-bold text-primary">
                       Sepete git
                     </button>
                   )}

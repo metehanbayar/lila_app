@@ -30,6 +30,7 @@ function SummaryPanel({
   onContinue,
   disabled,
   buttonText,
+  helperText,
 }) {
   return (
     <SurfaceCard className="space-y-4 p-4">
@@ -56,6 +57,8 @@ function SummaryPanel({
           </div>
         )}
       </div>
+
+      {helperText && <p className="rounded-[20px] border border-surface-border bg-surface-muted/70 px-4 py-3 text-sm leading-6 text-dark-lighter">{helperText}</p>}
 
       {eligiblePromotions.length > 0 && (
         <div className="space-y-2">
@@ -96,8 +99,17 @@ function SummaryPanel({
 
 function Cart() {
   const navigate = useNavigate();
-  const { items, increaseQuantity, decreaseQuantity, removeItem, getTotalAmount, addItem, appliedCoupon, applyCoupon: storeApplyCoupon, removeCoupon: storeRemoveCoupon } =
-    useCartStore();
+  const {
+    items,
+    increaseQuantity,
+    decreaseQuantity,
+    removeItem,
+    getTotalAmount,
+    addItem,
+    appliedCoupon,
+    applyCoupon: storeApplyCoupon,
+    removeCoupon: storeRemoveCoupon,
+  } = useCartStore();
   const { isAuthenticated } = useCustomerStore();
 
   const [promotions, setPromotions] = useState([]);
@@ -113,16 +125,8 @@ function Cart() {
     () => [...new Set(items.map((item) => toNum(item.RestaurantId)).filter((num) => num !== null))],
     [items],
   );
-  const hasMultipleRestaurants = allRestaurantIds.length > 1;
+  const hasMultipleStores = allRestaurantIds.length > 1;
   const hasMinimumOrderIssue = minimumOrderIssues.length > 0;
-
-  const buttonText = useMemo(() => {
-    if (!hasMinimumOrderIssue) {
-      return isAuthenticated ? 'Checkouta devam et' : 'Giris yap';
-    }
-    const firstIssue = minimumOrderIssues[0];
-    return `Minimum ${formatPrice(firstIssue.MinOrder)} TL`;
-  }, [hasMinimumOrderIssue, isAuthenticated, minimumOrderIssues]);
 
   const itemsHash = useMemo(
     () => items.map((item) => `${item.Id}:${item.selectedVariant?.Id ?? 0}-${item.quantity}-${Number(item.effectivePrice || 0).toFixed(2)}`).join('|'),
@@ -138,40 +142,48 @@ function Cart() {
         setPromotions([]);
       }
     };
+
     loadPromotions();
   }, []);
 
   useEffect(() => {
-    const loadCartMeta = async () => {
-      try {
-        const restaurantIds = [...new Set(items.map((item) => toNum(item.RestaurantId)).filter((num) => num !== null))];
+    let isCancelled = false;
 
-        if (restaurantIds.length > 0) {
-          const restaurantResponse = await checkMinimumOrder(restaurantIds);
-          setRestaurants(restaurantResponse?.success && Array.isArray(restaurantResponse.data) ? restaurantResponse.data : []);
-        } else {
-          setRestaurants([]);
-        }
+    const restaurantIds = [...new Set(items.map((item) => toNum(item.RestaurantId)).filter((num) => num !== null))];
+    const categoryIds = [...new Set(items.map((item) => item.CategoryId).filter(Boolean))];
+    const productIds = items.map((item) => item.Id).filter(Boolean);
+    const primaryRestaurantId = restaurantIds[0];
 
-        const validRestaurantIds = items.map((item) => toNum(item.RestaurantId)).filter((num) => num !== null);
-        const primaryRestaurantId = validRestaurantIds[0];
-        const categoryIds = [...new Set(items.map((item) => item.CategoryId).filter(Boolean))];
-        const productIds = items.map((item) => item.Id).filter(Boolean);
+    const loadMinimumOrders = async () => {
+      if (restaurantIds.length === 0) {
+        if (!isCancelled) setRestaurants([]);
+        return;
+      }
 
-        if (!primaryRestaurantId || productIds.length === 0) {
-          setCrossSellProducts([]);
-          return;
-        }
-
-        const crossSellResponse = await getCrossSellProducts([primaryRestaurantId], productIds, categoryIds);
-        setCrossSellProducts(crossSellResponse?.success && Array.isArray(crossSellResponse.data) ? crossSellResponse.data.slice(0, 6) : []);
-      } catch {
-        setRestaurants([]);
-        setCrossSellProducts([]);
+      const response = await checkMinimumOrder(restaurantIds);
+      if (!isCancelled) {
+        setRestaurants(response?.success && Array.isArray(response.data) ? response.data : []);
       }
     };
 
-    loadCartMeta();
+    const loadCrossSell = async () => {
+      if (!primaryRestaurantId || productIds.length === 0) {
+        if (!isCancelled) setCrossSellProducts([]);
+        return;
+      }
+
+      const response = await getCrossSellProducts([primaryRestaurantId], productIds, categoryIds);
+      if (!isCancelled) {
+        setCrossSellProducts(response?.success && Array.isArray(response.data) ? response.data.slice(0, 6) : []);
+      }
+    };
+
+    loadMinimumOrders();
+    loadCrossSell();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [itemsHash, items]);
 
   useEffect(() => {
@@ -188,13 +200,23 @@ function Cart() {
       }
     });
 
-    setMinimumOrderIssues(
-      restaurants.filter((restaurant) => {
+    const issues = restaurants
+      .map((restaurant) => {
         const minOrderNum = Number(restaurant.MinOrder) || 0;
-        const restaurantTotal = restaurantTotals[toNum(restaurant.Id)] || 0;
-        return minOrderNum > 0 && restaurantTotal < minOrderNum;
-      }),
-    );
+        const currentTotal = restaurantTotals[toNum(restaurant.Id)] || 0;
+        if (minOrderNum <= 0 || currentTotal >= minOrderNum) {
+          return null;
+        }
+
+        return {
+          ...restaurant,
+          CurrentTotal: currentTotal,
+          MissingAmount: Math.max(0, minOrderNum - currentTotal),
+        };
+      })
+      .filter(Boolean);
+
+    setMinimumOrderIssues(issues);
   }, [restaurants, items]);
 
   useEffect(() => {
@@ -232,45 +254,96 @@ function Cart() {
   const discountAmount = appliedCoupon?.calculatedDiscount || 0;
   const finalAmount = Math.max(0, Number(totalAmount) - Number(discountAmount || 0));
 
+  const buttonText = useMemo(() => {
+    if (!hasMinimumOrderIssue) {
+      return isAuthenticated ? 'Checkouta devam et' : 'Giris yap';
+    }
+
+    const firstIssue = minimumOrderIssues[0];
+    return `${formatPrice(firstIssue.MissingAmount)} TL daha ekle`;
+  }, [hasMinimumOrderIssue, isAuthenticated, minimumOrderIssues]);
+
+  const helperText = hasMinimumOrderIssue
+    ? `${minimumOrderIssues[0].Name} icin min ${formatPrice(minimumOrderIssues[0].MinOrder)} TL gerekiyor. Su an ${formatPrice(minimumOrderIssues[0].CurrentTotal)} TL.`
+    : hasMultipleStores
+      ? `${allRestaurantIds.length} magaza icin ayri siparis olusacak.`
+      : 'Toplam ve devam aksiyonu her ekranda gorunur.';
+
   const handleContinue = () => {
     if (!isAuthenticated) {
       navigate('/login', { state: { from: '/checkout' } });
       return;
     }
+
     navigate('/checkout');
   };
 
+  const handleCrossSellPreview = (product) => {
+    setSelectedProduct(product);
+    setShowProductModal(true);
+  };
+
+  const handleCrossSellAdd = (product) => {
+    const defaultVariant = product.variants?.find((variant) => variant.IsDefault) || (product.variants?.length === 1 ? product.variants[0] : null);
+
+    if (product.variants?.length > 1) {
+      handleCrossSellPreview(product);
+      return;
+    }
+
+    addItem(product, defaultVariant, 1);
+  };
+
   if (items.length === 0) {
-    return <EmptyState icon={ShoppingCart} title="Sepetiniz Bos" message="Henuz sepetinize urun eklemediniz. Lezzetli menuye goz atin." actionText="Menuye Git" actionPath="/" />;
+    return (
+      <EmptyState
+        icon={ShoppingCart}
+        title="Sepetiniz Bos"
+        message="Henuz sepetinize urun eklemediniz. Magaza vitrinden devam edin."
+        actionText="Ana sayfaya git"
+        actionPath="/"
+      />
+    );
   }
 
   return (
     <div className="pb-[calc(8rem+env(safe-area-inset-bottom,0px))] pt-4 lg:pb-12">
       <PageShell width="full" className="space-y-4">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Sepet</p>
-          <h1 className="mt-1 text-2xl font-black tracking-tight text-dark sm:text-3xl">Siparisi tamamlayin.</h1>
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Sepet</p>
+            <h1 className="mt-1 text-2xl font-black tracking-tight text-dark sm:text-3xl">Toplam ve devam aksiyonu net.</h1>
+          </div>
+          <Badge tone="primary">{items.length} kalem</Badge>
         </div>
 
         {hasMinimumOrderIssue && (
           <SurfaceCard className="border border-amber-200 bg-amber-50 p-4 shadow-none">
             <div className="flex items-start gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] bg-amber-500 text-white"><AlertTriangle className="h-5 w-5" /></div>
-              <div>
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] bg-amber-500 text-white">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div className="space-y-1">
                 <p className="text-sm font-bold text-amber-950">Minimum siparis tutarina ulasilmadi</p>
-                {minimumOrderIssues.map((restaurant) => <p key={restaurant.Id} className="text-sm leading-6 text-amber-900/82">{restaurant.Name}: min {formatPrice(restaurant.MinOrder)} TL</p>)}
+                {minimumOrderIssues.map((restaurant) => (
+                  <p key={restaurant.Id} className="text-sm leading-6 text-amber-900/82">
+                    {restaurant.Name}: {formatPrice(restaurant.MissingAmount)} TL daha eklemelisin.
+                  </p>
+                ))}
               </div>
             </div>
           </SurfaceCard>
         )}
 
-        {hasMultipleRestaurants && (
+        {hasMultipleStores && (
           <SurfaceCard className="border border-blue-200 bg-blue-50 p-4 shadow-none">
             <div className="flex items-start gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] bg-blue-600 text-white"><Store className="h-5 w-5" /></div>
-              <div>
-                <p className="text-sm font-bold text-blue-950">Farkli restoranlardan urun var</p>
-                <p className="text-sm leading-6 text-blue-900/82">Checkout sonunda {allRestaurantIds.length} ayri siparis olusturulacak.</p>
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] bg-blue-600 text-white">
+                <Store className="h-5 w-5" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-bold text-blue-950">Birden fazla magaza secildi</p>
+                <p className="text-sm leading-6 text-blue-900/82">Checkout sonunda {allRestaurantIds.length} ayri siparis olusacak.</p>
               </div>
             </div>
           </SurfaceCard>
@@ -284,30 +357,46 @@ function Cart() {
                   <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Sepettekiler</p>
                   <h2 className="mt-1 text-xl font-bold text-dark">Urunler</h2>
                 </div>
-                <Badge tone="primary">{items.length} kalem</Badge>
+                <span className="text-sm font-medium text-dark-lighter">{formatPrice(finalAmount)} TL</span>
               </div>
 
               {items.map((item) => (
                 <article key={`${item.Id}:${item.selectedVariant?.Id ?? 0}`} className="rounded-[24px] border border-surface-border bg-surface-muted p-3 sm:p-4">
                   <div className="flex items-start gap-3">
                     <div className="h-20 w-20 shrink-0 overflow-hidden rounded-[18px] bg-white shadow-sm">
-                      {item.ImageUrl ? <img src={item.ImageUrl} alt={item.Name} className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#f1e4ec,#f2ece5)]"><Package className="h-6 w-6 text-primary/40" /></div>}
+                      {item.ImageUrl ? (
+                        <img src={item.ImageUrl} alt={item.Name} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#f1e4ec,#f2ece5)]">
+                          <Package className="h-6 w-6 text-primary/40" />
+                        </div>
+                      )}
                     </div>
+
                     <div className="min-w-0 flex-1 space-y-3">
                       <div>
                         <h3 className="line-clamp-2 text-sm font-bold text-dark sm:text-base">{item.Name}</h3>
                         {item.selectedVariant?.Name && <p className="text-sm text-dark-lighter">{item.selectedVariant.Name}</p>}
                         <p className="text-sm font-medium text-dark-lighter">{formatPrice(item.effectivePrice)} TL / adet</p>
                       </div>
+
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white px-2 py-2 shadow-sm">
-                          <button onClick={() => decreaseQuantity(item.Id, item.selectedVariant?.Id)} disabled={item.quantity <= 1} className="rounded-full p-1.5 text-dark disabled:opacity-30"><Minus className="h-4 w-4" /></button>
+                          <button type="button" onClick={() => decreaseQuantity(item.Id, item.selectedVariant?.Id)} disabled={item.quantity <= 1} className="rounded-full p-1.5 text-dark disabled:opacity-30">
+                            <Minus className="h-4 w-4" />
+                          </button>
                           <span className="w-7 text-center text-sm font-black text-dark">{item.quantity}</span>
-                          <button onClick={() => increaseQuantity(item.Id, item.selectedVariant?.Id)} disabled={item.quantity >= 10} className="rounded-full p-1.5 text-dark disabled:opacity-30"><Plus className="h-4 w-4" /></button>
+                          <button type="button" onClick={() => increaseQuantity(item.Id, item.selectedVariant?.Id)} disabled={item.quantity >= 10} className="rounded-full p-1.5 text-dark disabled:opacity-30">
+                            <Plus className="h-4 w-4" />
+                          </button>
                         </div>
+
                         <div className="flex items-center gap-3">
                           <span className="text-lg font-black text-primary-dark">{formatPrice(item.effectivePrice * item.quantity)} TL</span>
-                          <button onClick={() => removeItem(item.Id, item.selectedVariant?.Id)} className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700"><Trash2 className="h-4 w-4" />Sil</button>
+                          <button type="button" onClick={() => removeItem(item.Id, item.selectedVariant?.Id)} className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700">
+                            <Trash2 className="h-4 w-4" />
+                            Sil
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -325,16 +414,42 @@ function Cart() {
                   </div>
                   <Badge tone="warning">{crossSellProducts.length} urun</Badge>
                 </div>
+
                 <div className="scrollbar-hide flex gap-3 overflow-x-auto pb-1">
-                  {crossSellProducts.map((product) => (
-                    <button key={product.Id} onClick={() => { setSelectedProduct(product); setShowProductModal(true); }} className="w-[180px] shrink-0 overflow-hidden rounded-[24px] border border-white/70 bg-white text-left shadow-card">
-                      <div className="relative h-28 overflow-hidden bg-surface-muted">
-                        {product.ImageUrl ? <img src={product.ImageUrl} alt={product.Name} className="h-full w-full object-cover" loading="lazy" /> : <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#f1e4ec,#f2ece5)]"><Package className="h-6 w-6 text-primary/40" /></div>}
-                        <button onClick={(e) => { e.stopPropagation(); addItem({ ...product, effectivePrice: product.effectivePrice ?? product.Price }, null, 1); }} className="absolute bottom-2 right-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white"><Plus className="h-4 w-4" /></button>
-                      </div>
-                      <div className="space-y-1 p-3"><p className="line-clamp-2 text-sm font-bold leading-6 text-dark">{product.Name}</p><p className="text-base font-black text-primary-dark">{formatPrice(product.effectivePrice ?? product.Price)} TL</p></div>
-                    </button>
-                  ))}
+                  {crossSellProducts.map((product) => {
+                    const hasVariants = product.variants?.length > 1;
+                    return (
+                      <article key={product.Id} className="w-[190px] shrink-0 overflow-hidden rounded-[24px] border border-white/70 bg-white shadow-card">
+                        <button type="button" onClick={() => handleCrossSellPreview(product)} className="block w-full text-left">
+                          <div className="relative h-28 overflow-hidden bg-surface-muted">
+                            {product.ImageUrl ? (
+                              <img src={product.ImageUrl} alt={product.Name} className="h-full w-full object-cover" loading="lazy" />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#f1e4ec,#f2ece5)]">
+                                <Package className="h-6 w-6 text-primary/40" />
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="space-y-1 p-3">
+                            <p className="line-clamp-2 text-sm font-bold leading-6 text-dark">{product.Name}</p>
+                            <p className="text-xs leading-5 text-dark-lighter">{hasVariants ? `${product.variants.length} secenek` : 'Hizli ekleme uygun'}</p>
+                          </div>
+                        </button>
+
+                        <div className="flex items-center justify-between gap-3 px-3 pb-3">
+                          <p className="text-base font-black text-primary-dark">{formatPrice(product.effectivePrice ?? product.Price)} TL</p>
+                          <button
+                            type="button"
+                            onClick={() => handleCrossSellAdd(product)}
+                            className="inline-flex items-center justify-center rounded-full bg-primary px-3 py-2 text-sm font-bold text-white shadow-lg shadow-primary/20"
+                          >
+                            {hasVariants ? 'Sec' : 'Ekle'}
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
                 </div>
               </SurfaceCard>
             )}
@@ -343,7 +458,7 @@ function Cart() {
           <div className="hidden xl:block xl:sticky xl:top-24">
             <SummaryPanel
               totalAmount={totalAmount}
-              discountAmount={appliedCoupon?.calculatedDiscount || 0}
+              discountAmount={discountAmount}
               finalAmount={finalAmount}
               eligiblePromotions={eligiblePromotions}
               appliedCoupon={appliedCoupon}
@@ -353,26 +468,39 @@ function Cart() {
               onContinue={handleContinue}
               disabled={hasMinimumOrderIssue}
               buttonText={buttonText}
+              helperText={helperText}
             />
           </div>
         </div>
       </PageShell>
 
-      {showProductModal && selectedProduct && <ProductDetailModal product={selectedProduct} isOpen={showProductModal} onClose={() => { setShowProductModal(false); setSelectedProduct(null); }} />}
+      {showProductModal && selectedProduct && (
+        <ProductDetailModal
+          product={selectedProduct}
+          isOpen={showProductModal}
+          onClose={() => {
+            setShowProductModal(false);
+            setSelectedProduct(null);
+          }}
+        />
+      )}
 
       {!showProductModal && (
         <div className="fixed inset-x-0 bottom-0 z-50 xl:hidden">
           <PageShell width="full" className="pb-3">
             <StickyActionBar>
-              <div className="flex items-center justify-between gap-4 rounded-[20px] bg-white/72 px-4 py-3">
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-dark-lighter">Toplam</p>
-                  <p className="text-xl font-black text-primary-dark">{formatPrice(finalAmount)} TL</p>
+              <div className="space-y-3 rounded-[20px] bg-white/72 px-4 py-3">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-dark-lighter">Toplam</p>
+                    <p className="text-xl font-black text-primary-dark">{formatPrice(finalAmount)} TL</p>
+                  </div>
+                  <PrimaryButton className={cn('justify-center', hasMinimumOrderIssue && 'cursor-not-allowed opacity-60')} onClick={handleContinue} disabled={hasMinimumOrderIssue}>
+                    {buttonText}
+                    {!hasMinimumOrderIssue && <ArrowRight className="h-4 w-4" />}
+                  </PrimaryButton>
                 </div>
-                <PrimaryButton className={cn('justify-center', hasMinimumOrderIssue && 'cursor-not-allowed opacity-60')} onClick={handleContinue} disabled={hasMinimumOrderIssue}>
-                  {buttonText}
-                  {!hasMinimumOrderIssue && <ArrowRight className="h-4 w-4" />}
-                </PrimaryButton>
+                <p className="text-xs leading-5 text-dark-lighter">{helperText}</p>
               </div>
             </StickyActionBar>
           </PageShell>

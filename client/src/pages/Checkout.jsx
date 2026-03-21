@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
   ArrowLeft,
-  ArrowRight,
   BookOpen,
   CreditCard,
   Loader2,
@@ -16,11 +15,7 @@ import {
 import EmptyState from '../components/EmptyState';
 import LocationPickerModal from '../components/LocationPickerModal';
 import AddressManager from '../components/AddressManager';
-import {
-  createOrder,
-  initializePayment,
-  setOfflinePayment,
-} from '../services/api';
+import { createOrder, initializePayment, setOfflinePayment } from '../services/api';
 import useCartStore from '../store/cartStore';
 import useCustomerStore from '../store/customerStore';
 import {
@@ -50,34 +45,6 @@ const normalizePhone = (phone) => {
 
 const formatPrice = (value) => `${Number(value || 0).toFixed(2)} TL`;
 
-function StepMarker({ step, label, active, complete, onClick }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'flex items-center gap-3 rounded-[20px] border px-3 py-3 text-left transition-all',
-        active || complete
-          ? 'border-primary/20 bg-white text-dark shadow-card'
-          : 'border-surface-border bg-surface-muted text-dark-lighter',
-      )}
-    >
-      <div
-        className={cn(
-          'flex h-9 w-9 items-center justify-center rounded-[14px] text-sm font-black',
-          active || complete ? 'bg-primary text-white' : 'bg-white text-dark-lighter',
-        )}
-      >
-        {step}
-      </div>
-      <div>
-        <p className="text-sm font-bold">{label}</p>
-        <p className="text-xs">{complete ? 'Hazir' : active ? 'Acik' : 'Sonraki'}</p>
-      </div>
-    </button>
-  );
-}
-
 function OrderSummary({ items, subtotal, discountAmount, totalAmount, restaurantCount, paymentMethod }) {
   const paymentLabel =
     paymentMethod === 'card_on_delivery'
@@ -102,7 +69,7 @@ function OrderSummary({ items, subtotal, discountAmount, totalAmount, restaurant
             <span className="font-bold text-dark">{items.length}</span>
           </div>
           <div className="flex items-center justify-between gap-3 text-sm">
-            <span className="text-dark-lighter">Restoran</span>
+            <span className="text-dark-lighter">Magaza</span>
             <span className="font-bold text-dark">{restaurantCount}</span>
           </div>
           <div className="flex items-center justify-between gap-3 text-sm">
@@ -157,12 +124,44 @@ function OrderSummary({ items, subtotal, discountAmount, totalAmount, restaurant
   );
 }
 
+function CheckoutActionPanel({ loading, paymentMethod, totalAmount, onBack }) {
+  return (
+    <SurfaceCard className="space-y-4 p-4">
+      <p className="rounded-[20px] border border-surface-border bg-surface-muted/70 px-4 py-3 text-sm leading-6 text-dark-lighter">
+        Adres, odeme ve ozet ayni ekranda. Son onaydan once tum bilgiler gorunur.
+      </p>
+
+      <div className="flex flex-col gap-3">
+        <SecondaryButton type="button" className="justify-center" onClick={onBack}>
+          <ArrowLeft className="h-4 w-4" />
+          Sepete don
+        </SecondaryButton>
+
+        <PrimaryButton type="submit" className="justify-center" disabled={loading}>
+          {loading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Islemler suruyor
+            </>
+          ) : (
+            <>
+              {paymentMethod === 'online' && <Lock className="h-4 w-4" />}
+              {paymentMethod === 'online'
+                ? `Odeme yap - ${formatPrice(totalAmount)}`
+                : `Onayla - ${formatPrice(totalAmount)}`}
+            </>
+          )}
+        </PrimaryButton>
+      </div>
+    </SurfaceCard>
+  );
+}
+
 function Checkout() {
   const navigate = useNavigate();
   const { items, getTotalAmount, clearCart, appliedCoupon: storeAppliedCoupon } = useCartStore();
   const { customer, isAuthenticated } = useCustomerStore();
 
-  const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showLocationModal, setShowLocationModal] = useState(false);
@@ -200,7 +199,7 @@ function Checkout() {
     if (typeof window !== 'undefined') {
       window.scrollTo(0, 0);
     }
-  }, [currentStep]);
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -220,7 +219,7 @@ function Checkout() {
     const phone = normalizePhone(formData.customerPhone);
     if (!phone) {
       errors.customerPhone = 'Telefon numarasi gereklidir';
-    } else if (!/^\\d{10}$/.test(phone)) {
+    } else if (!/^\d{10}$/.test(phone)) {
       errors.customerPhone = 'Gecerli bir telefon numarasi girin';
     }
 
@@ -246,6 +245,8 @@ function Checkout() {
         : address?.fullAddress || address?.FullAddress || String(address);
 
     setFormData((prev) => ({ ...prev, customerAddress: addressString }));
+    setShowLocationModal(false);
+
     if (formErrors.customerAddress) {
       setFormErrors((prev) => ({ ...prev, customerAddress: '' }));
     }
@@ -258,6 +259,8 @@ function Checkout() {
         : address?.fullAddress || address?.FullAddress || '';
 
     setFormData((prev) => ({ ...prev, customerAddress: addressString }));
+    setShowAddressManager(false);
+
     if (formErrors.customerAddress) {
       setFormErrors((prev) => ({ ...prev, customerAddress: '' }));
     }
@@ -268,19 +271,19 @@ function Checkout() {
     let formattedValue = value;
 
     if (name === 'cardNumber') {
-      formattedValue = value.replace(/\\s/g, '').replace(/(.{4})/g, '$1 ').trim();
-      if (formattedValue.replace(/\\s/g, '').length > 16) {
-        formattedValue = formattedValue.replace(/\\s/g, '').substring(0, 16).replace(/(.{4})/g, '$1 ').trim();
+      formattedValue = value.replace(/\s/g, '').replace(/(.{4})/g, '$1 ').trim();
+      if (formattedValue.replace(/\s/g, '').length > 16) {
+        formattedValue = formattedValue.replace(/\s/g, '').substring(0, 16).replace(/(.{4})/g, '$1 ').trim();
       }
     } else if (name === 'cvv') {
-      formattedValue = value.replace(/\\D/g, '').substring(0, 4);
+      formattedValue = value.replace(/\D/g, '').substring(0, 4);
     } else if (name === 'expiryMonth') {
-      formattedValue = value.replace(/\\D/g, '').substring(0, 2);
+      formattedValue = value.replace(/\D/g, '').substring(0, 2);
       if (formattedValue && parseInt(formattedValue, 10) > 12) {
         formattedValue = '12';
       }
     } else if (name === 'expiryYear') {
-      formattedValue = value.replace(/\\D/g, '').substring(0, 2);
+      formattedValue = value.replace(/\D/g, '').substring(0, 2);
     }
 
     setPaymentData((prev) => ({ ...prev, [name]: formattedValue }));
@@ -292,9 +295,9 @@ function Checkout() {
   const validatePayment = () => {
     const errors = {};
 
-    if (!paymentData.cardNumber.replace(/\\s/g, '')) {
+    if (!paymentData.cardNumber.replace(/\s/g, '')) {
       errors.cardNumber = 'Kart numarasi gereklidir';
-    } else if (paymentData.cardNumber.replace(/\\s/g, '').length < 16) {
+    } else if (paymentData.cardNumber.replace(/\s/g, '').length < 16) {
       errors.cardNumber = 'Kart numarasi 16 haneli olmalidir';
     }
 
@@ -324,16 +327,14 @@ function Checkout() {
     return Object.keys(errors).length === 0;
   };
 
-  const handleStep1Submit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) return;
-    setCurrentStep(2);
-  };
 
-  const handleStep2Submit = async (e) => {
-    e.preventDefault();
+    const formValid = validateForm();
     const isOffline = paymentMethod !== 'online';
-    if (!isOffline && !validatePayment()) {
+    const paymentValid = isOffline || validatePayment();
+
+    if (!formValid || !paymentValid) {
       return;
     }
 
@@ -377,8 +378,7 @@ function Checkout() {
         return;
       }
 
-      const firstOrderId =
-        orderResponse.data.orders[0]?.orderId || orderResponse.data.orders[0]?.Id;
+      const firstOrderId = orderResponse.data.orders[0]?.orderId || orderResponse.data.orders[0]?.Id;
 
       if (isOffline) {
         const offlineResp = await setOfflinePayment(firstOrderId, paymentMethod);
@@ -387,6 +387,7 @@ function Checkout() {
           navigate(`/payment/success?orderId=${firstOrderId}&offline=1`);
           return;
         }
+
         setError(offlineResp.message || 'Offline odeme ayarlanamadi');
         return;
       }
@@ -460,9 +461,7 @@ function Checkout() {
       }
     } catch (err) {
       const errorResponse = err.response?.data;
-      let errorMessage =
-        errorResponse?.message ||
-        'Odeme islemi sirasinda bir hata olustu. Lutfen tekrar deneyin.';
+      let errorMessage = errorResponse?.message || 'Odeme islemi sirasinda bir hata olustu. Lutfen tekrar deneyin.';
 
       if (errorResponse?.errorCode) {
         errorMessage += ` (Hata Kodu: ${errorResponse.errorCode})`;
@@ -483,323 +482,297 @@ function Checkout() {
         icon={ShoppingCart}
         title="Sepetiniz Bos"
         message="Siparis vermek icin once sepetinize urun eklemelisiniz."
-        actionText="Menuye Git"
+        actionText="Ana sayfaya don"
         actionPath="/"
       />
     );
   }
 
-  const restaurantIds = [
-    ...new Set(
-      items
-        .map((item) => toNum(item.RestaurantId))
-        .filter((num) => num !== null),
-    ),
-  ];
-  const hasMultipleRestaurants = restaurantIds.length > 1;
+  const restaurantIds = [...new Set(items.map((item) => toNum(item.RestaurantId)).filter((num) => num !== null))];
+  const hasMultipleStores = restaurantIds.length > 1;
   const subtotal = getTotalAmount();
-  const discountAmount =
-    storeAppliedCoupon?.calculatedDiscount || storeAppliedCoupon?.discountAmount || 0;
+  const discountAmount = storeAppliedCoupon?.calculatedDiscount || storeAppliedCoupon?.discountAmount || 0;
   const totalAmount = Math.max(0, Number(subtotal) - Number(discountAmount || 0));
 
   const paymentOptions = [
     { id: 'cash_on_delivery', label: 'Kapida nakit', description: 'Teslimatta nakit odeme alin.', icon: Wallet },
     { id: 'card_on_delivery', label: 'Kapida kart', description: 'Pos ile teslimatta odeme alin.', icon: CreditCard },
-    { id: 'pickup', label: 'Gel al', description: 'Musteri restorandan teslim alir.', icon: Store },
+    { id: 'pickup', label: 'Gel al', description: 'Musteri magazadan teslim alir.', icon: Store },
+    { id: 'online', label: 'Online odeme', description: 'Kart ile guvenli odeme yapin.', icon: Lock },
   ];
 
   return (
     <div className="pb-[calc(8rem+env(safe-area-inset-bottom,0px))] pt-4 lg:pb-12">
       <PageShell width="full" className="space-y-4">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Checkout</p>
-          <h1 className="mt-1 text-2xl font-black tracking-tight text-dark sm:text-3xl">Teslimat ve odeme.</h1>
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Checkout</p>
+            <h1 className="mt-1 text-2xl font-black tracking-tight text-dark sm:text-3xl">Adres, odeme ve ozet tek ekranda.</h1>
+          </div>
+          <Badge tone="primary">{items.length} urun</Badge>
         </div>
 
-        {hasMultipleRestaurants && (
+        {hasMultipleStores && (
           <SurfaceCard className="border border-amber-200 bg-amber-50 p-4 shadow-none">
             <div className="flex items-start gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] bg-amber-500 text-white shadow-lg shadow-amber-500/20">
                 <AlertTriangle className="h-5 w-5" />
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-bold text-amber-950">Birden fazla restoran secildi</p>
+                <p className="text-sm font-bold text-amber-950">Birden fazla magaza secildi</p>
                 <p className="text-sm leading-6 text-amber-900/82">
-                  Checkout sonunda {restaurantIds.length} ayri siparis olusturulacak.
+                  Onay sonunda {restaurantIds.length} ayri siparis olusacak.
                 </p>
               </div>
             </div>
           </SurfaceCard>
         )}
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <StepMarker
-            step={1}
-            label="Teslimat"
-            active={currentStep === 1}
-            complete={currentStep > 1}
-            onClick={() => setCurrentStep(1)}
-          />
-          <StepMarker
-            step={2}
-            label="Odeme"
-            active={currentStep === 2}
-            complete={false}
-            onClick={() => {
-              if (currentStep >= 2) setCurrentStep(2);
-            }}
-          />
-        </div>
+        {error && (
+          <SurfaceCard className="border border-red-200 bg-red-50 p-4 shadow-none">
+            <p className="text-sm font-semibold text-red-700">{error}</p>
+          </SurfaceCard>
+        )}
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr),360px] xl:items-start">
+        <form id="checkout-form" onSubmit={handleSubmit} className="grid gap-6 xl:grid-cols-[minmax(0,1fr),360px] xl:items-start">
           <div className="space-y-5">
-            {error && (
-              <SurfaceCard className="border border-red-200 bg-red-50 p-4 shadow-none">
-                <p className="text-sm font-semibold text-red-700">{error}</p>
-              </SurfaceCard>
-            )}
+            <SurfaceCard className="space-y-5 p-5 sm:p-6">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Adres</p>
+                <h2 className="mt-2 text-2xl font-bold text-dark">Teslimat bilgileri</h2>
+              </div>
 
-            {currentStep === 1 ? (
-              <form onSubmit={handleStep1Submit} className="space-y-5">
-                <SurfaceCard className="space-y-5 p-5 sm:p-6">
-                  <div>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">1. adim</p>
-                    <h2 className="mt-2 text-2xl font-bold text-dark">Teslimat bilgileri</h2>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Ad soyad" error={formErrors.customerName}>
+                  <TextInput
+                    name="customerName"
+                    value={formData.customerName}
+                    onChange={handleChange}
+                    placeholder="Adiniz ve soyadiniz"
+                  />
+                </Field>
+
+                <Field label="Telefon" error={formErrors.customerPhone}>
+                  <TextInput
+                    name="customerPhone"
+                    value={formData.customerPhone}
+                    onChange={handleChange}
+                    placeholder="0555 123 45 67"
+                  />
+                </Field>
+              </div>
+
+              <Field label="Teslimat adresi" error={formErrors.customerAddress}>
+                <div className="space-y-3">
+                  <div className="rounded-[24px] border border-surface-border bg-surface-muted p-4">
+                    {formData.customerAddress ? (
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] bg-primary text-white shadow-lg shadow-primary/20">
+                          <MapPin className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-dark">Secilen adres</p>
+                          <p className="mt-1 text-sm leading-6 text-dark-lighter">
+                            {typeof formData.customerAddress === 'string'
+                              ? formData.customerAddress
+                              : formData.customerAddress?.fullAddress ||
+                                formData.customerAddress?.FullAddress ||
+                                String(formData.customerAddress)}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-[20px] border border-dashed border-primary/20 bg-primary/5 p-4 text-sm text-primary-dark">
+                        Henuz adres secilmedi. Harita veya kayitli adreslerden devam edin.
+                      </div>
+                    )}
                   </div>
+
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <PrimaryButton type="button" className="justify-center sm:flex-1" onClick={() => setShowLocationModal(true)}>
+                      <MapPin className="h-4 w-4" />
+                      Haritadan sec
+                    </PrimaryButton>
+                    {isAuthenticated && (
+                      <SecondaryButton type="button" className="justify-center sm:flex-1" onClick={() => setShowAddressManager(true)}>
+                        <BookOpen className="h-4 w-4" />
+                        Adreslerim
+                      </SecondaryButton>
+                    )}
+                  </div>
+                </div>
+              </Field>
+
+              <Field label="Siparis notu">
+                <TextAreaField
+                  name="notes"
+                  rows={4}
+                  value={formData.notes}
+                  onChange={handleChange}
+                  placeholder="Kurye icin ek yonlendirme yazabilirsiniz."
+                />
+              </Field>
+            </SurfaceCard>
+
+            <SurfaceCard className="space-y-5 p-5 sm:p-6">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Odeme</p>
+                <h2 className="mt-2 text-2xl font-bold text-dark">Odeme yontemi</h2>
+              </div>
+
+              <div className="grid gap-3">
+                {paymentOptions.map((option) => {
+                  const Icon = option.icon;
+                  const active = paymentMethod === option.id;
+
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => setPaymentMethod(option.id)}
+                      className={cn(
+                        'flex items-start gap-4 rounded-[24px] border p-4 text-left transition-all',
+                        active
+                          ? 'border-primary/20 bg-white shadow-card'
+                          : 'border-surface-border bg-surface-muted hover:border-primary/15 hover:bg-white',
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          'flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px]',
+                          active ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-white text-dark',
+                        )}
+                      >
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-dark">{option.label}</p>
+                        <p className="mt-1 text-sm leading-6 text-dark-lighter">{option.description}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {paymentMethod === 'online' && (
+                <>
+                  <SurfaceCard tone="muted" className="border border-blue-200 bg-blue-50 p-4 shadow-none">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-[16px] bg-blue-600 text-white">
+                        <Lock className="h-4 w-4" />
+                      </div>
+                      <p className="text-sm font-semibold text-blue-900">256-bit SSL ile korunur.</p>
+                    </div>
+                  </SurfaceCard>
 
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="Ad soyad" error={formErrors.customerName}>
+                    <Field label="Kart sahibi" error={paymentErrors.cardHolderName}>
                       <TextInput
-                        name="customerName"
-                        value={formData.customerName}
-                        onChange={handleChange}
-                        placeholder="Adiniz ve soyadiniz"
+                        name="cardHolderName"
+                        value={paymentData.cardHolderName}
+                        onChange={handlePaymentChange}
+                        placeholder="Kart uzerindeki isim"
                       />
                     </Field>
 
-                    <Field label="Telefon" error={formErrors.customerPhone}>
+                    <Field label="Kart numarasi" error={paymentErrors.cardNumber}>
                       <TextInput
-                        name="customerPhone"
-                        value={formData.customerPhone}
-                        onChange={handleChange}
-                        placeholder="0555 123 45 67"
+                        name="cardNumber"
+                        value={paymentData.cardNumber}
+                        onChange={handlePaymentChange}
+                        placeholder="1234 5678 9012 3456"
+                        maxLength={19}
                       />
                     </Field>
                   </div>
 
-                  <Field label="Teslimat adresi" error={formErrors.customerAddress}>
-                    <div className="space-y-3">
-                      <div className="rounded-[24px] border border-surface-border bg-surface-muted p-4">
-                        {formData.customerAddress ? (
-                          <div className="flex items-start gap-3">
-                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] bg-primary text-white shadow-lg shadow-primary/20">
-                              <MapPin className="h-5 w-5" />
-                            </div>
-                            <div>
-                              <p className="text-sm font-semibold text-dark">Secilen adres</p>
-                              <p className="mt-1 text-sm leading-6 text-dark-lighter">
-                                {typeof formData.customerAddress === 'string'
-                                  ? formData.customerAddress
-                                  : formData.customerAddress?.fullAddress ||
-                                    formData.customerAddress?.FullAddress ||
-                                    String(formData.customerAddress)}
-                              </p>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="rounded-[20px] border border-dashed border-primary/20 bg-primary/5 p-4 text-sm text-primary-dark">
-                            Henuz adres secilmedi. Harita veya kayitli adreslerden devam edin.
-                          </div>
-                        )}
-                      </div>
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <Field label="Ay" error={paymentErrors.expiryMonth}>
+                      <TextInput
+                        name="expiryMonth"
+                        value={paymentData.expiryMonth}
+                        onChange={handlePaymentChange}
+                        placeholder="MM"
+                        maxLength={2}
+                      />
+                    </Field>
 
-                      <div className="flex flex-col gap-3 sm:flex-row">
-                        <PrimaryButton type="button" className="justify-center sm:flex-1" onClick={() => setShowLocationModal(true)}>
-                          <MapPin className="h-4 w-4" />
-                          Haritadan sec
-                        </PrimaryButton>
-                        {isAuthenticated && (
-                          <SecondaryButton type="button" className="justify-center sm:flex-1" onClick={() => setShowAddressManager(true)}>
-                            <BookOpen className="h-4 w-4" />
-                            Adreslerim
-                          </SecondaryButton>
-                        )}
-                      </div>
-                    </div>
-                  </Field>
+                    <Field label="Yil" error={paymentErrors.expiryYear}>
+                      <TextInput
+                        name="expiryYear"
+                        value={paymentData.expiryYear}
+                        onChange={handlePaymentChange}
+                        placeholder="YY"
+                        maxLength={2}
+                      />
+                    </Field>
 
-                  <Field label="Siparis notu">
-                    <TextAreaField
-                      name="notes"
-                      rows={4}
-                      value={formData.notes}
-                      onChange={handleChange}
-                      placeholder="Kurye icin ek yonlendirme yazabilirsiniz."
-                    />
-                  </Field>
-                </SurfaceCard>
-
-                <StickyActionBar>
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-                    <SecondaryButton type="button" className="justify-center" onClick={() => navigate('/cart')}>
-                      <ArrowLeft className="h-4 w-4" />
-                      Sepete don
-                    </SecondaryButton>
-                    <PrimaryButton type="submit" className="justify-center" disabled={loading}>
-                      Devam et
-                      <ArrowRight className="h-4 w-4" />
-                    </PrimaryButton>
+                    <Field label="CVV" error={paymentErrors.cvv}>
+                      <TextInput
+                        name="cvv"
+                        value={paymentData.cvv}
+                        onChange={handlePaymentChange}
+                        placeholder="123"
+                        maxLength={4}
+                      />
+                    </Field>
                   </div>
-                </StickyActionBar>
-              </form>
-            ) : (
-              <form onSubmit={handleStep2Submit} className="space-y-5">
-                <SurfaceCard className="space-y-5 p-5 sm:p-6">
-                  <div>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">2. adim</p>
-                    <h2 className="mt-2 text-2xl font-bold text-dark">Odeme yontemi</h2>
-                  </div>
+                </>
+              )}
+            </SurfaceCard>
+          </div>
 
-                  <div className="grid gap-3">
-                    {paymentOptions.map((option) => {
-                      const Icon = option.icon;
-                      const active = paymentMethod === option.id;
+          <div className="hidden xl:block xl:sticky xl:top-24">
+            <div className="space-y-4">
+              <OrderSummary
+                items={items}
+                subtotal={subtotal}
+                discountAmount={discountAmount}
+                totalAmount={totalAmount}
+                restaurantCount={restaurantIds.length}
+                paymentMethod={paymentMethod}
+              />
+              <CheckoutActionPanel
+                loading={loading}
+                paymentMethod={paymentMethod}
+                totalAmount={totalAmount}
+                onBack={() => navigate('/cart')}
+              />
+            </div>
+          </div>
+        </form>
+      </PageShell>
 
-                      return (
-                        <button
-                          key={option.id}
-                          type="button"
-                          onClick={() => setPaymentMethod(option.id)}
-                          className={cn(
-                            'flex items-start gap-4 rounded-[24px] border p-4 text-left transition-all',
-                            active
-                              ? 'border-primary/20 bg-white shadow-card'
-                              : 'border-surface-border bg-surface-muted hover:border-primary/15 hover:bg-white',
-                          )}
-                        >
-                          <div
-                            className={cn(
-                              'flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px]',
-                              active ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-white text-dark',
-                            )}
-                          >
-                            <Icon className="h-5 w-5" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-bold text-dark">{option.label}</p>
-                            <p className="mt-1 text-sm leading-6 text-dark-lighter">{option.description}</p>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {paymentMethod === 'online' && (
+      <div className="fixed inset-x-0 bottom-0 z-50 xl:hidden">
+        <PageShell width="full" className="pb-3">
+          <StickyActionBar>
+            <div className="space-y-3 rounded-[20px] bg-white/72 px-4 py-3">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-dark-lighter">Toplam</p>
+                  <p className="text-xl font-black text-primary-dark">{formatPrice(totalAmount)}</p>
+                </div>
+                <PrimaryButton type="submit" form="checkout-form" className="justify-center" disabled={loading}>
+                  {loading ? (
                     <>
-                      <SurfaceCard tone="muted" className="border border-blue-200 bg-blue-50 p-4 shadow-none">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-[16px] bg-blue-600 text-white">
-                            <Lock className="h-4 w-4" />
-                          </div>
-                          <p className="text-sm font-semibold text-blue-900">256-bit SSL ile korunur.</p>
-                        </div>
-                      </SurfaceCard>
-
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <Field label="Kart sahibi" error={paymentErrors.cardHolderName}>
-                          <TextInput
-                            name="cardHolderName"
-                            value={paymentData.cardHolderName}
-                            onChange={handlePaymentChange}
-                            placeholder="Kart uzerindeki isim"
-                          />
-                        </Field>
-
-                        <Field label="Kart numarasi" error={paymentErrors.cardNumber}>
-                          <TextInput
-                            name="cardNumber"
-                            value={paymentData.cardNumber}
-                            onChange={handlePaymentChange}
-                            placeholder="1234 5678 9012 3456"
-                            maxLength={19}
-                          />
-                        </Field>
-                      </div>
-
-                      <div className="grid gap-4 sm:grid-cols-3">
-                        <Field label="Ay" error={paymentErrors.expiryMonth}>
-                          <TextInput
-                            name="expiryMonth"
-                            value={paymentData.expiryMonth}
-                            onChange={handlePaymentChange}
-                            placeholder="MM"
-                            maxLength={2}
-                          />
-                        </Field>
-
-                        <Field label="Yil" error={paymentErrors.expiryYear}>
-                          <TextInput
-                            name="expiryYear"
-                            value={paymentData.expiryYear}
-                            onChange={handlePaymentChange}
-                            placeholder="YY"
-                            maxLength={2}
-                          />
-                        </Field>
-
-                        <Field label="CVV" error={paymentErrors.cvv}>
-                          <TextInput
-                            name="cvv"
-                            value={paymentData.cvv}
-                            onChange={handlePaymentChange}
-                            placeholder="123"
-                            maxLength={4}
-                          />
-                        </Field>
-                      </div>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Suruyor
+                    </>
+                  ) : (
+                    <>
+                      {paymentMethod === 'online' && <Lock className="h-4 w-4" />}
+                      {paymentMethod === 'online' ? 'Odeme yap' : 'Onayla'}
                     </>
                   )}
-                </SurfaceCard>
-
-                <StickyActionBar>
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <SecondaryButton type="button" className="justify-center" onClick={() => setCurrentStep(1)}>
-                      <ArrowLeft className="h-4 w-4" />
-                      Teslimata don
-                    </SecondaryButton>
-                    <PrimaryButton type="submit" className="justify-center" disabled={loading}>
-                      {loading ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Islemler suruyor
-                        </>
-                      ) : (
-                        <>
-                          {paymentMethod === 'online' && <Lock className="h-4 w-4" />}
-                          {paymentMethod === 'online'
-                            ? `Odeme yap - ${formatPrice(totalAmount)}`
-                            : `Onayla - ${formatPrice(totalAmount)}`}
-                        </>
-                      )}
-                    </PrimaryButton>
-                  </div>
-                </StickyActionBar>
-              </form>
-            )}
-          </div>
-
-          <div className="xl:sticky xl:top-24">
-            <OrderSummary
-              items={items}
-              subtotal={subtotal}
-              discountAmount={discountAmount}
-              totalAmount={totalAmount}
-              restaurantCount={restaurantIds.length}
-              paymentMethod={paymentMethod}
-            />
-          </div>
-        </div>
-      </PageShell>
+                </PrimaryButton>
+              </div>
+              <button type="button" onClick={() => navigate('/cart')} className="text-xs font-semibold text-dark-lighter">
+                Sepete don
+              </button>
+            </div>
+          </StickyActionBar>
+        </PageShell>
+      </div>
 
       <LocationPickerModal
         isOpen={showLocationModal}

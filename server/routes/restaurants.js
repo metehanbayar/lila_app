@@ -66,17 +66,30 @@ router.get('/:slug', async (req, res) => {
 router.post('/check-min-order', async (req, res) => {
   try {
     const { restaurantIds } = req.body;
-    
+
     if (!restaurantIds || !Array.isArray(restaurantIds) || restaurantIds.length === 0) {
       return res.json({
         success: true,
         data: [],
       });
     }
-    
+
+    const normalizedRestaurantIds = [...new Set(
+      restaurantIds
+        .map((id) => Number.parseInt(id, 10))
+        .filter((id) => Number.isInteger(id) && id > 0),
+    )];
+
+    if (normalizedRestaurantIds.length === 0) {
+      return res.json({
+        success: true,
+        data: [],
+      });
+    }
+
     const pool = await getConnection();
-    
-    const idsString = restaurantIds.join(',');
+
+    const idsString = normalizedRestaurantIds.join(',');
     const result = await pool.request().query(`
       SELECT Id, Name, MinOrder, Color
       FROM Restaurants
@@ -97,4 +110,3 @@ router.post('/check-min-order', async (req, res) => {
 });
 
 export default router;
-

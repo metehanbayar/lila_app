@@ -10,8 +10,7 @@ import { Badge, Button, cn } from './ui/primitives';
 
 const desktopLinks = [
   { to: '/', label: 'Ana Sayfa' },
-  { to: '/search', label: 'Kesfet' },
-  { to: '/favorites', label: 'Favoriler' },
+  { to: '/search', label: 'Ara' },
 ];
 
 function Header() {
@@ -113,7 +112,7 @@ function Header() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary">Globalmenu</p>
-                  <h1 className="truncate font-display text-2xl leading-none text-dark">Premium Siparis</h1>
+                  <h1 className="truncate font-display text-2xl leading-none text-dark">Magaza Siparisi</h1>
                 </div>
               </button>
 

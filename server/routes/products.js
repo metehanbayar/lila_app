@@ -129,11 +129,14 @@ router.get('/restaurant/:restaurantId', async (req, res) => {
           p.Id, p.RestaurantId, p.CategoryId, p.Name, p.Description, 
           p.Price, p.OldPrice, p.ImageUrl, p.IsFeatured, p.DisplayOrder, p.IsActive,
           p.ShowInOrderMenu, p.ShowInViewMenu,
-          c.Name as CategoryName
+          c.Name as CategoryName,
+          c.Icon as CategoryIcon,
+          c.Color as CategoryColor,
+          c.SortOrder as CategorySortOrder
         FROM Products p
         LEFT JOIN Categories c ON p.CategoryId = c.Id
         WHERE p.RestaurantId = @restaurantId AND c.IsActive = 1 ${visibilityFilter}
-        ORDER BY p.IsActive DESC, p.DisplayOrder, p.Name
+        ORDER BY c.SortOrder, c.Name, p.DisplayOrder, p.Name
       `);
 
     // Sadece bu restoranda ürünü olan kategorileri getir
@@ -141,11 +144,11 @@ router.get('/restaurant/:restaurantId', async (req, res) => {
       .request()
       .input('restaurantId', sql.Int, restaurantId)
       .query(`
-        SELECT DISTINCT c.Id, c.Name
+        SELECT DISTINCT c.Id, c.Name, c.SortOrder, c.Icon, c.Color
         FROM Categories c
         INNER JOIN Products p ON c.Id = p.CategoryId
         WHERE p.RestaurantId = @restaurantId AND c.IsActive = 1
-        ORDER BY c.Name
+        ORDER BY c.SortOrder, c.Name
       `);
 
     // Tüm ürünlerin varyantlarını getir
@@ -609,4 +612,3 @@ router.get('/:id', async (req, res) => {
 });
 
 export default router;
-

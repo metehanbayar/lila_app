@@ -9,13 +9,11 @@ const api = axios.create({
   },
 });
 
-// Kategoriler
 export const getCategories = async () => {
   const response = await api.get('/products/categories');
   return response.data;
 };
 
-// Restoranlar
 export const getRestaurants = async () => {
   const response = await api.get('/restaurants');
   return response.data;
@@ -26,7 +24,6 @@ export const getRestaurantBySlug = async (slug) => {
   return response.data;
 };
 
-// Ürünler
 export const getFeaturedProducts = async () => {
   const response = await api.get('/products/featured');
   return response.data;
@@ -35,13 +32,12 @@ export const getFeaturedProducts = async () => {
 export const getProductsByRestaurant = async (restaurantId, mode = null) => {
   const params = {};
   if (mode) {
-    params.mode = mode; // 'order' veya 'view'
+    params.mode = mode;
   }
   const response = await api.get(`/products/restaurant/${restaurantId}`, { params });
   return response.data;
 };
 
-// Ürün arama
 export const searchProducts = async (searchTerm, restaurantId = null, categoryId = null) => {
   const params = {};
   if (searchTerm) {
@@ -62,7 +58,6 @@ export const getProductById = async (id) => {
   return response.data;
 };
 
-// Siparişler
 export const createOrder = async (orderData) => {
   const response = await api.post('/orders', orderData);
   return response.data;
@@ -73,30 +68,27 @@ export const getOrderByNumber = async (orderNumber) => {
   return response.data;
 };
 
-// Kuponlar
 export const validateCoupon = async (code, subtotal) => {
   const response = await api.post('/coupons/validate', { code, subtotal });
   return response.data;
 };
 
-// Kampanyalar (aktif kuponlar)
 export const getActivePromotions = async () => {
   try {
     const response = await api.get('/coupons/promotions');
     return response.data || { success: true, data: [] };
   } catch (error) {
-    console.error('Kampanyalar yüklenirken hata:', error);
+    console.error('Kampanyalar yuklenirken hata:', error);
     return { success: false, data: [] };
   }
 };
 
-// Cross sell ürünleri
 export const getCrossSellProducts = async (restaurantIds = [], excludeProductIds = [], categoryIds = []) => {
   try {
     const params = {};
-    const validRestaurantIds = restaurantIds.filter(id => id != null && id !== undefined);
-    const validExcludeIds = excludeProductIds.filter(id => id != null && id !== undefined);
-    const validCategoryIds = categoryIds.filter(id => id != null && id !== undefined);
+    const validRestaurantIds = restaurantIds.filter((id) => id != null);
+    const validExcludeIds = excludeProductIds.filter((id) => id != null);
+    const validCategoryIds = categoryIds.filter((id) => id != null);
 
     if (validRestaurantIds.length > 0) {
       params.restaurantIds = validRestaurantIds.join(',');
@@ -111,27 +103,31 @@ export const getCrossSellProducts = async (restaurantIds = [], excludeProductIds
     const response = await api.get('/products/cross-sell', { params });
     return response.data || { success: true, data: [] };
   } catch (error) {
-    console.error('Cross sell ürünler yüklenirken hata:', error);
+    console.error('Cross sell urunler yuklenirken hata:', error);
     return { success: false, data: [] };
   }
 };
 
-// Restoran minimum sipariş tutarını kontrol et
 export const checkMinimumOrder = async (restaurantIds) => {
   try {
-    if (!restaurantIds || restaurantIds.length === 0) {
+    const normalizedRestaurantIds = (restaurantIds || [])
+      .map((id) => Number.parseInt(id, 10))
+      .filter((id) => Number.isInteger(id) && id > 0);
+
+    if (normalizedRestaurantIds.length === 0) {
       return { success: true, data: [] };
     }
 
-    const response = await api.post('/restaurants/check-min-order', { restaurantIds });
+    const response = await api.post('/restaurants/check-min-order', {
+      restaurantIds: normalizedRestaurantIds,
+    });
     return response.data || { success: true, data: [] };
   } catch (error) {
-    console.error('Minimum order kontrol hatası:', error);
-    return { success: false, data: [] };
+    console.error('Minimum order kontrol hatasi:', error);
+    return { success: true, data: [] };
   }
 };
 
-// Ödeme API'leri
 export const initializePayment = async (paymentData) => {
   const response = await api.post('/payment/initialize', paymentData);
   return response.data;
@@ -148,4 +144,3 @@ export const setOfflinePayment = async (orderId, method) => {
 };
 
 export default api;
-

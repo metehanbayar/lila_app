@@ -1,4 +1,4 @@
-import { Heart, Home, Search, ShoppingBag, User2 } from 'lucide-react';
+import { Home, Search, ShoppingBag, User2 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import useCartStore from '../store/cartStore';
 import useCustomerStore from '../store/customerStore';
@@ -13,15 +13,14 @@ function AppLayout({ children }) {
   const totalItems = useCartStore((state) => state.getTotalItems());
   const { isAuthenticated } = useCustomerStore();
 
-  const showFooter = !/^\/(cart|checkout|payment|order-success)/.test(location.pathname);
+  const showFooter = location.pathname === '/';
   const showBottomNav = !/^\/(checkout|payment|order-success)/.test(location.pathname);
 
   const items = [
     { path: '/', label: 'Ana Sayfa', icon: Home },
     { path: '/search', label: 'Ara', icon: Search },
     { path: '/cart', label: 'Sepet', icon: ShoppingBag, badge: totalItems },
-    { path: '/favorites', label: 'Favoriler', icon: Heart },
-    { path: isAuthenticated ? '/profile' : '/login', label: isAuthenticated ? 'Profil' : 'Giris', icon: User2 },
+    { path: isAuthenticated ? '/profile' : '/login', label: isAuthenticated ? 'Hesabim' : 'Giris', icon: User2 },
   ];
 
   const isActive = (path) => {
@@ -44,7 +43,7 @@ function AppLayout({ children }) {
       {showBottomNav && (
         <nav className="fixed inset-x-0 bottom-0 z-50 lg:hidden">
           <div className="mx-3 mb-3 rounded-[28px] border border-white/70 bg-white/88 p-2 shadow-premium backdrop-blur-xl safe-area-bottom">
-            <div className="grid grid-cols-5 gap-1">
+            <div className="grid grid-cols-4 gap-1">
               {items.map((item) => {
                 const Icon = item.icon;
                 const active = isActive(item.path);
