@@ -56,7 +56,7 @@ function StepMarker({ step, label, active, complete, onClick }) {
       type="button"
       onClick={onClick}
       className={cn(
-        'flex items-center gap-3 rounded-[22px] border px-4 py-3 text-left transition-all',
+        'flex items-center gap-3 rounded-[20px] border px-3 py-3 text-left transition-all',
         active || complete
           ? 'border-primary/20 bg-white text-dark shadow-card'
           : 'border-surface-border bg-surface-muted text-dark-lighter',
@@ -64,7 +64,7 @@ function StepMarker({ step, label, active, complete, onClick }) {
     >
       <div
         className={cn(
-          'flex h-10 w-10 items-center justify-center rounded-[16px] text-sm font-black',
+          'flex h-9 w-9 items-center justify-center rounded-[14px] text-sm font-black',
           active || complete ? 'bg-primary text-white' : 'bg-white text-dark-lighter',
         )}
       >
@@ -72,7 +72,7 @@ function StepMarker({ step, label, active, complete, onClick }) {
       </div>
       <div>
         <p className="text-sm font-bold">{label}</p>
-        <p className="text-xs">{complete ? 'Hazir' : active ? 'Bu adimda' : 'Sirada'}</p>
+        <p className="text-xs">{complete ? 'Hazir' : active ? 'Acik' : 'Sonraki'}</p>
       </div>
     </button>
   );
@@ -89,13 +89,10 @@ function OrderSummary({ items, subtotal, discountAmount, totalAmount, restaurant
           : 'Kapida nakit';
 
   return (
-    <SurfaceCard tone="muted" className="space-y-4 p-4 sm:p-5">
-      <div className="space-y-2">
-        <span className="gm-eyebrow">Siparis ozeti</span>
-        <h2 className="text-2xl font-bold text-dark sm:text-3xl">Toplam net</h2>
-        <p className="text-sm leading-6 text-dark-lighter">
-          Odeme turu, restoran dagilimi ve toplam tutar tek panelde kalir.
-        </p>
+    <SurfaceCard className="space-y-4 p-4 sm:p-5">
+      <div>
+        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Siparis ozeti</p>
+        <h2 className="mt-1 text-2xl font-black text-dark">Toplam net</h2>
       </div>
 
       <div className="rounded-[24px] border border-white/70 bg-white px-4 py-4 shadow-card">
@@ -512,38 +509,12 @@ function Checkout() {
   ];
 
   return (
-    <div className="pb-[calc(8rem+env(safe-area-inset-bottom,0px))] pt-4 sm:pt-6 lg:pb-12">
-      <PageShell width="full" className="space-y-6">
-        <SurfaceCard tone="hero" className="overflow-hidden p-6 sm:p-7 lg:p-8">
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr),340px] lg:items-end">
-            <div className="space-y-4">
-              <Badge className="border border-white/20 bg-white/10 text-white">Checkout</Badge>
-              <div className="space-y-3">
-                <h1 className="font-display text-4xl leading-none sm:text-5xl lg:text-6xl">
-                  Teslimat ve odeme ayni akista.
-                </h1>
-                <p className="max-w-2xl text-sm leading-7 text-white/82 sm:text-base">
-                  Mobile first form yapisi, desktopta sag tarafta sabit siparis ozeti ile yeniden kuruldu.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-              <div className="rounded-[24px] border border-white/15 bg-white/10 p-4 backdrop-blur-md">
-                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/62">Urun</p>
-                <p className="mt-2 text-3xl font-black">{items.length}</p>
-              </div>
-              <div className="rounded-[24px] border border-white/15 bg-white/10 p-4 backdrop-blur-md">
-                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/62">Restoran</p>
-                <p className="mt-2 text-3xl font-black">{restaurantIds.length}</p>
-              </div>
-              <div className="rounded-[24px] border border-white/15 bg-white/10 p-4 backdrop-blur-md">
-                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/62">Toplam</p>
-                <p className="mt-2 text-3xl font-black">{formatPrice(totalAmount)}</p>
-              </div>
-            </div>
-          </div>
-        </SurfaceCard>
+    <div className="pb-[calc(8rem+env(safe-area-inset-bottom,0px))] pt-4 lg:pb-12">
+      <PageShell width="full" className="space-y-4">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Checkout</p>
+          <h1 className="mt-1 text-2xl font-black tracking-tight text-dark sm:text-3xl">Teslimat ve odeme.</h1>
+        </div>
 
         {hasMultipleRestaurants && (
           <SurfaceCard className="border border-amber-200 bg-amber-50 p-4 shadow-none">
@@ -806,8 +777,8 @@ function Checkout() {
                         <>
                           {paymentMethod === 'online' && <Lock className="h-4 w-4" />}
                           {paymentMethod === 'online'
-                            ? `Odeme yap • ${formatPrice(totalAmount)}`
-                            : `Onayla • ${formatPrice(totalAmount)}`}
+                            ? `Odeme yap - ${formatPrice(totalAmount)}`
+                            : `Onayla - ${formatPrice(totalAmount)}`}
                         </>
                       )}
                     </PrimaryButton>

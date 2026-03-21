@@ -3,8 +3,8 @@ import { Heart } from 'lucide-react';
 import CustomerShell from '../../components/customer/CustomerShell';
 import EmptyState from '../../components/EmptyState';
 import Loading from '../../components/Loading';
-import ProductCard from '../../components/ProductCard';
 import ProductDetailModal from '../../components/ProductDetailModal';
+import ProductRowCard from '../../components/ProductRowCard';
 import { getFavorites } from '../../services/customerApi';
 import useCustomerStore from '../../store/customerStore';
 import { SurfaceCard } from '../../components/ui/primitives';
@@ -43,7 +43,7 @@ function Favorites() {
   };
 
   return (
-    <CustomerShell title="Favoriler" description="Kaydettigin urunler burada listelenir. Kart yapisi mobilde iki kolon, desktopta daha genis grid kullanir.">
+    <CustomerShell title="Favoriler" description="Kaydettigin urunlere buradan hizla donebilirsin.">
       {loading ? (
         <SurfaceCard tone="muted" className="p-6">
           <Loading message="Favoriler yukleniyor..." />
@@ -61,9 +61,9 @@ function Favorites() {
           actionPath="/"
         />
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3">
           {favoriteProducts.map((product) => (
-            <ProductCard key={product.Id} product={product} onProductClick={handleProductClick} />
+            <ProductRowCard key={product.Id} product={product} onProductClick={handleProductClick} />
           ))}
         </div>
       )}

@@ -632,17 +632,12 @@ function LocationPickerModal({ isOpen, onClose, onConfirm }) {
     <div className="fixed inset-0 z-[190] bg-dark/70 backdrop-blur-md">
       <button className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Konum modali kapat" />
 
-      <div className="relative mx-auto flex h-full w-full max-w-7xl flex-col overflow-hidden rounded-none border border-white/10 bg-[#f8f2ee] shadow-premium sm:mt-6 sm:h-[calc(100vh-3rem)] sm:rounded-[32px]">
-        <div className="border-b border-surface-border bg-white/90 px-5 py-4 backdrop-blur-xl sm:px-6 sm:py-5">
+      <div className="relative mx-auto flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-none bg-[#f8f2ee] shadow-premium sm:mt-6 sm:h-[calc(100vh-3rem)] sm:rounded-[28px]">
+        <div className="border-b border-surface-border bg-white/90 px-4 py-4 backdrop-blur-xl sm:px-5">
           <div className="flex items-start justify-between gap-4">
-            <div className="space-y-2">
-              <span className="gm-eyebrow">Teslimat noktasi</span>
-              <div>
-                <h3 className="gm-display text-3xl sm:text-4xl">Konumu netlestir</h3>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-dark-lighter">
-                  Once noktayi secin, sonra adres detaylarini tamamlayin. Mobilde tek akista, desktopta iki kolonlu calisir.
-                </p>
-              </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Teslimat noktasi</p>
+              <h3 className="mt-1 text-2xl font-black tracking-tight text-dark sm:text-3xl">Konumu secin ve adresi tamamlayin.</h3>
             </div>
 
             <div className="flex items-center gap-2">
@@ -667,24 +662,22 @@ function LocationPickerModal({ isOpen, onClose, onConfirm }) {
         {loading ? (
           <div className="flex flex-1 items-center justify-center px-6">
             <div className="space-y-4 text-center">
-              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[28px] bg-white shadow-card">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] bg-white shadow-card">
                 <Loader2 className="h-9 w-9 animate-spin text-primary" />
               </div>
               <div>
-                <h4 className="text-xl font-bold text-dark">Konum aliniyor</h4>
-                <p className="mt-2 text-sm leading-6 text-dark-lighter">
-                  Cihazdan en iyi konum bilgisi alindiktan sonra adres detaylari doldurulacak.
-                </p>
+                <h4 className="text-lg font-bold text-dark">Konum aliniyor</h4>
+                <p className="mt-2 text-sm leading-6 text-dark-lighter">En iyi konum bulundugunda adres alani doldurulacak.</p>
               </div>
             </div>
           </div>
         ) : error ? (
           <div className="flex flex-1 items-center justify-center px-6">
             <div className="gm-panel-muted max-w-xl text-center">
-              <div className="mx-auto flex h-18 w-18 items-center justify-center rounded-[24px] bg-white shadow-card">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[20px] bg-white shadow-card">
                 <MapPin className="h-8 w-8 text-primary" />
               </div>
-              <h4 className="mt-6 text-2xl font-bold text-dark">Konum alinamadi</h4>
+              <h4 className="mt-5 text-xl font-bold text-dark">Konum alinamadi</h4>
               <p className="mt-3 text-sm leading-6 text-dark-lighter">{error}</p>
               <PrimaryButton className="mt-6" onClick={getCurrentLocation}>
                 <RefreshCw className="h-4 w-4" />
@@ -694,7 +687,7 @@ function LocationPickerModal({ isOpen, onClose, onConfirm }) {
           </div>
         ) : position ? (
           <>
-            <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1.15fr),420px]">
+            <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1.1fr),380px]">
               <div className="relative min-h-[320px] border-b border-surface-border lg:border-b-0 lg:border-r">
                 <div className="absolute left-4 right-4 top-4 z-10">
                   <div className="rounded-[24px] border border-white/40 bg-white/92 p-3 shadow-card backdrop-blur-xl">
@@ -769,7 +762,7 @@ function LocationPickerModal({ isOpen, onClose, onConfirm }) {
 
               <div className="flex min-h-0 flex-col overflow-hidden">
                 <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
-                  <div className="space-y-5">
+                  <div className="space-y-4">
                     <div className="gm-panel-muted">
                       <div className="flex items-start gap-3">
                         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] bg-primary text-white shadow-lg shadow-primary/20">

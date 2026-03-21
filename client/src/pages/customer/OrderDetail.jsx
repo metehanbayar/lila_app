@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Calendar, Check, FileText, Loader2, MapPin, Phone, ShoppingCart, User } from 'lucide-react';
+import { Calendar, Check, FileText, Loader2, MapPin, Phone, ShoppingCart, User, X } from 'lucide-react';
 import CustomerShell from '../../components/customer/CustomerShell';
 import Loading from '../../components/Loading';
 import { getProductById } from '../../services/api';
@@ -54,7 +54,7 @@ function OrderDetail() {
   const formatDate = (dateString) =>
     new Date(dateString).toLocaleString('tr-TR', {
       day: '2-digit',
-      month: 'long',
+      month: 'short',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
@@ -62,41 +62,11 @@ function OrderDetail() {
 
   const getStatusInfo = (status) => {
     const statuses = {
-      Pending: {
-        label: 'Beklemede',
-        cardClass: 'bg-amber-50 border-amber-200',
-        badgeClass: 'bg-amber-100 text-amber-800',
-        textClass: 'text-amber-800',
-        description: 'Siparisiniz alindi, onay bekleniyor.',
-      },
-      Confirmed: {
-        label: 'Onaylandi',
-        cardClass: 'bg-blue-50 border-blue-200',
-        badgeClass: 'bg-blue-100 text-blue-800',
-        textClass: 'text-blue-800',
-        description: 'Siparisiniz onaylandi.',
-      },
-      Preparing: {
-        label: 'Hazirlaniyor',
-        cardClass: 'bg-primary/10 border-primary/20',
-        badgeClass: 'bg-primary/15 text-primary-dark',
-        textClass: 'text-primary-dark',
-        description: 'Siparisiniz hazirlaniyor.',
-      },
-      Delivered: {
-        label: 'Teslim edildi',
-        cardClass: 'bg-green-50 border-green-200',
-        badgeClass: 'bg-green-100 text-green-800',
-        textClass: 'text-green-800',
-        description: 'Siparisiniz teslim edildi.',
-      },
-      Cancelled: {
-        label: 'Iptal',
-        cardClass: 'bg-red-50 border-red-200',
-        badgeClass: 'bg-red-100 text-red-700',
-        textClass: 'text-red-700',
-        description: 'Siparis iptal edildi.',
-      },
+      Pending: { label: 'Beklemede', badgeClass: 'bg-amber-100 text-amber-800', description: 'Siparisiniz alindi, onay bekleniyor.' },
+      Confirmed: { label: 'Onaylandi', badgeClass: 'bg-blue-100 text-blue-800', description: 'Siparisiniz onaylandi.' },
+      Preparing: { label: 'Hazirlaniyor', badgeClass: 'bg-primary/10 text-primary-dark', description: 'Siparisiniz hazirlaniyor.' },
+      Delivered: { label: 'Teslim edildi', badgeClass: 'bg-green-100 text-green-800', description: 'Siparisiniz teslim edildi.' },
+      Cancelled: { label: 'Iptal', badgeClass: 'bg-red-100 text-red-700', description: 'Siparis iptal edildi.' },
     };
     return statuses[status] || statuses.Pending;
   };
@@ -132,7 +102,7 @@ function OrderDetail() {
 
   if (loading) {
     return (
-      <CustomerShell title="Siparis detayi" description="Siparis kalemleri ve teslimat bilgileri yukleniyor.">
+      <CustomerShell title="Siparis detayi" description="Siparis detaylari yukleniyor.">
         <SurfaceCard tone="muted" className="p-6">
           <Loading message="Siparis detaylari yukleniyor..." />
         </SurfaceCard>
@@ -155,10 +125,10 @@ function OrderDetail() {
   return (
     <>
       {showToast && (
-        <div className="fixed right-4 top-4 z-50 max-w-sm animate-slideInRight rounded-[28px] border border-white/70 bg-white/92 p-4 shadow-premium backdrop-blur-xl">
+        <div className="fixed right-4 top-4 z-50 max-w-sm rounded-[24px] border border-white/70 bg-white/92 p-4 shadow-premium backdrop-blur-xl">
           <div className="flex items-start gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-white shadow-lg shadow-secondary/20">
-              <Check className="h-5 w-5" strokeWidth={3} />
+            <div className="flex h-11 w-11 items-center justify-center rounded-[18px] bg-secondary text-white shadow-lg shadow-secondary/20">
+              <Check className="h-4 w-4" strokeWidth={3} />
             </div>
             <div className="min-w-0 flex-1">
               <h4 className="text-sm font-bold text-dark">Sepete eklendi</h4>
@@ -173,30 +143,29 @@ function OrderDetail() {
                 Sepete git
               </button>
             </div>
-            <button onClick={() => setShowToast(false)} className="rounded-xl p-2 text-dark-lighter hover:bg-surface-muted">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+            <button onClick={() => setShowToast(false)} className="rounded-xl p-2 text-dark-lighter hover:bg-surface-muted" aria-label="Kapat">
+              <X className="h-4 w-4" />
             </button>
           </div>
         </div>
       )}
 
       <CustomerShell title={`Siparis ${order.OrderNumber}`} description="Siparis ozeti, teslimat ve urun kalemleri ayni ekranda.">
-        <SurfaceCard className={`border p-5 sm:p-6 ${statusInfo.cardClass}`}>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <SurfaceCard className="p-4 sm:p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge className={statusInfo.badgeClass}>{statusInfo.label}</Badge>
-                <span className="text-sm font-semibold text-dark-lighter">{formatDate(order.CreatedAt)}</span>
+                <span className="text-sm text-dark-lighter">{formatDate(order.CreatedAt)}</span>
               </div>
-              <h2 className={`mt-3 text-2xl font-bold ${statusInfo.textClass}`}>{statusInfo.description}</h2>
+              <p className="mt-2 text-lg font-bold text-dark">{statusInfo.description}</p>
             </div>
+
             <Button onClick={handleReorder} disabled={reorderLoading}>
               {reorderLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Sepete ekleniyor...
+                  Ekleniyor...
                 </>
               ) : (
                 <>
@@ -208,13 +177,13 @@ function OrderDetail() {
           </div>
         </SurfaceCard>
 
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,0.9fr),minmax(0,1.1fr)]">
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr),minmax(0,1.1fr)]">
           <SurfaceCard className="p-5 sm:p-6">
             <div className="mb-4">
               <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Teslimat</p>
-              <h3 className="text-2xl font-bold text-dark">Musteri bilgileri</h3>
+              <h2 className="mt-1 text-xl font-bold text-dark">Musteri bilgileri</h2>
             </div>
-            <div className="grid gap-4">
+            <div className="grid gap-3">
               <InfoRow icon={User} label="Ad soyad" value={order.CustomerName} />
               <InfoRow icon={Phone} label="Telefon" value={order.CustomerPhone} />
               <InfoRow icon={MapPin} label="Adres" value={order.CustomerAddress} />
@@ -226,7 +195,7 @@ function OrderDetail() {
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Siparis kalemleri</p>
-                <h3 className="text-2xl font-bold text-dark">{items.length} urun</h3>
+                <h2 className="mt-1 text-xl font-bold text-dark">{items.length} urun</h2>
               </div>
               <span className="inline-flex items-center gap-2 rounded-full bg-surface-muted px-3 py-2 text-sm font-semibold text-dark-lighter">
                 <Calendar className="h-4 w-4" />
@@ -239,7 +208,7 @@ function OrderDetail() {
                 <div key={item.Id} className="rounded-[22px] border border-surface-border bg-surface-muted px-4 py-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
-                      <p className="text-base font-bold text-dark">
+                      <p className="text-sm font-bold text-dark sm:text-base">
                         {item.ProductName}
                         {item.VariantName && <span className="font-medium text-dark-lighter"> ({item.VariantName})</span>}
                       </p>
@@ -253,7 +222,7 @@ function OrderDetail() {
               ))}
             </div>
 
-            <div className="mt-4 flex items-center justify-between rounded-[24px] border border-surface-border bg-white px-4 py-4">
+            <div className="mt-4 flex items-center justify-between rounded-[22px] bg-surface-muted px-4 py-4">
               <span className="text-base font-bold text-dark">Toplam</span>
               <span className="text-2xl font-black text-primary-dark">{formatCurrency(order.TotalAmount)}</span>
             </div>

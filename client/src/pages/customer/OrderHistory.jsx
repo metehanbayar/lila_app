@@ -45,7 +45,7 @@ function OrderHistory() {
   const formatDate = (dateString) =>
     new Date(dateString).toLocaleDateString('tr-TR', {
       day: '2-digit',
-      month: 'long',
+      month: 'short',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
@@ -74,10 +74,7 @@ function OrderHistory() {
   };
 
   return (
-    <CustomerShell
-      title="Siparis gecmisi"
-      description="Tum siparislerin burada toplanir. Mobilde kart akisi, desktopta daha ferah liste kullanilir."
-    >
+    <CustomerShell title="Siparis gecmisi" description="Tum siparislerin burada toplanir.">
       {loading && orders.length === 0 ? (
         <SurfaceCard tone="muted" className="p-6">
           <Loading message="Siparisler yukleniyor..." />
@@ -92,27 +89,26 @@ function OrderHistory() {
         />
       ) : (
         <>
-          <div className="grid gap-4">
+          <div className="grid gap-3">
             {orders.map((order) => (
               <Link
                 key={order.Id}
                 to={`/my-orders/${order.OrderNumber}`}
-                className="group rounded-[28px] border border-white/70 bg-white p-5 shadow-card transition-all duration-300 hover:-translate-y-1 hover:shadow-card-hover"
+                className="group rounded-[24px] border border-surface-border bg-white p-4 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-hover"
               >
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="flex items-start gap-4">
-                    <span className="flex h-14 w-14 items-center justify-center rounded-[22px] bg-primary/10 text-primary">
-                      <Package className="h-6 w-6" />
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] bg-surface-muted text-primary">
+                      <Package className="h-5 w-5" />
                     </span>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-lg font-bold text-dark">{order.OrderNumber}</h3>
+                        <p className="text-sm font-bold text-dark sm:text-base">{order.OrderNumber}</p>
                         <span className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusBadgeClass(order.Status)}`}>
                           {getStatusLabel(order.Status)}
                         </span>
                       </div>
-                      <p className="mt-2 text-sm font-medium text-dark-lighter">{order.CustomerName}</p>
-                      <div className="mt-3 flex flex-wrap gap-3 text-sm text-dark-lighter">
+                      <div className="mt-2 flex flex-wrap gap-3 text-sm text-dark-lighter">
                         <span className="inline-flex items-center gap-2">
                           <Calendar className="h-4 w-4" />
                           {formatDate(order.CreatedAt)}
@@ -131,23 +127,15 @@ function OrderHistory() {
           </div>
 
           {pagination.totalPages > 1 && (
-            <SurfaceCard tone="muted" className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <SurfaceCard className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-dark-lighter">
                 Toplam {pagination.total} siparis ({pagination.page} / {pagination.totalPages})
               </p>
               <div className="flex gap-3">
-                <Button
-                  variant="secondary"
-                  onClick={() => setPagination({ ...pagination, page: pagination.page - 1 })}
-                  disabled={pagination.page === 1}
-                >
+                <Button variant="secondary" onClick={() => setPagination({ ...pagination, page: pagination.page - 1 })} disabled={pagination.page === 1}>
                   Onceki
                 </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => setPagination({ ...pagination, page: pagination.page + 1 })}
-                  disabled={pagination.page === pagination.totalPages}
-                >
+                <Button variant="secondary" onClick={() => setPagination({ ...pagination, page: pagination.page + 1 })} disabled={pagination.page === pagination.totalPages}>
                   Sonraki
                 </Button>
               </div>

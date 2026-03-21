@@ -8,7 +8,7 @@ import ProductDetailModal from '../components/ProductDetailModal';
 import ProductRowCard from '../components/ProductRowCard';
 import { getCategories, getRestaurants, searchProducts } from '../services/api';
 import { debounce } from '../utils/performance';
-import { Badge, Button, Field, PageShell, SurfaceCard, TextInput } from '../components/ui/primitives';
+import { Badge, Button, Chip, PageShell, SurfaceCard, TextInput, cn } from '../components/ui/primitives';
 
 const getIconComponent = (iconName) => LucideIcons[iconName] || LucideIcons.Utensils;
 
@@ -33,24 +33,22 @@ function Search() {
   const [showFilters, setShowFilters] = useState(false);
 
   const debouncedSearch = useCallback(
-    debounce((query, restaurantFilter, categoryFilter) => {
+    debounce((query, restaurantFilter, categoryFilter, currentCategoryName) => {
       if ((query && query.trim().length >= 2) || categoryFilter) {
         performSearch(query, restaurantFilter, categoryFilter);
         const params = {};
         if (query) params.q = query;
         if (categoryFilter) {
           params.categoryId = categoryFilter;
-          if (categoryName) params.categoryName = categoryName;
+          if (currentCategoryName) params.categoryName = currentCategoryName;
         }
         setSearchParams(params);
       } else {
         setResults([]);
-        if (query.trim().length === 0 && !categoryFilter) {
-          setSearchParams({});
-        }
+        setSearchParams({});
       }
-    }, 500),
-    [categoryName],
+    }, 400),
+    [],
   );
 
   useEffect(() => {
@@ -65,15 +63,13 @@ function Search() {
   }, []);
 
   useEffect(() => {
-    debouncedSearch(searchQuery, selectedRestaurant, selectedCategory);
-  }, [searchQuery, selectedRestaurant, selectedCategory, debouncedSearch]);
+    debouncedSearch(searchQuery, selectedRestaurant, selectedCategory, categoryName);
+  }, [searchQuery, selectedRestaurant, selectedCategory, categoryName, debouncedSearch]);
 
   const loadRestaurants = async () => {
     try {
       const response = await getRestaurants();
-      if (response.success) {
-        setRestaurants(response.data);
-      }
+      if (response.success) setRestaurants(response.data);
     } catch (err) {
       console.error('Restoranlar yuklenemedi:', err);
     }
@@ -136,13 +132,6 @@ function Search() {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (searchQuery.trim().length >= 2 || selectedCategory) {
-      const params = {};
-      if (searchQuery.trim().length >= 2) params.q = searchQuery;
-      if (selectedCategory) {
-        params.categoryId = selectedCategory;
-        if (categoryName) params.categoryName = categoryName;
-      }
-      setSearchParams(params);
       performSearch(searchQuery);
     }
   };
@@ -159,16 +148,10 @@ function Search() {
     if (category.id === 'all') {
       setSelectedCategory(null);
       setCategoryName('');
-      const params = {};
-      if (searchQuery) params.q = searchQuery;
-      setSearchParams(params);
-    } else {
-      setSelectedCategory(String(category.id));
-      setCategoryName(category.name);
-      const params = { categoryId: String(category.id), categoryName: category.name };
-      if (searchQuery) params.q = searchQuery;
-      setSearchParams(params);
+      return;
     }
+    setSelectedCategory(String(category.id));
+    setCategoryName(category.name);
   };
 
   const handleProductClick = (product) => {
@@ -178,137 +161,107 @@ function Search() {
 
   const handlePreviousProduct = () => {
     const currentIndex = results.findIndex((product) => product.Id === selectedProduct?.Id);
-    if (currentIndex > 0) {
-      setSelectedProduct(results[currentIndex - 1]);
-    }
+    if (currentIndex > 0) setSelectedProduct(results[currentIndex - 1]);
   };
 
   const handleNextProduct = () => {
     const currentIndex = results.findIndex((product) => product.Id === selectedProduct?.Id);
-    if (currentIndex < results.length - 1) {
-      setSelectedProduct(results[currentIndex + 1]);
-    }
+    if (currentIndex < results.length - 1) setSelectedProduct(results[currentIndex + 1]);
   };
 
-  const canGoPrevious = () => results.findIndex((product) => product.Id === selectedProduct?.Id) > 0;
-  const canGoNext = () => results.findIndex((product) => product.Id === selectedProduct?.Id) < results.length - 1;
-
   return (
-    <div className="pb-8 pt-4 sm:pt-6 lg:pb-12">
-      <PageShell width="full" className="space-y-6">
-        <SurfaceCard tone="hero" className="overflow-hidden p-6 sm:p-8 lg:p-10">
-          <div className="space-y-5">
+    <div className="pb-8 pt-4 lg:pb-12">
+      <PageShell width="full" className="space-y-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-start gap-3">
             <button
               onClick={() => navigate('/')}
-              className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-bold text-white transition-all duration-200 hover:bg-white/14"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface-muted text-dark transition-all hover:bg-white hover:shadow-card"
+              aria-label="Ana sayfaya don"
             >
               <ArrowLeft className="h-4 w-4" />
-              Ana sayfaya don
             </button>
-
-            <div className="space-y-3">
-              <span className="gm-eyebrow border-white/20 bg-white/10 text-white">Arama</span>
-              <h1 className="font-display text-5xl leading-none text-white sm:text-6xl">
-                {categoryName ? `${categoryName} kategorisi` : 'Urun kesfet'}
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Arama</p>
+              <h1 className="mt-1 text-2xl font-black tracking-tight text-dark sm:text-3xl">
+                {categoryName ? `${categoryName} urunleri` : 'Urun veya kategori ara'}
               </h1>
-              <p className="max-w-2xl text-sm leading-7 text-white/82 sm:text-base">
-                {categoryName
-                  ? `${categoryName} kategorisindeki urunler tek listede.`
-                  : 'Mobilde hizli filtre, desktopta rahat tarama icin yeniden duzenlendi.'}
-              </p>
             </div>
           </div>
-        </SurfaceCard>
 
-        {categories.length > 0 && (
-          <SurfaceCard tone="muted" className="p-4 sm:p-5">
-            <div className="mb-4">
-              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Kategoriler</p>
-              <h2 className="text-xl font-bold text-dark">Hizli filtre</h2>
+          <div className="flex flex-wrap gap-2">
+            {selectedCategory && <Badge tone="primary">{categoryName}</Badge>}
+            {selectedRestaurant && <Badge tone="warning">Restoran filtreli</Badge>}
+          </div>
+        </div>
+
+        <SurfaceCard className="space-y-3 p-4 sm:p-5">
+          <form onSubmit={handleSearchSubmit} className="space-y-3">
+            <div className="relative">
+              <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-dark-lighter" />
+              <TextInput
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Urun adi veya aciklama..."
+                className="pl-12 pr-28"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  className="absolute right-14 top-1/2 -translate-y-1/2 rounded-xl p-2 text-dark-lighter hover:bg-surface-muted"
+                  aria-label="Aramayi temizle"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+              <Button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-2">
+                Ara
+              </Button>
             </div>
-            <div className="scrollbar-hide flex gap-3 overflow-x-auto pb-1">
-              {categories.map((category) => {
-                const Icon = getIconComponent(category.icon);
-                const active = selectedCategory === category.id || (!selectedCategory && category.id === 'all');
-                return (
-                  <button
-                    key={category.id}
-                    onClick={() => handleCategorySelect(category)}
-                    className={`flex shrink-0 items-center gap-3 rounded-[24px] border px-4 py-3 text-left transition-all duration-200 ${
-                      active
-                        ? 'border-primary/25 bg-primary text-white shadow-lg shadow-primary/20'
-                        : 'border-surface-border bg-white text-dark hover:border-primary/20'
-                    }`}
-                  >
-                    <div
-                      className={`flex h-11 w-11 items-center justify-center rounded-[18px] ${active ? 'bg-white/12 text-white' : 'text-white'}`}
-                      style={{ background: active ? 'rgba(255,255,255,0.14)' : category.color }}
+
+            {categories.length > 0 && (
+              <div className="scrollbar-hide flex gap-2 overflow-x-auto pb-1">
+                {categories.map((category) => {
+                  const Icon = getIconComponent(category.icon);
+                  const active = selectedCategory === category.id || (!selectedCategory && category.id === 'all');
+                  return (
+                    <Chip
+                      key={category.id}
+                      active={active}
+                      className={cn('shrink-0 gap-2 px-4 py-3', active && 'text-white')}
+                      onClick={() => handleCategorySelect(category)}
                     >
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold">{category.name}</p>
-                      <p className={`text-xs ${active ? 'text-white/72' : 'text-dark-lighter'}`}>Kategori</p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </SurfaceCard>
-        )}
-
-        <SurfaceCard className="p-4 sm:p-6">
-          <form onSubmit={handleSearchSubmit} className="space-y-4">
-            <Field label="Urun ara" hint="En az 2 karakter girin veya kategori secin.">
-              <div className="relative">
-                <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-dark-lighter" />
-                <TextInput
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Urun adi veya aciklama..."
-                  className="pl-12 pr-28"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={handleClearSearch}
-                    className="absolute right-14 top-1/2 -translate-y-1/2 rounded-xl p-2 text-dark-lighter hover:bg-surface-muted"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-                <Button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-2">
-                  Ara
-                </Button>
+                      <span
+                        className="flex h-6 w-6 items-center justify-center rounded-full text-white"
+                        style={{ background: active ? 'rgba(255,255,255,0.18)' : category.color }}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                      </span>
+                      {category.name}
+                    </Chip>
+                  );
+                })}
               </div>
-            </Field>
+            )}
 
             <div className="space-y-3">
-              <button
-                type="button"
-                onClick={() => setShowFilters(!showFilters)}
-                className="inline-flex items-center gap-2 text-sm font-bold text-primary"
-              >
+              <button type="button" onClick={() => setShowFilters(!showFilters)} className="inline-flex items-center gap-2 text-sm font-bold text-primary">
                 <Filter className="h-4 w-4" />
-                Restorana gore filtrele
-                {selectedRestaurant && <Badge tone="primary">1 secili</Badge>}
+                Restoran filtresi
               </button>
 
               {showFilters && (
-                <div className="flex flex-wrap gap-2">
+                <div className="scrollbar-hide flex gap-2 overflow-x-auto pb-1">
                   {restaurants.map((restaurant) => (
-                    <button
+                    <Chip
                       key={restaurant.Id}
-                      type="button"
+                      active={selectedRestaurant === restaurant.Id}
+                      className={cn('shrink-0 px-4 py-2.5', selectedRestaurant === restaurant.Id && 'text-white')}
                       onClick={() => setSelectedRestaurant(selectedRestaurant === restaurant.Id ? null : restaurant.Id)}
-                      className={`rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 ${
-                        selectedRestaurant === restaurant.Id
-                          ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                          : 'bg-surface-muted text-dark hover:bg-white'
-                      }`}
                     >
                       {restaurant.Name}
-                    </button>
+                    </Chip>
                   ))}
                 </div>
               )}
@@ -318,30 +271,24 @@ function Search() {
 
         {loading && (
           <SurfaceCard tone="muted" className="p-6">
-            <Loading message="Arama sonuclari hazirlaniyor..." />
+            <Loading message="Sonuclar hazirlaniyor..." />
           </SurfaceCard>
         )}
 
-        {error && !loading && (
-          <SurfaceCard tone="muted" className="p-6 text-sm font-medium text-red-600">
-            {error}
-          </SurfaceCard>
-        )}
+        {error && !loading && <SurfaceCard tone="muted" className="p-6 text-sm font-medium text-red-600">{error}</SurfaceCard>}
 
         {!loading && !error && (searchQuery.trim().length >= 2 || selectedCategory) && (
           <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm font-medium text-dark-lighter">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm text-dark-lighter">
                 {searchQuery.trim().length >= 2 ? (
                   <>
-                    <span className="font-bold text-dark">"{searchQuery}"</span> icin {results.length} sonuc bulundu
-                  </>
-                ) : categoryName ? (
-                  <>
-                    <span className="font-bold text-dark">{categoryName}</span> kategorisinde {results.length} urun bulundu
+                    <span className="font-bold text-dark">"{searchQuery}"</span> icin {results.length} sonuc
                   </>
                 ) : (
-                  `${results.length} urun bulundu`
+                  <>
+                    <span className="font-bold text-dark">{categoryName}</span> kategorisinde {results.length} urun
+                  </>
                 )}
               </p>
             </div>
@@ -350,12 +297,12 @@ function Search() {
               <EmptyState
                 icon={SearchIcon}
                 title="Sonuc bulunamadi"
-                message={`"${searchQuery}" icin urun bulunamadi. Farkli bir arama terimi deneyin.`}
+                message="Farkli bir arama terimi veya kategori deneyin."
                 actionText="Ana sayfaya don"
                 actionPath="/"
               />
             ) : (
-              <div className="grid gap-4">
+              <div className="grid gap-3">
                 {results.map((product) => (
                   <ProductRowCard key={product.Id} product={product} onProductClick={handleProductClick} />
                 ))}
@@ -368,7 +315,7 @@ function Search() {
           <EmptyState
             icon={SearchIcon}
             title="Aramaya baslayin"
-            message="Menu icinde urun aramak icin yukaridaki alanlari kullanin."
+            message="Urun veya kategori secerek hizlica sonuclara ulasin."
             actionText="Ana sayfaya don"
             actionPath="/"
           />
@@ -384,8 +331,8 @@ function Search() {
         product={selectedProduct}
         onPrevious={handlePreviousProduct}
         onNext={handleNextProduct}
-        canGoPrevious={canGoPrevious()}
-        canGoNext={canGoNext()}
+        canGoPrevious={results.findIndex((product) => product.Id === selectedProduct?.Id) > 0}
+        canGoNext={results.findIndex((product) => product.Id === selectedProduct?.Id) < results.length - 1}
       />
     </div>
   );

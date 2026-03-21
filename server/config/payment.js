@@ -23,6 +23,8 @@ const paymentConfig = {
   },
 };
 
+let hasShownDevPaymentWarning = false;
+
 function getPaymentEnvironment() {
   return process.env.PAYMENT_ENVIRONMENT || 'test';
 }
@@ -42,6 +44,17 @@ function getCallbackConfig() {
   };
 }
 
+function isLocalhostUrl(value) {
+  if (!value) return false;
+
+  try {
+    const parsed = new URL(value);
+    return ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname);
+  } catch {
+    return value.includes('localhost');
+  }
+}
+
 export function validatePaymentConfig() {
   const environment = getPaymentEnvironment();
 
@@ -49,7 +62,20 @@ export function validatePaymentConfig() {
     throw new Error('PAYMENT_ENVIRONMENT must be either "test" or "production".');
   }
 
-  if (!isNodeProduction() && environment !== 'production') {
+  if (!isNodeProduction()) {
+    const callbacks = getCallbackConfig();
+
+    if (
+      environment === 'production' &&
+      (isLocalhostUrl(callbacks.successUrl) || isLocalhostUrl(callbacks.failureUrl)) &&
+      !hasShownDevPaymentWarning
+    ) {
+      hasShownDevPaymentWarning = true;
+      console.warn(
+        'PAYMENT_ENVIRONMENT=production is active in development. Local callback URLs are allowed for local startup only.'
+      );
+    }
+
     return;
   }
 
@@ -70,8 +96,8 @@ export function validatePaymentConfig() {
   }
 
   if (
-    callbacks.successUrl.includes('localhost') ||
-    callbacks.failureUrl.includes('localhost')
+    isLocalhostUrl(callbacks.successUrl) ||
+    isLocalhostUrl(callbacks.failureUrl)
   ) {
     throw new Error('Payment callback URLs cannot point to localhost in production.');
   }

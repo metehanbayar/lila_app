@@ -55,6 +55,17 @@ function Profile() {
     }
   };
 
+  const resetForm = () => {
+    setFormData({
+      firstName: customer?.fullName?.split(' ')[0] || '',
+      lastName: customer?.fullName?.split(' ').slice(1).join(' ') || '',
+      email: customer?.email || '',
+      phone: customer?.phone || '',
+      dateOfBirth: customer?.dateOfBirth || '',
+      gender: customer?.gender || '',
+    });
+  };
+
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     setSaveLoading(true);
@@ -92,7 +103,7 @@ function Profile() {
     <>
       <CustomerShell
         title={customer?.fullName || 'Profil'}
-        description="Hesap bilgileri, hizli erisim alanlari ve adres yonetimi tek shell icinde toplandi."
+        description="Profil, siparisler ve favoriler tek akista yonetilir."
         actions={
           <Button variant="secondary" onClick={logout}>
             <LogOut className="h-4 w-4" />
@@ -100,55 +111,42 @@ function Profile() {
           </Button>
         }
       >
-        <SurfaceCard tone="hero" className="overflow-hidden p-5 sm:p-6 lg:p-7">
-          <div className="grid gap-6 lg:grid-cols-[auto,1fr,220px] lg:items-center">
-            <div className="flex h-24 w-24 items-center justify-center rounded-[30px] border border-white/20 bg-white/12 text-3xl font-black text-white shadow-lg shadow-black/10">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="flex h-16 w-16 items-center justify-center rounded-[22px] bg-primary text-xl font-black text-white shadow-lg shadow-primary/20">
               {initials}
             </div>
-
-            <div className="space-y-3">
+            <div>
               <div className="flex flex-wrap gap-2">
                 <Badge tone="success">Aktif hesap</Badge>
-                <Badge className="border border-white/20 bg-white/12 text-white">Musteri paneli</Badge>
+                <Badge tone="primary">Musteri</Badge>
               </div>
-              <div>
-                <h2 className="font-display text-4xl leading-none text-white sm:text-5xl">{customer?.fullName || 'Misafir'}</h2>
-                <div className="mt-3 flex flex-wrap gap-3 text-sm text-white/80">
-                  {customer?.phone && (
-                    <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2">
-                      <Phone className="h-4 w-4" />
-                      {customer.phone}
-                    </span>
-                  )}
-                  {customer?.email && (
-                    <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2">
-                      <Mail className="h-4 w-4" />
-                      {customer.email}
-                    </span>
-                  )}
-                </div>
+              <p className="mt-2 text-lg font-black text-dark sm:text-xl">{customer?.fullName || 'Misafir'}</p>
+              <div className="mt-2 flex flex-wrap gap-2 text-sm text-dark-lighter">
+                {customer?.phone && <span className="rounded-full bg-surface-muted px-3 py-2">{customer.phone}</span>}
+                {customer?.email && <span className="rounded-full bg-surface-muted px-3 py-2">{customer.email}</span>}
               </div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-              <Link to="/my-orders" className="rounded-[24px] border border-white/15 bg-white/10 p-4 backdrop-blur-md transition-all hover:bg-white/14">
-                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/60">Siparis</p>
-                <p className="mt-2 text-3xl font-black text-white">{ordersCount}</p>
-              </Link>
-              <Link to="/favorites" className="rounded-[24px] border border-white/15 bg-white/10 p-4 backdrop-blur-md transition-all hover:bg-white/14">
-                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/60">Favori</p>
-                <p className="mt-2 text-3xl font-black text-white">{favoritesCount}</p>
-              </Link>
             </div>
           </div>
-        </SurfaceCard>
 
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr),minmax(0,0.9fr)]">
+          <div className="grid grid-cols-2 gap-2">
+            <Link to="/my-orders" className="rounded-[20px] bg-surface-muted px-4 py-3 text-center transition-all hover:bg-white hover:shadow-card">
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-dark-lighter">Siparis</p>
+              <p className="mt-1 text-xl font-black text-dark">{ordersCount}</p>
+            </Link>
+            <Link to="/favorites" className="rounded-[20px] bg-surface-muted px-4 py-3 text-center transition-all hover:bg-white hover:shadow-card">
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-dark-lighter">Favori</p>
+              <p className="mt-1 text-xl font-black text-dark">{favoritesCount}</p>
+            </Link>
+          </div>
+        </div>
+
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr),minmax(0,0.9fr)]">
           <SurfaceCard className="p-5 sm:p-6">
             <div className="mb-5 flex items-center justify-between gap-3">
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Profil formu</p>
-                <h3 className="text-2xl font-bold text-dark">{editing ? 'Bilgileri duzenle' : 'Hesap ozeti'}</h3>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Profil</p>
+                <h2 className="mt-1 text-xl font-bold text-dark">{editing ? 'Bilgileri duzenle' : 'Hesap bilgileri'}</h2>
               </div>
               {!editing && (
                 <Button variant="secondary" onClick={() => setEditing(true)}>
@@ -201,14 +199,7 @@ function Profile() {
                     className="sm:flex-1"
                     onClick={() => {
                       setEditing(false);
-                      setFormData({
-                        firstName: customer?.fullName?.split(' ')[0] || '',
-                        lastName: customer?.fullName?.split(' ').slice(1).join(' ') || '',
-                        email: customer?.email || '',
-                        phone: customer?.phone || '',
-                        dateOfBirth: customer?.dateOfBirth || '',
-                        gender: customer?.gender || '',
-                      });
+                      resetForm();
                     }}
                   >
                     Iptal
@@ -216,7 +207,7 @@ function Profile() {
                 </div>
               </form>
             ) : (
-              <div className="grid gap-4">
+              <div className="grid gap-3">
                 <InfoRow icon={User} label="Ad soyad" value={customer?.fullName || '-'} />
                 <InfoRow icon={Phone} label="Telefon" value={customer?.phone || '-'} />
                 <InfoRow icon={Mail} label="E-posta" value={customer?.email || '-'} />
@@ -225,25 +216,25 @@ function Profile() {
             )}
           </SurfaceCard>
 
-          <div className="grid gap-5">
-            <SurfaceCard tone="muted" className="p-5 sm:p-6">
+          <div className="grid gap-4">
+            <SurfaceCard className="p-5 sm:p-6">
               <div className="mb-4">
-                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Hizli erisim</p>
-                <h3 className="text-2xl font-bold text-dark">Yonetim kartlari</h3>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Hizli islemler</p>
+                <h2 className="mt-1 text-xl font-bold text-dark">Kisayollar</h2>
               </div>
               <div className="grid gap-3">
                 <QuickLink to="/my-orders" icon={ShoppingBag} title="Siparislerim" description="Tum siparis gecmisini gor." />
-                <QuickLink to="/favorites" icon={Heart} title="Favorilerim" description="Begendigin urunlere don." />
+                <QuickLink to="/favorites" icon={Heart} title="Favorilerim" description="Kaydettigin urunlere don." />
                 <button
                   onClick={() => setShowAddressManager(true)}
-                  className="flex items-start gap-3 rounded-[24px] border border-surface-border bg-white px-4 py-4 text-left transition-all hover:border-primary/20 hover:shadow-card"
+                  className="flex items-start gap-3 rounded-[22px] border border-surface-border bg-surface-muted px-4 py-4 text-left transition-all hover:bg-white hover:shadow-card"
                 >
-                  <span className="flex h-12 w-12 items-center justify-center rounded-[20px] bg-primary/10 text-primary">
-                    <MapPin className="h-5 w-5" />
+                  <span className="flex h-11 w-11 items-center justify-center rounded-[18px] bg-primary/10 text-primary">
+                    <MapPin className="h-4 w-4" />
                   </span>
                   <div>
-                    <p className="text-base font-bold text-dark">Adreslerim</p>
-                    <p className="mt-1 text-sm leading-6 text-dark-lighter">Kayitli teslimat adreslerini yonet.</p>
+                    <p className="text-sm font-bold text-dark">Adreslerim</p>
+                    <p className="mt-1 text-sm leading-6 text-dark-lighter">Teslimat adreslerini yonet.</p>
                   </div>
                 </button>
               </div>
@@ -251,23 +242,18 @@ function Profile() {
 
             {customer?.referralCode && (
               <SurfaceCard className="p-5 sm:p-6">
-                <div className="mb-4">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Davet</p>
-                  <h3 className="text-2xl font-bold text-dark">Davet kodun</h3>
-                </div>
-                <div className="rounded-[24px] bg-surface-muted p-4">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <code className="text-xl font-black tracking-[0.18em] text-primary-dark">{customer.referralCode}</code>
-                    <Button
-                      variant="secondary"
-                      onClick={() => {
-                        navigator.clipboard.writeText(customer.referralCode);
-                        alert('Davet kodu kopyalandi');
-                      }}
-                    >
-                      Kopyala
-                    </Button>
-                  </div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Davet kodu</p>
+                <div className="mt-3 flex flex-col gap-3 rounded-[22px] bg-surface-muted p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <code className="text-lg font-black tracking-[0.14em] text-primary-dark">{customer.referralCode}</code>
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      navigator.clipboard.writeText(customer.referralCode);
+                      alert('Davet kodu kopyalandi');
+                    }}
+                  >
+                    Kopyala
+                  </Button>
                 </div>
               </SurfaceCard>
             )}
@@ -296,12 +282,12 @@ function InfoRow({ icon: Icon, label, value }) {
 
 function QuickLink({ to, icon: Icon, title, description }) {
   return (
-    <Link to={to} className="flex items-start gap-3 rounded-[24px] border border-surface-border bg-white px-4 py-4 transition-all hover:border-primary/20 hover:shadow-card">
-      <span className="flex h-12 w-12 items-center justify-center rounded-[20px] bg-primary/10 text-primary">
-        <Icon className="h-5 w-5" />
+    <Link to={to} className="flex items-start gap-3 rounded-[22px] border border-surface-border bg-surface-muted px-4 py-4 transition-all hover:bg-white hover:shadow-card">
+      <span className="flex h-11 w-11 items-center justify-center rounded-[18px] bg-white text-primary">
+        <Icon className="h-4 w-4" />
       </span>
       <div>
-        <p className="text-base font-bold text-dark">{title}</p>
+        <p className="text-sm font-bold text-dark">{title}</p>
         <p className="mt-1 text-sm leading-6 text-dark-lighter">{description}</p>
       </div>
     </Link>
