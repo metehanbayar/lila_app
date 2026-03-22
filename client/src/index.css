@@ -553,6 +553,12 @@
   transition-duration: 260ms;
 }
 
+.gm-reveal.is-visible.reveal-soft,
+.gm-reveal.is-visible.section-enter,
+.gm-reveal.is-visible.bar-rise {
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
 .gm-image-drift {
   transition: transform 720ms cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;

@@ -285,7 +285,7 @@ function RestaurantMenu({ viewOnly = false }) {
       </PageShell>
 
       {categoriesWithProducts.length > 0 && (
-        <Reveal as="div" variant="bar-rise" className="sticky z-30 mt-4" style={{ top: 'calc(var(--gm-header-height, 112px) + 0.5rem)' }}>
+        <Reveal as="div" variant="bar-rise" className="sticky z-30" style={{ top: 'var(--gm-header-height, 112px)' }}>
           <PageShell width="full">
             <div ref={navbarRef} className="scrollbar-hide flex gap-2 overflow-x-auto rounded-[22px] border border-white/70 bg-white/92 p-2 shadow-card backdrop-blur-xl">
               {categoriesWithProducts.map((category) => (
