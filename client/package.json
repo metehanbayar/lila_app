@@ -17,6 +17,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@react-google-maps/api": "^2.20.8",
     "axios": "^1.13.6",
+    "gsap": "^3.14.2",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.294.0",
     "react": "^18.2.0",

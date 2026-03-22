@@ -614,6 +614,12 @@
   }
 }
 
+@media (max-width: 767px) {
+  html {
+    font-size: 15px;
+  }
+}
+
 @media (max-width: 1023px), (hover: none) and (pointer: coarse) {
   .animate-pageEnter,
   .gm-reveal,

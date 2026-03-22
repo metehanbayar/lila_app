@@ -1,5 +1,7 @@
 import { Clock3, Star } from 'lucide-react';
 import { Badge } from './ui/primitives';
+import { getSafeRestaurantDescription } from '../utils/contentSanitizer';
+import { getRestaurantCardImage } from '../utils/imageVariants';
 
 function resolveRating(restaurant) {
   const rawRating = restaurant?.Rating ?? restaurant?.rating ?? restaurant?.AverageRating ?? restaurant?.averageRating;
@@ -14,6 +16,8 @@ function resolveRating(restaurant) {
 
 function StoreCard({ restaurant, onClick, className = '', imageLoadingMode = 'lazy', prioritizeImage = false }) {
   const rating = resolveRating(restaurant);
+  const cardImageUrl = getRestaurantCardImage(restaurant);
+  const safeDescription = getSafeRestaurantDescription(restaurant, '');
 
   return (
     <button
@@ -22,9 +26,9 @@ function StoreCard({ restaurant, onClick, className = '', imageLoadingMode = 'la
       className={`group w-full overflow-hidden rounded-[28px] border border-white/70 bg-white text-left shadow-card transition-all duration-300 hover:-translate-y-1 hover:shadow-card-hover ${className}`.trim()}
     >
       <div className="relative h-40 overflow-hidden sm:h-44">
-        {restaurant.ImageUrl ? (
+        {cardImageUrl ? (
           <img
-            src={restaurant.ImageUrl}
+            src={cardImageUrl}
             alt={restaurant.Name}
             className="gm-image-drift h-full w-full object-cover"
             loading={imageLoadingMode}
@@ -48,7 +52,7 @@ function StoreCard({ restaurant, onClick, className = '', imageLoadingMode = 'la
         <div className="flex items-start justify-between gap-3">
           <div className="gm-content-settle min-w-0">
             <h3 className="truncate text-lg font-bold text-dark">{restaurant.Name}</h3>
-            {restaurant.Description && <p className="mt-1 line-clamp-2 text-sm leading-6 text-dark-lighter">{restaurant.Description}</p>}
+            {safeDescription && <p className="mt-1 line-clamp-2 text-sm leading-6 text-dark-lighter">{safeDescription}</p>}
           </div>
           {rating && (
             <div className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">

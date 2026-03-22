@@ -5,6 +5,12 @@ import { upload } from '../config/multer.js';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import {
+  attachFileVariants,
+  attachFileVariantsToList,
+  ensureImageVariants,
+  removeImageVariants,
+} from '../utils/image-variants.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,7 +31,7 @@ router.get('/', adminAuth, async (req, res) => {
 
     res.json({
       success: true,
-      data: result.recordset,
+      data: attachFileVariantsToList(result.recordset),
     });
   } catch (error) {
     console.error('Media listesi hatası:', error);
@@ -62,7 +68,7 @@ router.get('/:id', adminAuth, async (req, res) => {
 
     res.json({
       success: true,
-      data: result.recordset[0],
+      data: attachFileVariants(result.recordset[0]),
     });
   } catch (error) {
     console.error('Media detay hatası:', error);
@@ -93,6 +99,14 @@ router.post('/upload', adminAuth, upload.single('file'), async (req, res) => {
     let width = null;
     let height = null;
 
+    try {
+      const metadata = await ensureImageVariants(file.path);
+      width = metadata?.width ?? null;
+      height = metadata?.height ?? null;
+    } catch (variantError) {
+      console.error('Variant olusturma hatasi:', variantError);
+    }
+
     // Veritabanına kaydet
     const result = await pool
       .request()
@@ -120,7 +134,7 @@ router.post('/upload', adminAuth, upload.single('file'), async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Dosya başarıyla yüklendi',
-      data: result.recordset[0],
+      data: attachFileVariants(result.recordset[0]),
     });
   } catch (error) {
     console.error('Dosya yükleme hatası:', error);
@@ -129,6 +143,7 @@ router.post('/upload', adminAuth, upload.single('file'), async (req, res) => {
     if (req.file && req.file.path) {
       try {
         fs.unlinkSync(req.file.path);
+        await removeImageVariants(req.file.path);
       } catch (unlinkError) {
         console.error('Dosya silme hatası:', unlinkError);
       }
@@ -156,6 +171,16 @@ router.post('/upload-multiple', adminAuth, upload.array('files', 10), async (req
 
     for (const file of req.files) {
       const fileUrl = `/uploads/${file.filename}`;
+      let width = null;
+      let height = null;
+
+      try {
+        const metadata = await ensureImageVariants(file.path);
+        width = metadata?.width ?? null;
+        height = metadata?.height ?? null;
+      } catch (variantError) {
+        console.error('Variant olusturma hatasi:', variantError);
+      }
       
       const result = await pool
         .request()
@@ -165,20 +190,22 @@ router.post('/upload-multiple', adminAuth, upload.array('files', 10), async (req
         .input('fileUrl', sql.NVarChar, fileUrl)
         .input('fileSize', sql.Int, file.size)
         .input('mimeType', sql.NVarChar, file.mimetype)
+        .input('width', sql.Int, width)
+        .input('height', sql.Int, height)
         .input('uploadedBy', sql.NVarChar, 'admin')
         .query(`
           INSERT INTO Media (
             FileName, OriginalName, FilePath, FileUrl, 
-            FileSize, MimeType, UploadedBy
+            FileSize, MimeType, Width, Height, UploadedBy
           )
           OUTPUT INSERTED.*
           VALUES (
             @fileName, @originalName, @filePath, @fileUrl,
-            @fileSize, @mimeType, @uploadedBy
+            @fileSize, @mimeType, @width, @height, @uploadedBy
           )
         `);
 
-      uploadedFiles.push(result.recordset[0]);
+      uploadedFiles.push(attachFileVariants(result.recordset[0]));
     }
 
     res.status(201).json({
@@ -226,6 +253,7 @@ router.delete('/:id', adminAuth, async (req, res) => {
     try {
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
+        await removeImageVariants(filePath);
       }
     } catch (unlinkError) {
       console.error('Dosya silme hatası:', unlinkError);
@@ -245,4 +273,3 @@ router.delete('/:id', adminAuth, async (req, res) => {
 });
 
 export default router;
-

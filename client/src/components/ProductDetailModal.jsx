@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import useCartStore from '../store/cartStore';
 import { showSingleAddSuccess } from '../utils/addToCartFeedback';
+import { getProductDetailImage } from '../utils/imageVariants';
 import { cn } from './ui/primitives';
 
 function ProductDetailModal({
@@ -114,14 +115,15 @@ function ProductDetailModal({
   const currentPrice = useMemo(() => Number(selectedVariant?.Price ?? product?.Price ?? 0), [selectedVariant, product]);
   const isActive = product?.IsActive !== false;
   const canAddToCart = isActive && (!hasSelectableVariants || Boolean(selectedVariant));
+  const detailImageUrl = getProductDetailImage(product);
 
   if (!isOpen || !product) return null;
 
   const renderImagePanel = (ref) => (
     <div ref={ref} data-add-to-cart-image="true" className="overflow-hidden rounded-[28px] bg-white shadow-card lg:h-full">
       <div className="aspect-[4/3] bg-surface-muted">
-        {product.ImageUrl ? (
-          <img src={product.ImageUrl} alt={product.Name} className="h-full w-full object-cover" loading="lazy" />
+        {detailImageUrl ? (
+          <img src={detailImageUrl} alt={product.Name} className="h-full w-full object-cover" loading="lazy" />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#f1e4ec,#f2ece5)]">
             <ImageOff className="h-10 w-10 text-primary/35" />

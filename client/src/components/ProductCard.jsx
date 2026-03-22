@@ -5,6 +5,7 @@ import { addToFavorites, removeFromFavorites } from '../services/customerApi';
 import useCartStore from '../store/cartStore';
 import useCustomerStore from '../store/customerStore';
 import { showSingleAddSuccess } from '../utils/addToCartFeedback';
+import { getProductListImage } from '../utils/imageVariants';
 import { Badge, cn } from './ui/primitives';
 
 function ProductCard({ product, onProductClick }) {
@@ -18,6 +19,7 @@ function ProductCard({ product, onProductClick }) {
   const [imageLoaded, setImageLoaded] = useState(false);
 
   const isActive = product.IsActive !== false;
+  const productImageUrl = getProductListImage(product);
 
   const formatPrice = useCallback((value) => {
     const num = Number(value);
@@ -87,11 +89,11 @@ function ProductCard({ product, onProductClick }) {
       )}
     >
         <div data-add-to-cart-image="true" className="relative aspect-[4/3] overflow-hidden">
-          {product.ImageUrl ? (
+          {productImageUrl ? (
             <>
               {!imageLoaded && <div className="absolute inset-0 animate-pulse bg-[linear-gradient(135deg,#f2e6ef,#f2ede8)]" />}
               <img
-                src={product.ImageUrl}
+                src={productImageUrl}
                 alt={product.Name}
                 className={cn(
                   'h-full w-full object-cover transition-all duration-700 group-hover:scale-105',
@@ -181,6 +183,7 @@ export default memo(ProductCard, (prevProps, nextProps) => {
   return (
     prevProps.product.Id === nextProps.product.Id &&
     prevProps.product.ImageUrl === nextProps.product.ImageUrl &&
+    prevProps.product.ImageThumbUrl === nextProps.product.ImageThumbUrl &&
     prevProps.product.Name === nextProps.product.Name &&
     prevProps.product.Price === nextProps.product.Price &&
     prevProps.product.IsActive === nextProps.product.IsActive &&

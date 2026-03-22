@@ -8,6 +8,7 @@ import ProductRowCard from '../../components/ProductRowCard';
 import { getFavorites } from '../../services/customerApi';
 import useCustomerStore from '../../store/customerStore';
 import { SurfaceCard } from '../../components/ui/primitives';
+import { getProductListImage } from '../../utils/imageVariants';
 import { preloadImages } from '../../utils/pagePreload';
 
 function Favorites() {
@@ -28,7 +29,7 @@ function Favorites() {
       const response = await getFavorites();
       if (response.success) {
         const nextProducts = response.data || [];
-        await preloadImages(nextProducts.map((product) => product.ImageUrl));
+        await preloadImages(nextProducts.slice(0, 8).map((product) => getProductListImage(product)));
         setFavoriteProducts(nextProducts);
         setFavorites(nextProducts.map((product) => product.Id));
       }
@@ -70,7 +71,7 @@ function Favorites() {
               key={product.Id}
               product={product}
               onProductClick={handleProductClick}
-              imageLoadingMode="eager"
+              imageLoadingMode={index < 6 ? 'eager' : 'lazy'}
               prioritizeImage={index < 6}
             />
           ))}

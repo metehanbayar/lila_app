@@ -1,6 +1,7 @@
 import express from 'express';
 import { getConnection, sql } from '../config/database.js';
 import { adminAuth } from './admin.js';
+import { attachImageVariants, attachImageVariantsToList } from '../utils/image-variants.js';
 
 const router = express.Router();
 
@@ -36,7 +37,7 @@ router.get('/', adminAuth, async (req, res) => {
 
     res.json({
       success: true,
-      data: result.recordset,
+      data: attachImageVariantsToList(result.recordset),
     });
   } catch (error) {
     console.error('Ürün listesi hatası:', error);
@@ -78,7 +79,7 @@ router.get('/restaurant/:restaurantId', adminAuth, async (req, res) => {
 
     res.json({
       success: true,
-      data: result.recordset,
+      data: attachImageVariantsToList(result.recordset),
     });
   } catch (error) {
     console.error('Restoran ürünleri hatası:', error);
@@ -118,7 +119,7 @@ router.get('/:id', adminAuth, async (req, res) => {
       });
     }
 
-    const product = result.recordset[0];
+    const product = attachImageVariants(result.recordset[0]);
 
     // Restoran bazlı kullanıcı ise sadece kendi restoranının ürünlerini görebilir
     if (req.admin.RestaurantId && product.RestaurantId !== req.admin.RestaurantId) {
@@ -213,7 +214,7 @@ router.post('/', adminAuth, async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Ürün başarıyla oluşturuldu',
-      data: result.recordset[0],
+      data: attachImageVariants(result.recordset[0]),
     });
   } catch (error) {
     console.error('Ürün oluşturma hatası:', error);
@@ -323,7 +324,7 @@ router.put('/:id', adminAuth, async (req, res) => {
     res.json({
       success: true,
       message: 'Ürün başarıyla güncellendi',
-      data: result.recordset[0],
+      data: attachImageVariants(result.recordset[0]),
     });
   } catch (error) {
     console.error('Ürün güncelleme hatası:', error);
@@ -473,7 +474,7 @@ router.patch('/:id/status', adminAuth, async (req, res) => {
     res.json({
       success: true,
       message: `Ürün ${isActive ? 'aktif' : 'pasif'} edildi`,
-      data: result.recordset[0],
+      data: attachImageVariants(result.recordset[0]),
     });
   } catch (error) {
     console.error('Ürün durumu güncelleme hatası:', error);
@@ -525,4 +526,3 @@ router.post('/reorder', adminAuth, async (req, res) => {
 });
 
 export default router;
-

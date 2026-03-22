@@ -19,6 +19,7 @@ import Reveal from '../components/ui/Reveal';
 import { createOrder, initializePayment, setOfflinePayment } from '../services/api';
 import useCartStore from '../store/cartStore';
 import useCustomerStore from '../store/customerStore';
+import { getProductListImage } from '../utils/imageVariants';
 import { preloadImages } from '../utils/pagePreload';
 import {
   Badge,
@@ -103,8 +104,8 @@ function OrderSummary({ items, subtotal, discountAmount, totalAmount, restaurant
         {items.slice(0, 3).map((item) => (
           <div key={`${item.Id}:${item.selectedVariant?.Id ?? 0}`} className="flex items-start gap-3 rounded-[22px] border border-surface-border bg-white px-4 py-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-[16px] bg-surface-muted">
-              {item.ImageUrl ? (
-                <img src={item.ImageUrl} alt={item.Name} className="h-full w-full object-cover" />
+              {getProductListImage(item) ? (
+                <img src={getProductListImage(item)} alt={item.Name} className="h-full w-full object-cover" />
               ) : (
                 <ShoppingCart className="h-4 w-4 text-primary" />
               )}
@@ -216,7 +217,7 @@ function Checkout() {
       if (!initialAssetsReadyRef.current) {
         setPageReady(false);
       }
-      await preloadImages(items.map((item) => item.ImageUrl));
+      await preloadImages(items.map((item) => getProductListImage(item)));
       if (!cancelled) {
         if (!initialAssetsReadyRef.current) {
           setPageReady(true);

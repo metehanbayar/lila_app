@@ -9,6 +9,7 @@ import { checkMinimumOrder, getActivePromotions, getCrossSellProducts } from '..
 import useCartStore from '../store/cartStore';
 import useCustomerStore from '../store/customerStore';
 import { showSingleAddSuccess } from '../utils/addToCartFeedback';
+import { getProductListImage } from '../utils/imageVariants';
 import { preloadImages } from '../utils/pagePreload';
 import { Badge, Chip, PageShell, PrimaryButton, StickyActionBar, SurfaceCard, cn } from '../components/ui/primitives';
 
@@ -23,12 +24,14 @@ const toNum = (value) => {
 };
 
 function CartItemCard({ item, increaseQuantity, decreaseQuantity, removeItem }) {
+  const itemImageUrl = getProductListImage(item);
+
   return (
     <article className="w-full max-w-full overflow-hidden rounded-[24px] border border-surface-border bg-surface-muted p-3 sm:p-4">
       <div className="grid grid-cols-[80px_minmax(0,1fr)] gap-3 sm:grid-cols-[92px_minmax(0,1fr)] sm:gap-4">
         <div className="h-20 w-20 shrink-0 overflow-hidden rounded-[18px] bg-white shadow-sm sm:h-[92px] sm:w-[92px]">
-          {item.ImageUrl ? (
-            <img src={item.ImageUrl} alt={item.Name} className="h-full w-full object-cover" loading="eager" decoding="async" />
+          {itemImageUrl ? (
+            <img src={itemImageUrl} alt={item.Name} className="h-full w-full object-cover" loading="eager" decoding="async" />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#f1e4ec,#f2ece5)]">
               <Package className="h-6 w-6 text-primary/40" />
@@ -277,8 +280,8 @@ function Cart() {
         setPageReady(false);
       }
       await preloadImages([
-        ...items.map((item) => item.ImageUrl),
-        ...crossSellProducts.map((product) => product.ImageUrl),
+        ...items.map((item) => getProductListImage(item)),
+        ...crossSellProducts.map((product) => getProductListImage(product)),
       ]);
       if (!cancelled) {
         if (!initialAssetsReadyRef.current) {
@@ -479,9 +482,9 @@ function Cart() {
         )}
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr),340px] xl:items-start">
-          <div className="space-y-4">
+          <div className="min-w-0 space-y-4">
             <Reveal variant="section-enter">
-              <SurfaceCard className="space-y-3 p-4 sm:p-5">
+              <SurfaceCard className="min-w-0 space-y-3 overflow-hidden p-4 sm:p-5">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Sepettekiler</p>
@@ -504,7 +507,7 @@ function Cart() {
  
             {crossSellProducts.length > 0 && (
               <Reveal variant="section-enter" delay={80}>
-                <SurfaceCard tone="muted" className="p-4 sm:p-5">
+                <SurfaceCard tone="muted" className="min-w-0 overflow-hidden p-4 sm:p-5">
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <div>
                       <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Istege bagli</p>
@@ -513,16 +516,16 @@ function Cart() {
                     <Badge tone="warning">{crossSellProducts.length} urun</Badge>
                   </div>
 
-                  <div className="scrollbar-hide flex gap-3 overflow-x-auto pb-1">
+                  <div className="scrollbar-hide flex max-w-full gap-3 overflow-x-auto pb-1">
                     {crossSellProducts.map((product, index) => {
                       const hasVariants = product.variants?.length > 1;
                       return (
-                        <Reveal key={product.Id} variant="reveal-up" delay={Math.min(index, 5) * 50}>
+                        <Reveal key={product.Id} variant="reveal-up" delay={Math.min(index, 5) * 50} className="shrink-0">
                           <article data-product-card="true" className="group w-[190px] shrink-0 overflow-hidden rounded-[24px] border border-white/70 bg-white shadow-card transition-transform duration-300 hover:-translate-y-1 hover:shadow-card-hover">
                             <button type="button" onClick={() => handleCrossSellPreview(product)} className="block w-full text-left">
                               <div data-add-to-cart-image="true" className="relative h-28 overflow-hidden bg-surface-muted">
-                                {product.ImageUrl ? (
-                                  <img src={product.ImageUrl} alt={product.Name} className="gm-image-drift h-full w-full object-cover" loading="eager" decoding="async" />
+                                {getProductListImage(product) ? (
+                                  <img src={getProductListImage(product)} alt={product.Name} className="gm-image-drift h-full w-full object-cover" loading="eager" decoding="async" />
                                 ) : (
                                   <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#f1e4ec,#f2ece5)]">
                                     <Package className="h-6 w-6 text-primary/40" />

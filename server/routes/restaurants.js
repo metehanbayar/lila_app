@@ -1,5 +1,6 @@
 import express from 'express';
 import { getConnection, sql } from '../config/database.js';
+import { attachImageVariants, attachImageVariantsToList } from '../utils/image-variants.js';
 
 const router = express.Router();
 
@@ -16,7 +17,7 @@ router.get('/', async (req, res) => {
 
     res.json({
       success: true,
-      data: result.recordset,
+      data: attachImageVariantsToList(result.recordset),
     });
   } catch (error) {
     console.error('Restoran listesi hatası:', error);
@@ -51,7 +52,7 @@ router.get('/:slug', async (req, res) => {
 
     res.json({
       success: true,
-      data: result.recordset[0],
+      data: attachImageVariants(result.recordset[0]),
     });
   } catch (error) {
     console.error('Restoran detay hatası:', error);

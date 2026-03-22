@@ -5,6 +5,7 @@ import { addToFavorites, removeFromFavorites } from '../services/customerApi';
 import useCartStore from '../store/cartStore';
 import useCustomerStore from '../store/customerStore';
 import { showSingleAddSuccess } from '../utils/addToCartFeedback';
+import { getProductListImage } from '../utils/imageVariants';
 import { Badge, cn } from './ui/primitives';
 
 const formatPrice = (value) => {
@@ -21,6 +22,7 @@ function ProductRowCard({ product, onProductClick, isViewOnly = false, prioritiz
   const hasVariants = product.variants && product.variants.length > 1;
   const isActive = product.IsActive !== false;
   const favorite = isFavorite(product.Id);
+  const productImageUrl = getProductListImage(product);
 
   const handleAddToCart = (e) => {
     e.stopPropagation();
@@ -77,12 +79,12 @@ function ProductRowCard({ product, onProductClick, isViewOnly = false, prioritiz
           : 'border-surface-border bg-surface-muted opacity-75',
       )}
     >
-      <div className="grid grid-cols-[128px,minmax(0,1fr)] gap-3 sm:grid-cols-[144px,minmax(0,1fr)] sm:gap-4">
+      <div className="grid grid-cols-[120px,minmax(0,1fr)] gap-3 sm:grid-cols-[144px,minmax(0,1fr)] sm:gap-4">
         <div className="flex flex-col gap-2">
           <div data-add-to-cart-image="true" className="relative aspect-square overflow-hidden rounded-[22px] bg-surface-muted sm:rounded-[24px]">
-            {product.ImageUrl ? (
+            {productImageUrl ? (
               <img
-                src={product.ImageUrl}
+                src={productImageUrl}
                 alt={product.Name}
                 className="gm-image-drift h-full w-full object-cover"
                 decoding="async"
@@ -130,13 +132,13 @@ function ProductRowCard({ product, onProductClick, isViewOnly = false, prioritiz
           )}
         </div>
 
-        <div className="flex min-w-0 flex-col justify-between gap-3">
+        <div className="flex min-w-0 flex-col justify-between gap-2.5 sm:gap-3">
           <div className="gm-content-settle space-y-2">
             <h3 className="line-clamp-2 text-[15px] font-bold leading-5 text-dark sm:text-lg sm:leading-6">{product.Name}</h3>
             {product.Description && <p className="line-clamp-2 text-xs leading-5 text-dark-lighter sm:text-sm sm:leading-6">{product.Description}</p>}
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2.5 sm:flex sm:items-end sm:justify-between sm:gap-3">
             <div className="gm-price-settle space-y-1">
               <div className="flex items-center gap-2">
                 <span className="text-xl font-black text-primary-dark sm:text-2xl">{formatPrice(product.Price)} TL</span>
@@ -152,7 +154,7 @@ function ProductRowCard({ product, onProductClick, isViewOnly = false, prioritiz
                 onClick={handleAddToCart}
                 disabled={!isActive}
                 className={cn(
-                  'inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold transition-all duration-200 sm:min-w-[132px] sm:w-auto',
+                  'inline-flex min-h-[42px] shrink-0 items-center justify-center gap-1.5 rounded-[18px] px-3.5 py-2.5 text-[13px] font-bold transition-all duration-200 sm:min-h-[46px] sm:min-w-[132px] sm:gap-2 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm',
                   isActive ? 'bg-primary text-white shadow-lg shadow-primary/20 hover:-translate-y-0.5' : 'bg-white text-dark-lighter',
                 )}
               >
@@ -160,11 +162,11 @@ function ProductRowCard({ product, onProductClick, isViewOnly = false, prioritiz
                   hasVariants ? (
                     <>
                       Sec
-                      <ChevronRight className="h-4 w-4" strokeWidth={3} />
+                      <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={3} />
                     </>
                   ) : (
                     <>
-                      <Plus className="h-4 w-4" strokeWidth={3} />
+                      <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={3} />
                       Ekle
                     </>
                   )

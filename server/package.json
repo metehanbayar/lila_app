@@ -10,6 +10,7 @@
     "check:syntax": "node scripts/check-syntax.js",
     "check:smoke": "node scripts/smoke-check.js",
     "check": "npm run check:syntax && npm run check:smoke",
+    "images:variants": "node scripts/generate-image-variants.js",
     "audit:uploads": "node scripts/audit-uploads.js",
     "dedupe:uploads": "node scripts/dedupe-uploads.js --apply"
   },
@@ -31,6 +32,7 @@
     "nodemailer": "^8.0.3",
     "pdf-to-printer": "^5.6.1",
     "php-unserialize": "^0.0.1",
+    "sharp": "^0.34.5",
     "socket.io": "^4.8.3"
   }
 }

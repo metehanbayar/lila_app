@@ -5,6 +5,8 @@ import StoreCard from '../components/StoreCard';
 import Reveal from '../components/ui/Reveal';
 import { getActivePromotions, getRestaurants } from '../services/api';
 import { Badge, Button, PageShell, SurfaceCard } from '../components/ui/primitives';
+import { getSafeCampaignSubtitle, getSafeCampaignTitle } from '../utils/contentSanitizer';
+import { getRestaurantCardImage } from '../utils/imageVariants';
 import { preloadImages } from '../utils/pagePreload';
 
 const StoreSkeleton = memo(() => (
@@ -107,7 +109,7 @@ function getCampaignSummary(campaign) {
     }
   }
 
-  const summary = [benefit, ...conditions].filter(Boolean).join(' • ');
+  const summary = [benefit, ...conditions].filter(Boolean).join(' / ');
 
   if (summary) {
     return summary;
@@ -194,8 +196,8 @@ function Home() {
 
       if (restaurantsRes.success) {
         const nextRestaurants = restaurantsRes.data || [];
-        await preloadImages(nextRestaurants.map((restaurant) => restaurant.ImageUrl));
         setRestaurants(nextRestaurants);
+        preloadImages(nextRestaurants.slice(0, 8).map((restaurant) => getRestaurantCardImage(restaurant))).catch(() => {});
       } else {
         setError('Magazalar yuklenemedi');
       }
@@ -316,14 +318,9 @@ function Home() {
 
   const activeCampaign = campaigns[activeCampaignIndex] || null;
   const campaignTheme = getCampaignTheme(activeCampaign?.BgColor);
-  const campaignTitle = activeCampaign?.DisplayTitle || activeCampaign?.Description || 'Aktif kampanya';
   const campaignSummary = getCampaignSummary(activeCampaign);
-  const campaignSubtitle =
-    activeCampaign?.DisplaySubtitle && activeCampaign.DisplaySubtitle !== campaignTitle
-      ? activeCampaign.DisplaySubtitle
-      : activeCampaign?.Description && activeCampaign.Description !== campaignTitle
-        ? activeCampaign.Description
-        : '';
+  const campaignTitle = getSafeCampaignTitle(activeCampaign);
+  const campaignSubtitle = getSafeCampaignSubtitle(activeCampaign, { title: campaignTitle, summary: campaignSummary });
 
   if (loading) {
     return (
@@ -481,7 +478,7 @@ function Home() {
                 <StoreCard
                   restaurant={restaurant}
                   onClick={() => handleRestaurantClick(restaurant)}
-                  imageLoadingMode="eager"
+                  imageLoadingMode={index < 6 ? 'eager' : 'lazy'}
                   prioritizeImage={index < 6}
                 />
               </Reveal>

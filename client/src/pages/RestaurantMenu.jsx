@@ -5,7 +5,11 @@ import ProductDetailModal from '../components/ProductDetailModal';
 import ProductRowCard from '../components/ProductRowCard';
 import { getProductsByRestaurant, getRestaurantBySlug } from '../services/api';
 import { Badge, Button, Chip, PageShell, SurfaceCard, cn } from '../components/ui/primitives';
+import { getSafeRestaurantDescription } from '../utils/contentSanitizer';
+import { getHeroImage, getProductListImage } from '../utils/imageVariants';
 import { collectImageUrls, preloadImages } from '../utils/pagePreload';
+
+const MOBILE_CATEGORY_LIMIT = 9;
 
 const HeaderSkeleton = memo(() => (
   <PageShell width="full" className="pt-4">
@@ -27,6 +31,8 @@ function RestaurantMenu({ viewOnly = false }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState(null);
   const [showRestaurantDetails, setShowRestaurantDetails] = useState(false);
+  const [showAllCategories, setShowAllCategories] = useState(false);
+  const [isDesktopRail, setIsDesktopRail] = useState(() => (typeof window === 'undefined' ? true : window.innerWidth >= 640));
   const categoryRefs = useRef({});
   const navbarRef = useRef(null);
   const activeCategoryRef = useRef(null);
@@ -80,18 +86,44 @@ function RestaurantMenu({ viewOnly = false }) {
 
   useEffect(() => {
     setShowRestaurantDetails(false);
+    setShowAllCategories(false);
   }, [slug, viewOnly]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const handleResize = () => {
+      setIsDesktopRail(window.innerWidth >= 640);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize, { passive: true });
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     activeCategoryRef.current = activeCategory;
   }, [activeCategory]);
 
   const productsByCategory = useMemo(
-    () =>
-      categories.reduce((acc, category) => {
-        acc[category.Id] = products.filter((product) => product.CategoryId === category.Id);
+    () => {
+      const grouped = categories.reduce((acc, category) => {
+        acc[category.Id] = [];
         return acc;
-      }, {}),
+      }, {});
+
+      products.forEach((product) => {
+        if (!grouped[product.CategoryId]) {
+          grouped[product.CategoryId] = [];
+        }
+
+        grouped[product.CategoryId].push(product);
+      });
+
+      return grouped;
+    },
     [categories, products],
   );
 
@@ -108,6 +140,32 @@ function RestaurantMenu({ viewOnly = false }) {
     () => categoriesWithProducts.flatMap((category) => productsByCategory[category.Id] || []),
     [categoriesWithProducts, productsByCategory],
   );
+
+  const safeRestaurantDescription = useMemo(
+    () =>
+      getSafeRestaurantDescription(
+        restaurant,
+        viewOnly ? 'Menüyü inceleyin.' : 'Bu magazanin menusu ve teslimat bilgileri burada yer aliyor.',
+      ),
+    [restaurant, viewOnly],
+  );
+
+  const visibleRailCategories = useMemo(() => {
+    if (isDesktopRail || showAllCategories) {
+      return categoriesWithProducts;
+    }
+
+    const baseCategories = categoriesWithProducts.slice(0, MOBILE_CATEGORY_LIMIT);
+    const activeCategoryItem = categoriesWithProducts.find((category) => category.Id === activeCategory);
+
+    if (!activeCategoryItem || baseCategories.some((category) => category.Id === activeCategoryItem.Id)) {
+      return baseCategories;
+    }
+
+    return [...baseCategories.slice(0, MOBILE_CATEGORY_LIMIT - 1), activeCategoryItem];
+  }, [activeCategory, categoriesWithProducts, isDesktopRail, showAllCategories]);
+
+  const hasHiddenCategories = !isDesktopRail && categoriesWithProducts.length > MOBILE_CATEGORY_LIMIT;
 
   useEffect(() => {
     if (categoriesWithProducts.length > 0 && !activeCategory) {
@@ -205,11 +263,14 @@ function RestaurantMenu({ viewOnly = false }) {
         RestaurantName: restaurantResponse.data?.Name || 'Bilinmeyen magaza',
       }));
 
-      const imageUrls = collectImageUrls(restaurantResponse.data?.ImageUrl, nextProducts.map((product) => product.ImageUrl));
-      await preloadImages(imageUrls);
-
       setCategories(nextCategories);
       setProducts(nextProducts);
+
+      const criticalImageUrls = collectImageUrls(
+        getHeroImage(restaurantResponse.data),
+        nextProducts.slice(0, 8).map((product) => getProductListImage(product)),
+      );
+      preloadImages(criticalImageUrls, { batchSize: 4 }).catch(() => {});
     } catch (err) {
       console.error('Veri yuklenemedi:', err);
       setError('Menu yuklenirken bir hata olustu');
@@ -250,7 +311,7 @@ function RestaurantMenu({ viewOnly = false }) {
         <HeaderSkeleton />
         <PageShell width="full" className="mt-4 grid gap-4">
           <div className="rounded-[28px] border border-white/70 bg-white px-5 py-4 text-sm font-semibold text-dark-lighter shadow-card">
-            Menu hazirlaniyor. Tum urunler yukleniyor.
+            Menu hazirlaniyor.
           </div>
           {[1, 2, 3, 4].map((i) => (
             <ProductSkeleton key={i} />
@@ -281,8 +342,8 @@ function RestaurantMenu({ viewOnly = false }) {
       <PageShell width="full" className="space-y-4">
         <SurfaceCard className="relative overflow-hidden border border-white/15 p-0">
           <div className="absolute inset-0">
-            {restaurant.ImageUrl ? (
-              <img src={restaurant.ImageUrl} alt={restaurant.Name} className="h-full w-full object-cover" />
+            {getHeroImage(restaurant) ? (
+              <img src={getHeroImage(restaurant)} alt={restaurant.Name} className="h-full w-full object-cover" />
             ) : (
               <div className="h-full w-full bg-[linear-gradient(135deg,#8c477c,#d16b53)]" />
             )}
@@ -349,15 +410,9 @@ function RestaurantMenu({ viewOnly = false }) {
                   <div className="absolute inset-x-4 top-0 hidden h-16 rounded-full bg-white/40 blur-3xl sm:block" />
 
                   <div className="relative space-y-4">
-                    {restaurant.Description ? (
-                      <p className="text-sm leading-6 text-dark-lighter sm:text-[15px]">
-                        {restaurant.Description}
-                      </p>
-                    ) : (
-                      <p className="text-sm leading-6 text-dark-lighter sm:text-[15px]">
-                        Bu magazanin menusu ve teslimat bilgileri burada yer aliyor.
-                      </p>
-                    )}
+                    <p className="text-sm leading-6 text-dark-lighter sm:text-[15px]">
+                      {safeRestaurantDescription}
+                    </p>
 
                     <div className="grid gap-3 sm:grid-cols-2">
                       {!viewOnly && restaurant.DeliveryTime && (
@@ -409,7 +464,7 @@ function RestaurantMenu({ viewOnly = false }) {
         <div className="sticky z-30" style={{ top: 'var(--gm-header-height, 112px)' }}>
           <PageShell width="full">
             <div ref={navbarRef} className="scrollbar-hide flex gap-2 overflow-x-auto rounded-[22px] border border-white/70 bg-white p-2 shadow-sm sm:bg-white/92 sm:shadow-card sm:backdrop-blur-xl">
-              {categoriesWithProducts.map((category) => (
+              {visibleRailCategories.map((category) => (
                 <Chip
                   key={category.Id}
                   data-cat={category.Id}
@@ -420,6 +475,11 @@ function RestaurantMenu({ viewOnly = false }) {
                   {category.Name}
                 </Chip>
               ))}
+              {hasHiddenCategories && (
+                <Chip className="shrink-0 px-4 py-2.5" onClick={() => setShowAllCategories((current) => !current)}>
+                  {showAllCategories ? 'Daha az' : 'Tum kategoriler'}
+                </Chip>
+              )}
             </div>
           </PageShell>
         </div>
@@ -463,8 +523,8 @@ function RestaurantMenu({ viewOnly = false }) {
                           product={product}
                           onProductClick={handleProductClick}
                           isViewOnly={viewOnly}
-                          prioritizeImage={categoryIndex === 0 && productIndex < 6}
-                          imageLoadingMode="eager"
+                          prioritizeImage={categoryIndex === 0 && productIndex < 8}
+                          imageLoadingMode={categoryIndex === 0 && productIndex < 8 ? 'eager' : 'lazy'}
                         />
                       </div>
                     ))}

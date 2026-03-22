@@ -201,7 +201,7 @@ function Header({ catalogMode = false }) {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={openLocation}
-                      className="hidden max-w-[280px] items-center gap-2 rounded-full border border-surface-border bg-surface-muted px-4 py-3 text-left text-sm font-medium text-dark transition-all duration-200 hover:border-primary/20 hover:bg-white lg:flex"
+                      className="hidden max-w-[260px] items-center gap-2 rounded-full border border-surface-border bg-surface-muted px-3.5 py-2.5 text-left text-sm font-medium text-dark transition-all duration-200 hover:border-primary/20 hover:bg-white lg:flex"
                     >
                       <MapPin className="h-4 w-4 shrink-0 text-primary" />
                       <span className="truncate">{selectedAddress?.formatted_address || 'Teslimat konumu secin'}</span>
@@ -238,7 +238,7 @@ function Header({ catalogMode = false }) {
             {!catalogMode && (
               <button
                 onClick={openLocation}
-                className="mt-2 flex w-full items-center gap-2 rounded-[20px] border border-surface-border bg-surface-muted px-4 py-2.5 text-left text-sm font-medium text-dark transition-all duration-200 hover:border-primary/20 hover:bg-white lg:hidden"
+                className="mt-2 flex w-full items-center gap-2 rounded-[18px] border border-surface-border bg-surface-muted px-3.5 py-2 text-left text-[13px] font-medium text-dark transition-all duration-200 hover:border-primary/20 hover:bg-white lg:hidden"
               >
                 <MapPin className="h-4 w-4 shrink-0 text-primary" />
                 <span className="flex-1 truncate">{selectedAddress?.formatted_address || 'Teslimat konumu secin'}</span>

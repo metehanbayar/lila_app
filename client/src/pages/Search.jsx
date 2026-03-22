@@ -9,12 +9,14 @@ import ProductRowCard from '../components/ProductRowCard';
 import StoreCard from '../components/StoreCard';
 import Reveal from '../components/ui/Reveal';
 import { getCategories, getRestaurants, searchProducts } from '../services/api';
+import { getProductListImage, getRestaurantCardImage } from '../utils/imageVariants';
 import { preloadImages } from '../utils/pagePreload';
 import { debounce } from '../utils/performance';
 import { Badge, Button, Chip, PageShell, SurfaceCard, TextInput, cn } from '../components/ui/primitives';
 
 const RECENT_SEARCHES_KEY = 'gm_recent_searches';
 const MAX_RECENT_SEARCHES = 5;
+const SHORT_QUERY_PRODUCT_LIMIT = 18;
 
 const getIconComponent = (iconName) => LucideIcons[iconName] || LucideIcons.Utensils;
 
@@ -133,8 +135,8 @@ function Search() {
       const response = await getRestaurants();
       if (response.success) {
         const nextRestaurants = response.data || [];
-        await preloadImages(nextRestaurants.map((restaurant) => restaurant.ImageUrl));
         setRestaurants(nextRestaurants);
+        preloadImages(nextRestaurants.slice(0, 8).map((restaurant) => getRestaurantCardImage(restaurant))).catch(() => {});
         return nextRestaurants;
       }
     } catch (err) {
@@ -188,8 +190,8 @@ function Search() {
           ...product,
           RestaurantName: product.RestaurantName || 'Bilinmeyen magaza',
         }));
-        await preloadImages(nextResults.map((product) => product.ImageUrl));
         setResults(nextResults);
+        preloadImages(nextResults.slice(0, 8).map((product) => getProductListImage(product))).catch(() => {});
       } else {
         setError(response.message);
         setResults([]);
@@ -237,13 +239,13 @@ function Search() {
   };
 
   const handlePreviousProduct = () => {
-    const currentIndex = results.findIndex((product) => product.Id === selectedProduct?.Id);
-    if (currentIndex > 0) setSelectedProduct(results[currentIndex - 1]);
+    const currentIndex = visibleResults.findIndex((product) => product.Id === selectedProduct?.Id);
+    if (currentIndex > 0) setSelectedProduct(visibleResults[currentIndex - 1]);
   };
 
   const handleNextProduct = () => {
-    const currentIndex = results.findIndex((product) => product.Id === selectedProduct?.Id);
-    if (currentIndex < results.length - 1) setSelectedProduct(results[currentIndex + 1]);
+    const currentIndex = visibleResults.findIndex((product) => product.Id === selectedProduct?.Id);
+    if (currentIndex < visibleResults.length - 1) setSelectedProduct(visibleResults[currentIndex + 1]);
   };
 
   const handleRecentSearchClick = (term) => {
@@ -255,7 +257,9 @@ function Search() {
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const featuredStores = restaurants.filter((restaurant) => restaurant.IsFeatured).slice(0, 4);
   const emptyStateStores = (featuredStores.length > 0 ? featuredStores : restaurants).slice(0, 4);
-  const quickCategories = categories.slice(0, 6);
+  const isShortQuery = normalizedQuery.length > 0 && normalizedQuery.length <= 2 && !selectedCategory;
+  const visibleResults = isShortQuery ? results.slice(0, SHORT_QUERY_PRODUCT_LIMIT) : results;
+  const hasTrimmedResults = visibleResults.length < results.length;
 
   const matchingRestaurantIds = new Set(
     results
@@ -454,6 +458,7 @@ function Search() {
               <p className="text-sm text-dark-lighter">
                 {matchingStores.length} magaza ve {results.length} urun bulundu
               </p>
+              {hasTrimmedResults && <Badge tone="warning">Ilk {SHORT_QUERY_PRODUCT_LIMIT} urun</Badge>}
             </div>
 
             {matchingStores.length === 0 && results.length === 0 ? (
@@ -482,7 +487,7 @@ function Search() {
                           <StoreCard
                             restaurant={restaurant}
                             onClick={() => navigate(`/restaurant/${restaurant.Slug}`)}
-                            imageLoadingMode="eager"
+                            imageLoadingMode={index < 6 ? 'eager' : 'lazy'}
                             prioritizeImage={index < 6}
                           />
                         </Reveal>
@@ -491,20 +496,20 @@ function Search() {
                   </Reveal>
                 )}
 
-                {results.length > 0 && (
+                {visibleResults.length > 0 && (
                   <Reveal as="section" variant="section-enter" delay={60} className="space-y-3">
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Urunler</p>
                         <h2 className="text-xl font-bold text-dark">Eslesen urunler</h2>
                       </div>
-                      <Badge tone="warning">{results.length}</Badge>
+                      <Badge tone="warning">{visibleResults.length}</Badge>
                     </div>
 
                     <div className="grid gap-3">
-                      {results.map((product, index) => (
+                      {visibleResults.map((product, index) => (
                         <Reveal key={product.Id} variant="reveal-up" delay={Math.min(index, 5) * 45}>
-                          <ProductRowCard product={product} onProductClick={handleProductClick} imageLoadingMode="eager" prioritizeImage={index < 6} />
+                          <ProductRowCard product={product} onProductClick={handleProductClick} imageLoadingMode={index < 6 ? 'eager' : 'lazy'} prioritizeImage={index < 6} />
                         </Reveal>
                       ))}
                     </div>
@@ -521,7 +526,7 @@ function Search() {
               <SurfaceCard tone="muted" className="space-y-4 p-4 sm:p-5">
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Arama</p>
-                  <h2 className="mt-1 text-xl font-bold text-dark">Son aramalar</h2>
+                  <h2 className="mt-1 text-xl font-bold text-dark">Hizli baslangic</h2>
                 </div>
 
                 {recentSearches.length > 0 ? (
@@ -541,29 +546,13 @@ function Search() {
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm leading-7 text-dark-lighter">Son arama yok.</p>
+                  <p className="text-sm leading-7 text-dark-lighter">Son arama yok. Aramaya yazmaya baslayin ya da filtreleri acin.</p>
                 )}
 
-                {quickCategories.length > 0 && (
-                  <div className="space-y-3">
-                    <p className="text-sm font-bold text-dark">Kategoriler</p>
-                    <div className="flex flex-wrap gap-2">
-                      {quickCategories.map((category, index) => {
-                        const Icon = getIconComponent(category.icon);
-                        return (
-                          <Reveal key={category.id} variant="reveal-up" delay={Math.min(index, 5) * 45}>
-                            <Chip className="gap-2 px-4 py-3" onClick={() => handleCategorySelect(category)}>
-                              <span className="flex h-6 w-6 items-center justify-center rounded-full text-white" style={{ background: category.color }}>
-                                <Icon className="h-3.5 w-3.5" />
-                              </span>
-                              {category.name}
-                            </Chip>
-                          </Reveal>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                <div className="flex flex-wrap gap-2">
+                  <Chip onClick={() => setShowFilters(true)}>Filtreleri ac</Chip>
+                  <Chip onClick={() => navigate('/')}>Ana sayfa</Chip>
+                </div>
               </SurfaceCard>
             </Reveal>
 
@@ -572,7 +561,7 @@ function Search() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Magazalar</p>
-                    <h2 className="mt-1 text-xl font-bold text-dark">Magaza listesi</h2>
+                    <h2 className="mt-1 text-xl font-bold text-dark">One cikan magazalar</h2>
                   </div>
                   <Badge tone="primary">{emptyStateStores.length}</Badge>
                 </div>
@@ -581,12 +570,12 @@ function Search() {
                   <div className="grid gap-4 md:grid-cols-2">
                     {emptyStateStores.map((restaurant, index) => (
                       <Reveal key={restaurant.Id} variant="reveal-up" delay={Math.min(index, 5) * 50}>
-                        <StoreCard
-                          restaurant={restaurant}
-                          onClick={() => navigate(`/restaurant/${restaurant.Slug}`)}
-                          imageLoadingMode="eager"
-                          prioritizeImage={index < 4}
-                        />
+                          <StoreCard
+                            restaurant={restaurant}
+                            onClick={() => navigate(`/restaurant/${restaurant.Slug}`)}
+                            imageLoadingMode={index < 4 ? 'eager' : 'lazy'}
+                            prioritizeImage={index < 4}
+                          />
                       </Reveal>
                     ))}
                   </div>
@@ -614,8 +603,8 @@ function Search() {
         product={selectedProduct}
         onPrevious={handlePreviousProduct}
         onNext={handleNextProduct}
-        canGoPrevious={results.findIndex((product) => product.Id === selectedProduct?.Id) > 0}
-        canGoNext={results.findIndex((product) => product.Id === selectedProduct?.Id) < results.length - 1}
+        canGoPrevious={visibleResults.findIndex((product) => product.Id === selectedProduct?.Id) > 0}
+        canGoNext={visibleResults.findIndex((product) => product.Id === selectedProduct?.Id) < visibleResults.length - 1}
       />
     </div>
   );

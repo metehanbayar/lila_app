@@ -1,5 +1,6 @@
 import useCartStore from '../store/cartStore';
 import useAddToCartFeedbackStore from '../store/addToCartFeedbackStore';
+import { getProductDetailImage } from './imageVariants';
 import { playAddToCartFlight } from './cartFlyAnimation';
 
 const buildCartSnapshot = () => {
@@ -26,7 +27,7 @@ export function showSingleAddSuccess({
   const payload = {
     mode: 'single',
     productName: product.Name || '',
-    imageUrl: product.ImageUrl || '',
+    imageUrl: getProductDetailImage(product),
     variantName: selectedVariant?.Name || '',
     quantity,
     addedCount: quantity,

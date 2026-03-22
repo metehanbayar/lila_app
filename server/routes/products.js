@@ -1,5 +1,6 @@
 import express from 'express';
 import { getConnection, sql } from '../config/database.js';
+import { attachImageVariants, attachImageVariantsToList } from '../utils/image-variants.js';
 
 const router = express.Router();
 
@@ -90,10 +91,12 @@ router.get('/search', async (req, res) => {
       });
     }
 
+    const searchResults = attachImageVariantsToList(result.recordset);
+
     res.json({
       success: true,
-      data: result.recordset,
-      count: result.recordset.length,
+      data: searchResults,
+      count: searchResults.length,
       searchTerm: q,
     });
   } catch (error) {
@@ -166,7 +169,7 @@ router.get('/restaurant/:restaurantId', async (req, res) => {
       `);
 
     // Ürünlere varyantlarını ekle
-    const productsWithVariants = productsResult.recordset.map((product) => ({
+    const productsWithVariants = attachImageVariantsToList(productsResult.recordset).map((product) => ({
       ...product,
       variants: variantsResult.recordset.filter(
         (variant) => variant.ProductId === product.Id
@@ -481,7 +484,7 @@ router.get('/cross-sell', async (req, res) => {
 
     res.json({
       success: true,
-      data: result.recordset,
+      data: attachImageVariantsToList(result.recordset),
     });
   } catch (error) {
     console.error('Cross sell ürünleri hatası:', error);
@@ -532,7 +535,7 @@ router.get('/featured', async (req, res) => {
 
     res.json({
       success: true,
-      data: result.recordset,
+      data: attachImageVariantsToList(result.recordset),
     });
   } catch (error) {
     console.error('Öne çıkan ürünler hatası:', error);
@@ -594,7 +597,7 @@ router.get('/:id', async (req, res) => {
       `);
 
     const product = {
-      ...result.recordset[0],
+      ...attachImageVariants(result.recordset[0]),
       variants: variantsResult.recordset,
     };
 
