@@ -44,10 +44,8 @@ function AdminLogin() {
             <div className="space-y-6">
               <span className="gm-eyebrow border-white/20 bg-white/10 text-white">Yetkili panel</span>
               <div className="space-y-4">
-                <h1 className="font-display text-5xl leading-none sm:text-6xl">Yonetim, veri ve operasyon tek panelde.</h1>
-                <p className="max-w-xl text-sm leading-7 text-white/82 sm:text-base">
-                  Admin shell mobile drawer, desktop kalici sidebar ve premium veri yogunlugu hedefiyle yeniden kuruldu.
-                </p>
+                <h1 className="font-display text-5xl leading-none sm:text-6xl">Yonetim paneli girisi.</h1>
+                <p className="max-w-xl text-sm leading-7 text-white/82 sm:text-base">Yetkili hesabiniza giris yapin.</p>
               </div>
             </div>
           </SurfaceCard>

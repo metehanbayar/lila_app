@@ -1,61 +1,194 @@
-import { memo, useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, ChevronDown, Gift, Layers3, Search, Store } from 'lucide-react';
-import * as LucideIcons from 'lucide-react';
+import { Check, Copy, Gift, Store, Tag } from 'lucide-react';
 import StoreCard from '../components/StoreCard';
-import { getActivePromotions, getCategories, getRestaurants } from '../services/api';
-import { Badge, Button, Chip, PageShell, SurfaceCard } from '../components/ui/primitives';
-
-const CategorySkeleton = memo(() => (
-  <div className="flex gap-2 overflow-hidden">
-    {[1, 2, 3, 4].map((i) => (
-      <div key={i} className="h-11 w-28 animate-pulse rounded-full bg-white shadow-card" />
-    ))}
-  </div>
-));
+import Reveal from '../components/ui/Reveal';
+import { getActivePromotions, getRestaurants } from '../services/api';
+import { Badge, Button, PageShell, SurfaceCard } from '../components/ui/primitives';
 
 const StoreSkeleton = memo(() => (
   <div className="h-[220px] animate-pulse rounded-[28px] bg-white shadow-card" />
 ));
 
-const QuickCategory = memo(({ category, onClick }) => {
-  const IconComponent = LucideIcons[category.Icon] || LucideIcons.Utensils;
+const campaignThemeMap = {
+  purple: {
+    icon: 'bg-[#f5f0ff] text-[#6d28d9]',
+    pill: 'border-[#7c3aed]/15 bg-[#f5f0ff] text-[#5b21b6]',
+    selector: 'border-surface-border bg-white text-dark-lighter hover:border-[#7c3aed]/18 hover:text-[#5b21b6]',
+    selectorActive: 'border-[#7c3aed]/18 bg-[#f5f0ff] text-[#5b21b6]',
+    button: 'border border-[#7c3aed]/18 bg-[#f5f0ff] text-[#5b21b6] hover:bg-[#ede9fe]',
+  },
+  green: {
+    icon: 'bg-[#eefbf1] text-[#15803d]',
+    pill: 'border-[#15803d]/15 bg-[#eefbf1] text-[#166534]',
+    selector: 'border-surface-border bg-white text-dark-lighter hover:border-[#15803d]/18 hover:text-[#166534]',
+    selectorActive: 'border-[#15803d]/18 bg-[#eefbf1] text-[#166534]',
+    button: 'border border-[#15803d]/18 bg-[#eefbf1] text-[#166534] hover:bg-[#dcfce7]',
+  },
+  orange: {
+    icon: 'bg-[#fff3e9] text-[#ea580c]',
+    pill: 'border-[#ea580c]/15 bg-[#fff3e9] text-[#c2410c]',
+    selector: 'border-surface-border bg-white text-dark-lighter hover:border-[#ea580c]/18 hover:text-[#c2410c]',
+    selectorActive: 'border-[#ea580c]/18 bg-[#fff3e9] text-[#c2410c]',
+    button: 'border border-[#ea580c]/18 bg-[#fff3e9] text-[#c2410c] hover:bg-[#ffedd5]',
+  },
+  red: {
+    icon: 'bg-[#fff1f1] text-[#dc2626]',
+    pill: 'border-[#dc2626]/15 bg-[#fff1f1] text-[#b91c1c]',
+    selector: 'border-surface-border bg-white text-dark-lighter hover:border-[#dc2626]/18 hover:text-[#b91c1c]',
+    selectorActive: 'border-[#dc2626]/18 bg-[#fff1f1] text-[#b91c1c]',
+    button: 'border border-[#dc2626]/18 bg-[#fff1f1] text-[#b91c1c] hover:bg-[#fee2e2]',
+  },
+  default: {
+    icon: 'bg-primary/10 text-primary',
+    pill: 'border-primary/15 bg-primary/10 text-primary',
+    selector: 'border-surface-border bg-white text-dark-lighter hover:border-primary/18 hover:text-primary',
+    selectorActive: 'border-primary/18 bg-primary/10 text-primary',
+    button: 'border border-primary/18 bg-primary/10 text-primary hover:bg-primary/15',
+  },
+};
 
-  return (
-    <Chip className="gap-2 px-4 py-3" onClick={onClick}>
-      <span
-        className="flex h-7 w-7 items-center justify-center rounded-full text-white"
-        style={{ background: category.Color || '#8C477C' }}
-      >
-        <IconComponent className="h-3.5 w-3.5" />
-      </span>
-      <span>{category.Name}</span>
-    </Chip>
-  );
-});
+function getCampaignTheme(color) {
+  if (!color) {
+    return campaignThemeMap.default;
+  }
+
+  return campaignThemeMap[String(color).trim().toLowerCase()] || campaignThemeMap.default;
+}
+
+function formatCampaignCurrency(value) {
+  const amount = Number(value);
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return null;
+  }
+
+  return new Intl.NumberFormat('tr-TR', {
+    maximumFractionDigits: amount % 1 === 0 ? 0 : 2,
+    minimumFractionDigits: 0,
+  }).format(amount);
+}
+
+function getCampaignSummary(campaign) {
+  if (!campaign) {
+    return '';
+  }
+
+  const discountValue = Number(campaign.DiscountValue);
+  const minimumAmount = Number(campaign.MinimumAmount);
+  const maxDiscount = Number(campaign.MaxDiscount);
+  const normalizedType = String(campaign.DiscountType || '').trim().toLowerCase();
+
+  let benefit = '';
+
+  if (Number.isFinite(discountValue) && discountValue > 0) {
+    if (normalizedType === 'percentage') {
+      benefit = `%${discountValue} indirim`;
+    } else {
+      const formattedDiscount = formatCampaignCurrency(discountValue);
+      benefit = formattedDiscount ? `${formattedDiscount} TL indirim` : '';
+    }
+  }
+
+  const conditions = [];
+
+  if (Number.isFinite(minimumAmount) && minimumAmount > 0) {
+    const formattedMinimum = formatCampaignCurrency(minimumAmount);
+    if (formattedMinimum) {
+      conditions.push(`${formattedMinimum} TL uzeri`);
+    }
+  }
+
+  if (normalizedType === 'percentage' && Number.isFinite(maxDiscount) && maxDiscount > 0) {
+    const formattedMaxDiscount = formatCampaignCurrency(maxDiscount);
+    if (formattedMaxDiscount) {
+      conditions.push(`maks ${formattedMaxDiscount} TL`);
+    }
+  }
+
+  const summary = [benefit, ...conditions].filter(Boolean).join(' • ');
+
+  if (summary) {
+    return summary;
+  }
+
+  return campaign.DisplaySubtitle || campaign.Description || '';
+}
+
+async function copyText(text) {
+  if (!text) return false;
+
+  try {
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // fallback below
+  }
+
+  try {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.setAttribute('readonly', '');
+    textArea.style.position = 'fixed';
+    textArea.style.opacity = '0';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    const copied = document.execCommand('copy');
+    document.body.removeChild(textArea);
+    return copied;
+  } catch {
+    return false;
+  }
+}
 
 function Home() {
   const navigate = useNavigate();
   const [restaurants, setRestaurants] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
-  const [categories, setCategories] = useState([]);
+  const [activeCampaignIndex, setActiveCampaignIndex] = useState(0);
+  const [copiedCampaignId, setCopiedCampaignId] = useState(null);
+  const [campaignMotionKey, setCampaignMotionKey] = useState(0);
+  const [campaignMotionClass, setCampaignMotionClass] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showAllCategories, setShowAllCategories] = useState(false);
+  const campaignTouchStartRef = useRef({ x: null, y: null });
 
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (!campaigns.length) {
+      setActiveCampaignIndex(0);
+      return;
+    }
+
+    if (activeCampaignIndex > campaigns.length - 1) {
+      setActiveCampaignIndex(0);
+    }
+  }, [activeCampaignIndex, campaigns.length]);
+
+  useEffect(() => {
+    if (!copiedCampaignId) return undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      setCopiedCampaignId(null);
+    }, 1800);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [copiedCampaignId]);
 
   const loadData = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const [restaurantsRes, campaignsRes, categoriesRes] = await Promise.all([
+      const [restaurantsRes, campaignsRes] = await Promise.all([
         getRestaurants(),
         getActivePromotions(),
-        getCategories(),
       ]);
 
       if (restaurantsRes.success) {
@@ -66,14 +199,6 @@ function Home() {
 
       if (campaignsRes.success) {
         setCampaigns(campaignsRes.data || []);
-      }
-
-      if (categoriesRes.success) {
-        setCategories(
-          (categoriesRes.data || [])
-            .filter((category) => category.IsActive !== false)
-            .sort((a, b) => (a.SortOrder || 0) - (b.SortOrder || 0)),
-        );
       }
     } catch (err) {
       console.error('Veri yuklenirken hata:', err);
@@ -92,28 +217,110 @@ function Home() {
     [navigate],
   );
 
-  const handleCategoryClick = useCallback(
-    (category) => {
-      const params = new URLSearchParams({
-        categoryId: String(category.Id),
-        categoryName: category.Name,
-      });
-      navigate(`/search?${params.toString()}`);
-    },
-    [navigate],
-  );
-
   const handleCampaignCopy = useCallback(async (campaign) => {
-    if (!campaign?.Code || !navigator?.clipboard?.writeText) return;
+    if (!campaign?.Code) return;
 
-    try {
-      await navigator.clipboard.writeText(campaign.Code);
-    } catch {
-      // noop
-    }
+    const copied = await copyText(campaign.Code);
+    setCopiedCampaignId(copied ? campaign.Id : null);
   }, []);
 
-  const visibleCategories = showAllCategories ? categories : categories.slice(0, 8);
+  const animateCampaign = useCallback((direction) => {
+    setCampaignMotionClass(direction === 'backward' ? 'animate-campaign-backward' : 'animate-campaign-forward');
+    setCampaignMotionKey((current) => current + 1);
+  }, []);
+
+  const activateCampaign = useCallback(
+    (nextIndex, direction = 'forward') => {
+      if (!campaigns.length) return;
+
+      const normalizedIndex = ((nextIndex % campaigns.length) + campaigns.length) % campaigns.length;
+
+      if (normalizedIndex === activeCampaignIndex) {
+        return;
+      }
+
+      animateCampaign(direction);
+      setActiveCampaignIndex(normalizedIndex);
+    },
+    [activeCampaignIndex, animateCampaign, campaigns.length],
+  );
+
+  const showNextCampaign = useCallback(() => {
+    if (campaigns.length <= 1) return;
+
+    activateCampaign(activeCampaignIndex + 1, 'forward');
+  }, [activateCampaign, activeCampaignIndex, campaigns.length]);
+
+  const showPreviousCampaign = useCallback(() => {
+    if (campaigns.length <= 1) return;
+
+    activateCampaign(activeCampaignIndex - 1, 'backward');
+  }, [activateCampaign, activeCampaignIndex, campaigns.length]);
+
+  useEffect(() => {
+    if (campaigns.length <= 1) {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      showNextCampaign();
+    }, 4500);
+
+    return () => window.clearInterval(intervalId);
+  }, [campaigns.length, showNextCampaign]);
+
+  const handleCampaignTouchStart = useCallback((event) => {
+    const touch = event.touches?.[0];
+
+    if (!touch) return;
+
+    campaignTouchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+    };
+  }, []);
+
+  const handleCampaignTouchEnd = useCallback(
+    (event) => {
+      const touch = event.changedTouches?.[0];
+      const startX = campaignTouchStartRef.current.x;
+      const startY = campaignTouchStartRef.current.y;
+
+      campaignTouchStartRef.current = { x: null, y: null };
+
+      if (!touch || startX === null || startY === null) return;
+
+      const deltaX = touch.clientX - startX;
+      const deltaY = touch.clientY - startY;
+
+      if (Math.abs(deltaX) < 48 || Math.abs(deltaX) < Math.abs(deltaY) * 1.2) {
+        return;
+      }
+
+      if (deltaX < 0) {
+        showNextCampaign();
+        return;
+      }
+
+      showPreviousCampaign();
+    },
+    [showNextCampaign, showPreviousCampaign],
+  );
+
+  const handleCampaignTouchCancel = useCallback(() => {
+    campaignTouchStartRef.current = { x: null, y: null };
+  }, []);
+
+  const activeCampaign = campaigns[activeCampaignIndex] || null;
+  const campaignTheme = getCampaignTheme(activeCampaign?.BgColor);
+  const campaignTitle = activeCampaign?.DisplayTitle || activeCampaign?.Description || 'Aktif kampanya';
+  const campaignSummary = getCampaignSummary(activeCampaign);
+  const campaignSubtitle =
+    activeCampaign?.DisplaySubtitle && activeCampaign.DisplaySubtitle !== campaignTitle
+      ? activeCampaign.DisplaySubtitle
+      : activeCampaign?.Description && activeCampaign.Description !== campaignTitle
+        ? activeCampaign.Description
+        : '';
 
   if (loading) {
     return (
@@ -125,7 +332,6 @@ function Home() {
               <StoreSkeleton key={i} />
             ))}
           </div>
-          <CategorySkeleton />
         </PageShell>
       </div>
     );
@@ -135,16 +341,18 @@ function Home() {
     return (
       <div className="pb-8 pt-6">
         <PageShell width="content">
-          <SurfaceCard tone="muted" className="p-8 text-center sm:p-12">
-            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[28px] bg-white shadow-card">
-              <Store className="h-9 w-9 text-primary" />
-            </div>
-            <h2 className="gm-display mt-6 text-4xl">Bir sorun olustu</h2>
-            <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-dark-lighter sm:text-base">{error}</p>
-            <Button className="mt-6" onClick={loadData}>
-              Tekrar dene
-            </Button>
-          </SurfaceCard>
+          <Reveal variant="section-enter">
+            <SurfaceCard tone="muted" className="p-8 text-center sm:p-12">
+              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[28px] bg-white shadow-card">
+                <Store className="h-9 w-9 text-primary" />
+              </div>
+              <h2 className="gm-display mt-6 text-4xl">Bir sorun olustu</h2>
+              <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-dark-lighter sm:text-base">{error}</p>
+              <Button className="mt-6" onClick={loadData}>
+                Tekrar dene
+              </Button>
+            </SurfaceCard>
+          </Reveal>
         </PageShell>
       </div>
     );
@@ -153,121 +361,123 @@ function Home() {
   return (
     <div className="pb-8 pt-4 lg:pb-12">
       <PageShell width="full" className="space-y-4 sm:space-y-5">
-        <SurfaceCard className="overflow-hidden p-0">
-          <div className="grid gap-0 lg:grid-cols-[1.25fr_0.75fr]">
-            <div className="space-y-5 px-5 py-6 sm:px-6 sm:py-7">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Cok magaza vitrini</p>
-                <h1 className="mt-2 text-3xl font-black tracking-tight text-dark sm:text-4xl">
-                  Konumu sec, magazani bul, siparisi yormadan tamamla.
-                </h1>
-                <p className="mt-3 max-w-2xl text-sm leading-7 text-dark-lighter sm:text-base">
-                  Magaza listesi once gelir. Menuler sade kalir. Arama ve kampanya ilk ekranda net gorunur.
-                </p>
-              </div>
+        {activeCampaign && (
+          <Reveal variant="section-enter">
+            <SurfaceCard
+              className="overflow-hidden rounded-[20px] border border-surface-border bg-white px-3 py-2.5 shadow-card sm:px-3.5 sm:py-3"
+              onTouchStart={handleCampaignTouchStart}
+              onTouchEnd={handleCampaignTouchEnd}
+              onTouchCancel={handleCampaignTouchCancel}
+            >
+              <div key={`${activeCampaign.Id}-${campaignMotionKey}`} className={campaignMotionClass}>
+                <div className="flex items-center gap-2.5">
+                  <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                    <div
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[12px] ${campaignTheme.icon}`}
+                    >
+                      {activeCampaign.IconType?.toLowerCase() === 'gift' ? (
+                        <Gift className="h-3.5 w-3.5" />
+                      ) : (
+                        <Tag className="h-3.5 w-3.5" />
+                      )}
+                    </div>
 
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <Button className="justify-center" onClick={() => navigate('/search')}>
-                  <Search className="h-4 w-4" />
-                  Magaza veya urun ara
-                </Button>
-                <Button variant="secondary" className="justify-center" onClick={() => navigate('/favorites')}>
-                  Favoriler
-                </Button>
-              </div>
-            </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <h2 className="truncate text-sm font-bold text-dark sm:text-[15px]">{campaignTitle}</h2>
+                        {campaigns.length > 1 && (
+                          <span className="shrink-0 rounded-full bg-surface-muted px-1.5 py-0.5 text-[10px] font-semibold text-dark-lighter">
+                            {activeCampaignIndex + 1}/{campaigns.length}
+                          </span>
+                        )}
+                      </div>
+                      {campaignSummary && <p className="mt-0.5 truncate text-[11px] font-medium text-dark-lighter sm:text-xs">{campaignSummary}</p>}
+                      <div className="mt-1 flex items-center gap-1.5">
+                        <span
+                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-[0.14em] ${campaignTheme.pill}`}
+                        >
+                          {activeCampaign.Code}
+                        </span>
+                        {campaignSubtitle && campaignSubtitle !== campaignSummary && (
+                          <span className="hidden truncate text-xs font-medium text-dark-lighter md:block">{campaignSubtitle}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
 
-            <div className="flex items-center bg-[linear-gradient(160deg,#fbf7f4,#f6edf2)] px-5 py-6 sm:px-6 sm:py-7">
-              <div className="space-y-4">
-                <Badge tone="primary">Hizli akis</Badge>
-                <div className="space-y-3 text-sm leading-7 text-dark-lighter">
-                  <p>1. Konum bilgisi header uzerinde kalir.</p>
-                  <p>2. Kampanya ve arama ilk kararda gorunur.</p>
-                  <p>3. Magaza kartlari tek bakista secim yaptirir.</p>
+                  <button
+                    type="button"
+                    onClick={() => handleCampaignCopy(activeCampaign)}
+                    aria-label={`${activeCampaign.Code} kodunu kopyala`}
+                    className={`inline-flex h-8 shrink-0 items-center justify-center gap-1 rounded-full px-2.5 text-[11px] font-semibold transition-colors sm:h-9 sm:px-3 ${campaignTheme.button}`}
+                  >
+                    {copiedCampaignId === activeCampaign.Id ? (
+                      <>
+                        <Check className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Kopyalandi</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Kopyala</span>
+                      </>
+                    )}
+                  </button>
                 </div>
-              </div>
-            </div>
-          </div>
-        </SurfaceCard>
 
-        {campaigns.length > 0 && (
-          <button
-            type="button"
-            onClick={() => handleCampaignCopy(campaigns[0])}
-            className="flex w-full items-center justify-between gap-3 rounded-[22px] border border-primary/15 bg-primary/5 px-4 py-3 text-left transition-all hover:border-primary/25 hover:bg-primary/10"
-          >
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] bg-primary text-white">
-                <Gift className="h-5 w-5" />
+                {campaigns.length > 1 && (
+                  <div className="mt-2 flex items-center justify-center gap-1.5">
+                    {campaigns.map((campaign, index) => {
+                      const selected = index === activeCampaignIndex;
+                      return (
+                        <button
+                          key={campaign.Id}
+                          type="button"
+                          onClick={() => activateCampaign(index, index > activeCampaignIndex ? 'forward' : 'backward')}
+                          aria-label={`${campaign.Code} kampanyasini goster`}
+                          className={`h-2 w-2 shrink-0 rounded-full transition-all ${
+                            selected ? 'scale-110 bg-primary' : 'bg-dark-lighter/25 hover:bg-dark-lighter/45'
+                          }`}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-bold text-dark">
-                  {campaigns[0].DisplayTitle || campaigns[0].Description || 'Aktif kampanya'}
-                </p>
-                <p className="text-xs font-semibold text-dark-lighter">Kod: {campaigns[0].Code} kopyalamak icin dokun</p>
-              </div>
-            </div>
-            <ArrowRight className="h-4 w-4 shrink-0 text-primary" />
-          </button>
+            </SurfaceCard>
+          </Reveal>
         )}
 
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Magazalar</p>
-            <h2 className="mt-1 text-xl font-bold text-dark sm:text-2xl">Once magazayi sec, sonra menuye gir.</h2>
+        <Reveal variant="section-enter">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Magazalar</p>
+              <h2 className="mt-1 text-xl font-bold text-dark sm:text-2xl">Size uygun magazalar</h2>
+            </div>
+            <Badge tone="primary">{restaurants.length} magaza</Badge>
           </div>
-          <Badge tone="primary">{restaurants.length} magaza</Badge>
-        </div>
+        </Reveal>
 
         {restaurants.length === 0 ? (
-          <SurfaceCard tone="muted" className="p-10 text-center">
-            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[28px] bg-white shadow-card">
-              <Store className="h-9 w-9 text-primary" />
-            </div>
-            <h3 className="gm-display mt-6 text-4xl">Henuz magaza yok</h3>
-            <p className="mt-3 text-sm leading-7 text-dark-lighter">Yakinda yeni magazalar eklenecek.</p>
-          </SurfaceCard>
+          <Reveal variant="reveal-soft">
+            <SurfaceCard tone="muted" className="p-10 text-center">
+              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[28px] bg-white shadow-card">
+                <Store className="h-9 w-9 text-primary" />
+              </div>
+              <h3 className="gm-display mt-6 text-4xl">Henuz magaza yok</h3>
+              <p className="mt-3 text-sm leading-7 text-dark-lighter">Yakinda yeni magazalar eklenecek.</p>
+            </SurfaceCard>
+          </Reveal>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {restaurants.map((restaurant) => (
-              <StoreCard key={restaurant.Id} restaurant={restaurant} onClick={() => handleRestaurantClick(restaurant)} />
+            {restaurants.map((restaurant, index) => (
+              <Reveal key={restaurant.Id} variant="reveal-up" delay={Math.min(index, 5) * 55}>
+                <StoreCard restaurant={restaurant} onClick={() => handleRestaurantClick(restaurant)} />
+              </Reveal>
             ))}
           </div>
         )}
 
-        {categories.length > 0 && (
-          <SurfaceCard tone="muted" className="space-y-4 p-4 sm:p-5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Ikincil filtreler</p>
-                <h3 className="mt-1 text-lg font-bold text-dark">Kategoriler</h3>
-              </div>
-
-              {categories.length > 8 && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="px-3 py-2"
-                  onClick={() => setShowAllCategories((value) => !value)}
-                >
-                  <ChevronDown className={`h-4 w-4 transition-transform ${showAllCategories ? 'rotate-180' : ''}`} />
-                  {showAllCategories ? 'Daralt' : 'Tum kategoriler'}
-                </Button>
-              )}
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {visibleCategories.map((category) => (
-                <QuickCategory key={category.Id} category={category} onClick={() => handleCategoryClick(category)} />
-              ))}
-            </div>
-
-            <div className="inline-flex items-center gap-2 text-sm font-medium text-dark-lighter">
-              <Layers3 className="h-4 w-4 text-primary" />
-              Kategoriler ana karar alani degil, hizli kisayol olarak durur.
-            </div>
-          </SurfaceCard>
-        )}
       </PageShell>
     </div>
   );

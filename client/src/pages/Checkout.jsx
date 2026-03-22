@@ -15,6 +15,7 @@ import {
 import EmptyState from '../components/EmptyState';
 import LocationPickerModal from '../components/LocationPickerModal';
 import AddressManager from '../components/AddressManager';
+import Reveal from '../components/ui/Reveal';
 import { createOrder, initializePayment, setOfflinePayment } from '../services/api';
 import useCartStore from '../store/cartStore';
 import useCustomerStore from '../store/customerStore';
@@ -127,10 +128,6 @@ function OrderSummary({ items, subtotal, discountAmount, totalAmount, restaurant
 function CheckoutActionPanel({ loading, paymentMethod, totalAmount, onBack }) {
   return (
     <SurfaceCard className="space-y-4 p-4">
-      <p className="rounded-[20px] border border-surface-border bg-surface-muted/70 px-4 py-3 text-sm leading-6 text-dark-lighter">
-        Adres, odeme ve ozet ayni ekranda. Son onaydan once tum bilgiler gorunur.
-      </p>
-
       <div className="flex flex-col gap-3">
         <SecondaryButton type="button" className="justify-center" onClick={onBack}>
           <ArrowLeft className="h-4 w-4" />
@@ -504,240 +501,257 @@ function Checkout() {
   return (
     <div className="pb-[calc(8rem+env(safe-area-inset-bottom,0px))] pt-4 lg:pb-12">
       <PageShell width="full" className="space-y-4">
-        <div className="flex items-end justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Checkout</p>
-            <h1 className="mt-1 text-2xl font-black tracking-tight text-dark sm:text-3xl">Adres, odeme ve ozet tek ekranda.</h1>
+        <Reveal variant="section-enter">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Checkout</p>
+              <h1 className="mt-1 text-2xl font-black tracking-tight text-dark sm:text-3xl">Siparisinizi onaylayin.</h1>
+            </div>
+            <Badge tone="primary">{items.length} urun</Badge>
           </div>
-          <Badge tone="primary">{items.length} urun</Badge>
-        </div>
+        </Reveal>
 
         {hasMultipleStores && (
-          <SurfaceCard className="border border-amber-200 bg-amber-50 p-4 shadow-none">
-            <div className="flex items-start gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] bg-amber-500 text-white shadow-lg shadow-amber-500/20">
-                <AlertTriangle className="h-5 w-5" />
+          <Reveal variant="reveal-up">
+            <SurfaceCard className="border border-amber-200 bg-amber-50 p-4 shadow-none">
+              <div className="flex items-start gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] bg-amber-500 text-white shadow-lg shadow-amber-500/20">
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-bold text-amber-950">Birden fazla magaza secildi</p>
+                  <p className="text-sm leading-6 text-amber-900/82">
+                    Onay sonunda {restaurantIds.length} ayri siparis olusacak.
+                  </p>
+                </div>
               </div>
-              <div className="space-y-1">
-                <p className="text-sm font-bold text-amber-950">Birden fazla magaza secildi</p>
-                <p className="text-sm leading-6 text-amber-900/82">
-                  Onay sonunda {restaurantIds.length} ayri siparis olusacak.
-                </p>
-              </div>
-            </div>
-          </SurfaceCard>
+            </SurfaceCard>
+          </Reveal>
         )}
 
         {error && (
-          <SurfaceCard className="border border-red-200 bg-red-50 p-4 shadow-none">
-            <p className="text-sm font-semibold text-red-700">{error}</p>
-          </SurfaceCard>
+          <Reveal variant="reveal-up" delay={50}>
+            <SurfaceCard className="border border-red-200 bg-red-50 p-4 shadow-none">
+              <p className="text-sm font-semibold text-red-700">{error}</p>
+            </SurfaceCard>
+          </Reveal>
         )}
 
         <form id="checkout-form" onSubmit={handleSubmit} className="grid gap-6 xl:grid-cols-[minmax(0,1fr),360px] xl:items-start">
           <div className="space-y-5">
-            <SurfaceCard className="space-y-5 p-5 sm:p-6">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Adres</p>
-                <h2 className="mt-2 text-2xl font-bold text-dark">Teslimat bilgileri</h2>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Ad soyad" error={formErrors.customerName}>
-                  <TextInput
-                    name="customerName"
-                    value={formData.customerName}
-                    onChange={handleChange}
-                    placeholder="Adiniz ve soyadiniz"
-                  />
-                </Field>
-
-                <Field label="Telefon" error={formErrors.customerPhone}>
-                  <TextInput
-                    name="customerPhone"
-                    value={formData.customerPhone}
-                    onChange={handleChange}
-                    placeholder="0555 123 45 67"
-                  />
-                </Field>
-              </div>
-
-              <Field label="Teslimat adresi" error={formErrors.customerAddress}>
-                <div className="space-y-3">
-                  <div className="rounded-[24px] border border-surface-border bg-surface-muted p-4">
-                    {formData.customerAddress ? (
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] bg-primary text-white shadow-lg shadow-primary/20">
-                          <MapPin className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-dark">Secilen adres</p>
-                          <p className="mt-1 text-sm leading-6 text-dark-lighter">
-                            {typeof formData.customerAddress === 'string'
-                              ? formData.customerAddress
-                              : formData.customerAddress?.fullAddress ||
-                                formData.customerAddress?.FullAddress ||
-                                String(formData.customerAddress)}
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="rounded-[20px] border border-dashed border-primary/20 bg-primary/5 p-4 text-sm text-primary-dark">
-                        Henuz adres secilmedi. Harita veya kayitli adreslerden devam edin.
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex flex-col gap-3 sm:flex-row">
-                    <PrimaryButton type="button" className="justify-center sm:flex-1" onClick={() => setShowLocationModal(true)}>
-                      <MapPin className="h-4 w-4" />
-                      Haritadan sec
-                    </PrimaryButton>
-                    {isAuthenticated && (
-                      <SecondaryButton type="button" className="justify-center sm:flex-1" onClick={() => setShowAddressManager(true)}>
-                        <BookOpen className="h-4 w-4" />
-                        Adreslerim
-                      </SecondaryButton>
-                    )}
-                  </div>
+            <Reveal variant="section-enter">
+              <SurfaceCard className="space-y-5 p-5 sm:p-6">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Adres</p>
+                  <h2 className="mt-2 text-2xl font-bold text-dark">Teslimat bilgileri</h2>
                 </div>
-              </Field>
 
-              <Field label="Siparis notu">
-                <TextAreaField
-                  name="notes"
-                  rows={4}
-                  value={formData.notes}
-                  onChange={handleChange}
-                  placeholder="Kurye icin ek yonlendirme yazabilirsiniz."
-                />
-              </Field>
-            </SurfaceCard>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Ad soyad" error={formErrors.customerName}>
+                    <TextInput
+                      name="customerName"
+                      value={formData.customerName}
+                      onChange={handleChange}
+                      placeholder="Adiniz ve soyadiniz"
+                    />
+                  </Field>
 
-            <SurfaceCard className="space-y-5 p-5 sm:p-6">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Odeme</p>
-                <h2 className="mt-2 text-2xl font-bold text-dark">Odeme yontemi</h2>
-              </div>
+                  <Field label="Telefon" error={formErrors.customerPhone}>
+                    <TextInput
+                      name="customerPhone"
+                      value={formData.customerPhone}
+                      onChange={handleChange}
+                      placeholder="0555 123 45 67"
+                    />
+                  </Field>
+                </div>
 
-              <div className="grid gap-3">
-                {paymentOptions.map((option) => {
-                  const Icon = option.icon;
-                  const active = paymentMethod === option.id;
-
-                  return (
-                    <button
-                      key={option.id}
-                      type="button"
-                      onClick={() => setPaymentMethod(option.id)}
-                      className={cn(
-                        'flex items-start gap-4 rounded-[24px] border p-4 text-left transition-all',
-                        active
-                          ? 'border-primary/20 bg-white shadow-card'
-                          : 'border-surface-border bg-surface-muted hover:border-primary/15 hover:bg-white',
+                <Field label="Teslimat adresi" error={formErrors.customerAddress}>
+                  <div className="space-y-3">
+                    <div className="rounded-[24px] border border-surface-border bg-surface-muted p-4">
+                      {formData.customerAddress ? (
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] bg-primary text-white shadow-lg shadow-primary/20">
+                            <MapPin className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-dark">Secilen adres</p>
+                            <p className="mt-1 text-sm leading-6 text-dark-lighter">
+                              {typeof formData.customerAddress === 'string'
+                                ? formData.customerAddress
+                                : formData.customerAddress?.fullAddress ||
+                                  formData.customerAddress?.FullAddress ||
+                                  String(formData.customerAddress)}
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="rounded-[20px] border border-dashed border-primary/20 bg-primary/5 p-4 text-sm text-primary-dark">
+                          Henuz adres secilmedi. Harita veya kayitli adreslerden devam edin.
+                        </div>
                       )}
-                    >
-                      <div
-                        className={cn(
-                          'flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px]',
-                          active ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-white text-dark',
-                        )}
-                      >
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold text-dark">{option.label}</p>
-                        <p className="mt-1 text-sm leading-6 text-dark-lighter">{option.description}</p>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {paymentMethod === 'online' && (
-                <>
-                  <SurfaceCard tone="muted" className="border border-blue-200 bg-blue-50 p-4 shadow-none">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-[16px] bg-blue-600 text-white">
-                        <Lock className="h-4 w-4" />
-                      </div>
-                      <p className="text-sm font-semibold text-blue-900">256-bit SSL ile korunur.</p>
                     </div>
-                  </SurfaceCard>
 
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="Kart sahibi" error={paymentErrors.cardHolderName}>
-                      <TextInput
-                        name="cardHolderName"
-                        value={paymentData.cardHolderName}
-                        onChange={handlePaymentChange}
-                        placeholder="Kart uzerindeki isim"
-                      />
-                    </Field>
-
-                    <Field label="Kart numarasi" error={paymentErrors.cardNumber}>
-                      <TextInput
-                        name="cardNumber"
-                        value={paymentData.cardNumber}
-                        onChange={handlePaymentChange}
-                        placeholder="1234 5678 9012 3456"
-                        maxLength={19}
-                      />
-                    </Field>
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <PrimaryButton type="button" className="justify-center sm:flex-1" onClick={() => setShowLocationModal(true)}>
+                        <MapPin className="h-4 w-4" />
+                        Haritadan sec
+                      </PrimaryButton>
+                      {isAuthenticated && (
+                        <SecondaryButton type="button" className="justify-center sm:flex-1" onClick={() => setShowAddressManager(true)}>
+                          <BookOpen className="h-4 w-4" />
+                          Adreslerim
+                        </SecondaryButton>
+                      )}
+                    </div>
                   </div>
+                </Field>
 
-                  <div className="grid gap-4 sm:grid-cols-3">
-                    <Field label="Ay" error={paymentErrors.expiryMonth}>
-                      <TextInput
-                        name="expiryMonth"
-                        value={paymentData.expiryMonth}
-                        onChange={handlePaymentChange}
-                        placeholder="MM"
-                        maxLength={2}
-                      />
-                    </Field>
+                <Field label="Siparis notu">
+                  <TextAreaField
+                    name="notes"
+                    rows={4}
+                    value={formData.notes}
+                    onChange={handleChange}
+                    placeholder="Kurye icin ek yonlendirme yazabilirsiniz."
+                  />
+                </Field>
+              </SurfaceCard>
+            </Reveal>
 
-                    <Field label="Yil" error={paymentErrors.expiryYear}>
-                      <TextInput
-                        name="expiryYear"
-                        value={paymentData.expiryYear}
-                        onChange={handlePaymentChange}
-                        placeholder="YY"
-                        maxLength={2}
-                      />
-                    </Field>
+            <Reveal variant="section-enter" delay={80}>
+              <SurfaceCard className="space-y-5 p-5 sm:p-6">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Odeme</p>
+                  <h2 className="mt-2 text-2xl font-bold text-dark">Odeme yontemi</h2>
+                </div>
 
-                    <Field label="CVV" error={paymentErrors.cvv}>
-                      <TextInput
-                        name="cvv"
-                        value={paymentData.cvv}
-                        onChange={handlePaymentChange}
-                        placeholder="123"
-                        maxLength={4}
-                      />
-                    </Field>
-                  </div>
-                </>
-              )}
-            </SurfaceCard>
+                <div className="grid gap-3">
+                  {paymentOptions.map((option, index) => {
+                    const Icon = option.icon;
+                    const active = paymentMethod === option.id;
+
+                    return (
+                      <Reveal key={option.id} variant="reveal-up" delay={Math.min(index, 4) * 45}>
+                        <button
+                          type="button"
+                          onClick={() => setPaymentMethod(option.id)}
+                          className={cn(
+                            'flex w-full items-start gap-4 rounded-[24px] border p-4 text-left transition-all duration-200 active:scale-[0.99]',
+                            active
+                              ? 'animate-chip-settle border-primary/20 bg-white shadow-card'
+                              : 'border-surface-border bg-surface-muted hover:border-primary/15 hover:bg-white hover:-translate-y-0.5',
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              'flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] transition-transform duration-200',
+                              active ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-white text-dark',
+                            )}
+                          >
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-bold text-dark">{option.label}</p>
+                            <p className="mt-1 text-sm leading-6 text-dark-lighter">{option.description}</p>
+                          </div>
+                        </button>
+                      </Reveal>
+                    );
+                  })}
+                </div>
+
+                {paymentMethod === 'online' && (
+                  <>
+                    <Reveal variant="reveal-soft">
+                      <SurfaceCard tone="muted" className="border border-blue-200 bg-blue-50 p-4 shadow-none">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-[16px] bg-blue-600 text-white">
+                            <Lock className="h-4 w-4" />
+                          </div>
+                          <p className="text-sm font-semibold text-blue-900">256-bit SSL ile korunur.</p>
+                        </div>
+                      </SurfaceCard>
+                    </Reveal>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field label="Kart sahibi" error={paymentErrors.cardHolderName}>
+                        <TextInput
+                          name="cardHolderName"
+                          value={paymentData.cardHolderName}
+                          onChange={handlePaymentChange}
+                          placeholder="Kart uzerindeki isim"
+                        />
+                      </Field>
+
+                      <Field label="Kart numarasi" error={paymentErrors.cardNumber}>
+                        <TextInput
+                          name="cardNumber"
+                          value={paymentData.cardNumber}
+                          onChange={handlePaymentChange}
+                          placeholder="1234 5678 9012 3456"
+                          maxLength={19}
+                        />
+                      </Field>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      <Field label="Ay" error={paymentErrors.expiryMonth}>
+                        <TextInput
+                          name="expiryMonth"
+                          value={paymentData.expiryMonth}
+                          onChange={handlePaymentChange}
+                          placeholder="MM"
+                          maxLength={2}
+                        />
+                      </Field>
+
+                      <Field label="Yil" error={paymentErrors.expiryYear}>
+                        <TextInput
+                          name="expiryYear"
+                          value={paymentData.expiryYear}
+                          onChange={handlePaymentChange}
+                          placeholder="YY"
+                          maxLength={2}
+                        />
+                      </Field>
+
+                      <Field label="CVV" error={paymentErrors.cvv}>
+                        <TextInput
+                          name="cvv"
+                          value={paymentData.cvv}
+                          onChange={handlePaymentChange}
+                          placeholder="123"
+                          maxLength={4}
+                        />
+                      </Field>
+                    </div>
+                  </>
+                )}
+              </SurfaceCard>
+            </Reveal>
           </div>
 
           <div className="hidden xl:block xl:sticky xl:top-24">
             <div className="space-y-4">
-              <OrderSummary
-                items={items}
-                subtotal={subtotal}
-                discountAmount={discountAmount}
-                totalAmount={totalAmount}
-                restaurantCount={restaurantIds.length}
-                paymentMethod={paymentMethod}
-              />
-              <CheckoutActionPanel
-                loading={loading}
-                paymentMethod={paymentMethod}
-                totalAmount={totalAmount}
-                onBack={() => navigate('/cart')}
-              />
+              <Reveal variant="section-enter" delay={100}>
+                <OrderSummary
+                  items={items}
+                  subtotal={subtotal}
+                  discountAmount={discountAmount}
+                  totalAmount={totalAmount}
+                  restaurantCount={restaurantIds.length}
+                  paymentMethod={paymentMethod}
+                />
+              </Reveal>
+              <Reveal variant="reveal-soft" delay={150}>
+                <CheckoutActionPanel
+                  loading={loading}
+                  paymentMethod={paymentMethod}
+                  totalAmount={totalAmount}
+                  onBack={() => navigate('/cart')}
+                />
+              </Reveal>
             </div>
           </div>
         </form>
@@ -745,32 +759,34 @@ function Checkout() {
 
       <div className="fixed inset-x-0 bottom-0 z-50 xl:hidden">
         <PageShell width="full" className="pb-3">
-          <StickyActionBar>
-            <div className="space-y-3 rounded-[20px] bg-white/72 px-4 py-3">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-dark-lighter">Toplam</p>
-                  <p className="text-xl font-black text-primary-dark">{formatPrice(totalAmount)}</p>
+          <Reveal variant="bar-rise">
+            <StickyActionBar>
+              <div className="space-y-3 rounded-[20px] bg-white/72 px-4 py-3">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-dark-lighter">Toplam</p>
+                    <p className="text-xl font-black text-primary-dark">{formatPrice(totalAmount)}</p>
+                  </div>
+                  <PrimaryButton type="submit" form="checkout-form" className="justify-center" disabled={loading}>
+                    {loading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Suruyor
+                      </>
+                    ) : (
+                      <>
+                        {paymentMethod === 'online' && <Lock className="h-4 w-4" />}
+                        {paymentMethod === 'online' ? 'Odeme yap' : 'Onayla'}
+                      </>
+                    )}
+                  </PrimaryButton>
                 </div>
-                <PrimaryButton type="submit" form="checkout-form" className="justify-center" disabled={loading}>
-                  {loading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Suruyor
-                    </>
-                  ) : (
-                    <>
-                      {paymentMethod === 'online' && <Lock className="h-4 w-4" />}
-                      {paymentMethod === 'online' ? 'Odeme yap' : 'Onayla'}
-                    </>
-                  )}
-                </PrimaryButton>
+                <button type="button" onClick={() => navigate('/cart')} className="text-xs font-semibold text-dark-lighter">
+                  Sepete don
+                </button>
               </div>
-              <button type="button" onClick={() => navigate('/cart')} className="text-xs font-semibold text-dark-lighter">
-                Sepete don
-              </button>
-            </div>
-          </StickyActionBar>
+            </StickyActionBar>
+          </Reveal>
         </PageShell>
       </div>
 

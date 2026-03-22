@@ -121,7 +121,7 @@ export function Chip({ active = false, className = '', children, ...props }) {
     <button
       className={cn(
         'gm-chip transition-all duration-200',
-        active && 'border-primary/30 bg-primary text-white shadow-lg shadow-primary/20',
+        active && 'animate-chip-settle border-primary/30 bg-primary text-white shadow-lg shadow-primary/20',
         className,
       )}
       {...props}

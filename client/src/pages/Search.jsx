@@ -7,6 +7,7 @@ import Loading from '../components/Loading';
 import ProductDetailModal from '../components/ProductDetailModal';
 import ProductRowCard from '../components/ProductRowCard';
 import StoreCard from '../components/StoreCard';
+import Reveal from '../components/ui/Reveal';
 import { getCategories, getRestaurants, searchProducts } from '../services/api';
 import { debounce } from '../utils/performance';
 import { Badge, Button, Chip, PageShell, SurfaceCard, TextInput, cn } from '../components/ui/primitives';
@@ -254,31 +255,34 @@ function Search() {
   return (
     <div className="pb-8 pt-4 lg:pb-12">
       <PageShell width="full" className="space-y-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-start gap-3">
-            <button
-              type="button"
-              onClick={() => navigate('/')}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface-muted text-dark transition-all hover:bg-white hover:shadow-card"
-              aria-label="Ana sayfaya don"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </button>
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Arama</p>
-              <h1 className="mt-1 text-2xl font-black tracking-tight text-dark sm:text-3xl">
-                {categoryName ? `${categoryName} magazalari ve urunleri` : 'Magaza veya urun ara'}
-              </h1>
+        <Reveal variant="section-enter">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-start gap-3">
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface-muted text-dark transition-all hover:bg-white hover:shadow-card"
+                aria-label="Ana sayfaya don"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Arama</p>
+                <h1 className="mt-1 text-2xl font-black tracking-tight text-dark sm:text-3xl">
+                  {categoryName ? `${categoryName} magazalari ve urunleri` : 'Magaza veya urun ara'}
+                </h1>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {selectedCategory && <Badge tone="primary">{categoryName}</Badge>}
+              {selectedRestaurant && <Badge tone="warning">Magaza filtreli</Badge>}
             </div>
           </div>
+        </Reveal>
 
-          <div className="flex flex-wrap gap-2">
-            {selectedCategory && <Badge tone="primary">{categoryName}</Badge>}
-            {selectedRestaurant && <Badge tone="warning">Magaza filtreli</Badge>}
-          </div>
-        </div>
-
-        <SurfaceCard className="space-y-3 p-4 sm:p-5">
+        <Reveal variant="section-enter" delay={60}>
+          <SurfaceCard className="space-y-3 p-4 sm:p-5">
           <form onSubmit={handleSearchSubmit} className="space-y-3">
             <div className="relative">
               <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-dark-lighter" />
@@ -316,76 +320,90 @@ function Search() {
               )}
             </div>
 
-            {showFilters && (
-              <div className="grid gap-4 rounded-[24px] border border-surface-border bg-surface-muted/60 p-4">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-bold text-dark">Kategori</p>
-                    {selectedCategory && (
-                      <button type="button" onClick={() => handleCategorySelect({ id: selectedCategory, name: categoryName })} className="text-xs font-semibold text-primary">
-                        Kategoriyi temizle
-                      </button>
-                    )}
-                  </div>
-                  <div className="scrollbar-hide flex gap-2 overflow-x-auto pb-1">
-                    {categories.map((category) => {
-                      const Icon = getIconComponent(category.icon);
-                      const active = selectedCategory === category.id;
+            <div
+              className={cn(
+                'grid transition-[grid-template-rows,opacity,transform] duration-300 ease-out',
+                showFilters ? 'grid-rows-[1fr] opacity-100 translate-y-0' : 'pointer-events-none grid-rows-[0fr] opacity-0 -translate-y-2',
+              )}
+            >
+              <div className="overflow-hidden">
+                <div className="grid gap-4 rounded-[24px] border border-surface-border bg-surface-muted/60 p-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-bold text-dark">Kategori</p>
+                      {selectedCategory && (
+                        <button type="button" onClick={() => handleCategorySelect({ id: selectedCategory, name: categoryName })} className="text-xs font-semibold text-primary">
+                          Kategoriyi temizle
+                        </button>
+                      )}
+                    </div>
+                    <div className="scrollbar-hide flex gap-2 overflow-x-auto pb-1">
+                      {categories.map((category) => {
+                        const Icon = getIconComponent(category.icon);
+                        const active = selectedCategory === category.id;
 
-                      return (
-                        <Chip
-                          key={category.id}
-                          active={active}
-                          className={cn('shrink-0 gap-2 px-4 py-3', active && 'text-white')}
-                          onClick={() => handleCategorySelect(category)}
-                        >
-                          <span
-                            className="flex h-6 w-6 items-center justify-center rounded-full text-white"
-                            style={{ background: active ? 'rgba(255,255,255,0.18)' : category.color }}
+                        return (
+                          <Chip
+                            key={category.id}
+                            active={active}
+                            className={cn('shrink-0 gap-2 px-4 py-3', active && 'text-white')}
+                            onClick={() => handleCategorySelect(category)}
                           >
-                            <Icon className="h-3.5 w-3.5" />
-                          </span>
-                          {category.name}
-                        </Chip>
-                      );
-                    })}
+                            <span
+                              className="flex h-6 w-6 items-center justify-center rounded-full text-white"
+                              style={{ background: active ? 'rgba(255,255,255,0.18)' : category.color }}
+                            >
+                              <Icon className="h-3.5 w-3.5" />
+                            </span>
+                            {category.name}
+                          </Chip>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
 
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-bold text-dark">Magaza</p>
-                    {selectedRestaurant && (
-                      <button type="button" onClick={() => setSelectedRestaurant(null)} className="text-xs font-semibold text-primary">
-                        Magaza filtresini temizle
-                      </button>
-                    )}
-                  </div>
-                  <div className="scrollbar-hide flex gap-2 overflow-x-auto pb-1">
-                    {restaurants.map((restaurant) => (
-                      <Chip
-                        key={restaurant.Id}
-                        active={selectedRestaurant === restaurant.Id}
-                        className={cn('shrink-0 px-4 py-2.5', selectedRestaurant === restaurant.Id && 'text-white')}
-                        onClick={() => setSelectedRestaurant(selectedRestaurant === restaurant.Id ? null : restaurant.Id)}
-                      >
-                        {restaurant.Name}
-                      </Chip>
-                    ))}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-bold text-dark">Magaza</p>
+                      {selectedRestaurant && (
+                        <button type="button" onClick={() => setSelectedRestaurant(null)} className="text-xs font-semibold text-primary">
+                          Magaza filtresini temizle
+                        </button>
+                      )}
+                    </div>
+                    <div className="scrollbar-hide flex gap-2 overflow-x-auto pb-1">
+                      {restaurants.map((restaurant) => (
+                        <Chip
+                          key={restaurant.Id}
+                          active={selectedRestaurant === restaurant.Id}
+                          className={cn('shrink-0 px-4 py-2.5', selectedRestaurant === restaurant.Id && 'text-white')}
+                          onClick={() => setSelectedRestaurant(selectedRestaurant === restaurant.Id ? null : restaurant.Id)}
+                        >
+                          {restaurant.Name}
+                        </Chip>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
-            )}
+            </div>
           </form>
-        </SurfaceCard>
+          </SurfaceCard>
+        </Reveal>
 
         {loading && (
-          <SurfaceCard tone="muted" className="p-6">
-            <Loading message="Sonuclar hazirlaniyor..." />
-          </SurfaceCard>
+          <Reveal variant="reveal-soft">
+            <SurfaceCard tone="muted" className="p-6">
+              <Loading message="Sonuclar hazirlaniyor..." />
+            </SurfaceCard>
+          </Reveal>
         )}
 
-        {error && !loading && <SurfaceCard tone="muted" className="p-6 text-sm font-medium text-red-600">{error}</SurfaceCard>}
+        {error && !loading && (
+          <Reveal variant="reveal-soft">
+            <SurfaceCard tone="muted" className="p-6 text-sm font-medium text-red-600">{error}</SurfaceCard>
+          </Reveal>
+        )}
 
         {!loading && !error && activeSearch && (
           <div className="space-y-4">
@@ -406,39 +424,43 @@ function Search() {
             ) : (
               <div className="space-y-6">
                 {matchingStores.length > 0 && (
-                  <section className="space-y-3">
+                  <Reveal as="section" variant="section-enter" className="space-y-3">
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Once magaza</p>
+                        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Magazalar</p>
                         <h2 className="text-xl font-bold text-dark">Eslesen magazalar</h2>
                       </div>
                       <Badge tone="primary">{matchingStores.length}</Badge>
                     </div>
 
                     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                      {matchingStores.map((restaurant) => (
-                        <StoreCard key={restaurant.Id} restaurant={restaurant} onClick={() => navigate(`/restaurant/${restaurant.Slug}`)} />
+                      {matchingStores.map((restaurant, index) => (
+                        <Reveal key={restaurant.Id} variant="reveal-up" delay={Math.min(index, 5) * 50}>
+                          <StoreCard restaurant={restaurant} onClick={() => navigate(`/restaurant/${restaurant.Slug}`)} />
+                        </Reveal>
                       ))}
                     </div>
-                  </section>
+                  </Reveal>
                 )}
 
                 {results.length > 0 && (
-                  <section className="space-y-3">
+                  <Reveal as="section" variant="section-enter" delay={60} className="space-y-3">
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Sonra urun</p>
+                        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Urunler</p>
                         <h2 className="text-xl font-bold text-dark">Eslesen urunler</h2>
                       </div>
                       <Badge tone="warning">{results.length}</Badge>
                     </div>
 
                     <div className="grid gap-3">
-                      {results.map((product) => (
-                        <ProductRowCard key={product.Id} product={product} onProductClick={handleProductClick} />
+                      {results.map((product, index) => (
+                        <Reveal key={product.Id} variant="reveal-up" delay={Math.min(index, 5) * 45}>
+                          <ProductRowCard product={product} onProductClick={handleProductClick} />
+                        </Reveal>
                       ))}
                     </div>
-                  </section>
+                  </Reveal>
                 )}
               </div>
             )}
@@ -447,75 +469,85 @@ function Search() {
 
         {!loading && !error && !activeSearch && (
           <div className="grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
-            <SurfaceCard tone="muted" className="space-y-4 p-4 sm:p-5">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Bos durum</p>
-                <h2 className="mt-1 text-xl font-bold text-dark">Aramaya hafif basla</h2>
-              </div>
+            <Reveal variant="section-enter">
+              <SurfaceCard tone="muted" className="space-y-4 p-4 sm:p-5">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Arama</p>
+                  <h2 className="mt-1 text-xl font-bold text-dark">Son aramalar</h2>
+                </div>
 
-              {recentSearches.length > 0 ? (
-                <div className="space-y-3">
-                  <p className="inline-flex items-center gap-2 text-sm font-bold text-dark">
-                    <History className="h-4 w-4 text-primary" />
-                    Son aramalar
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {recentSearches.map((term) => (
-                      <Chip key={term} onClick={() => handleRecentSearchClick(term)}>
-                        {term}
-                      </Chip>
+                {recentSearches.length > 0 ? (
+                  <div className="space-y-3">
+                    <p className="inline-flex items-center gap-2 text-sm font-bold text-dark">
+                      <History className="h-4 w-4 text-primary" />
+                      Son aramalar
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {recentSearches.map((term, index) => (
+                        <Reveal key={term} variant="reveal-up" delay={Math.min(index, 4) * 45}>
+                          <Chip onClick={() => handleRecentSearchClick(term)}>
+                            {term}
+                          </Chip>
+                        </Reveal>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm leading-7 text-dark-lighter">Son arama yok.</p>
+                )}
+
+                {quickCategories.length > 0 && (
+                  <div className="space-y-3">
+                    <p className="text-sm font-bold text-dark">Kategoriler</p>
+                    <div className="flex flex-wrap gap-2">
+                      {quickCategories.map((category, index) => {
+                        const Icon = getIconComponent(category.icon);
+                        return (
+                          <Reveal key={category.id} variant="reveal-up" delay={Math.min(index, 5) * 45}>
+                            <Chip className="gap-2 px-4 py-3" onClick={() => handleCategorySelect(category)}>
+                              <span className="flex h-6 w-6 items-center justify-center rounded-full text-white" style={{ background: category.color }}>
+                                <Icon className="h-3.5 w-3.5" />
+                              </span>
+                              {category.name}
+                            </Chip>
+                          </Reveal>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </SurfaceCard>
+            </Reveal>
+
+            <Reveal variant="section-enter" delay={60}>
+              <SurfaceCard className="space-y-4 p-4 sm:p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Magazalar</p>
+                    <h2 className="mt-1 text-xl font-bold text-dark">Magaza listesi</h2>
+                  </div>
+                  <Badge tone="primary">{emptyStateStores.length}</Badge>
+                </div>
+
+                {emptyStateStores.length > 0 ? (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {emptyStateStores.map((restaurant, index) => (
+                      <Reveal key={restaurant.Id} variant="reveal-up" delay={Math.min(index, 5) * 50}>
+                        <StoreCard restaurant={restaurant} onClick={() => navigate(`/restaurant/${restaurant.Slug}`)} />
+                      </Reveal>
                     ))}
                   </div>
-                </div>
-              ) : (
-                <p className="text-sm leading-7 text-dark-lighter">Son aramalar burada gorunur. Iki harf yazman yeterli.</p>
-              )}
-
-              {quickCategories.length > 0 && (
-                <div className="space-y-3">
-                  <p className="text-sm font-bold text-dark">Kisa filtreler</p>
-                  <div className="flex flex-wrap gap-2">
-                    {quickCategories.map((category) => {
-                      const Icon = getIconComponent(category.icon);
-                      return (
-                        <Chip key={category.id} className="gap-2 px-4 py-3" onClick={() => handleCategorySelect(category)}>
-                          <span className="flex h-6 w-6 items-center justify-center rounded-full text-white" style={{ background: category.color }}>
-                            <Icon className="h-3.5 w-3.5" />
-                          </span>
-                          {category.name}
-                        </Chip>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </SurfaceCard>
-
-            <SurfaceCard className="space-y-4 p-4 sm:p-5">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">One cikan magazalar</p>
-                  <h2 className="mt-1 text-xl font-bold text-dark">Sorgu yoksa once vitrini goster</h2>
-                </div>
-                <Badge tone="primary">{emptyStateStores.length}</Badge>
-              </div>
-
-              {emptyStateStores.length > 0 ? (
-                <div className="grid gap-4 md:grid-cols-2">
-                  {emptyStateStores.map((restaurant) => (
-                    <StoreCard key={restaurant.Id} restaurant={restaurant} onClick={() => navigate(`/restaurant/${restaurant.Slug}`)} />
-                  ))}
-                </div>
-              ) : (
-                <EmptyState
-                  icon={Store}
-                  title="Magaza bulunamadi"
-                  message="One cikan magazalar henuz hazir degil."
-                  actionText="Ana sayfaya don"
-                  actionPath="/"
-                />
-              )}
-            </SurfaceCard>
+                ) : (
+                  <EmptyState
+                    icon={Store}
+                    title="Magaza bulunamadi"
+                    message="Su anda magaza bulunmuyor."
+                    actionText="Ana sayfaya don"
+                    actionPath="/"
+                  />
+                )}
+              </SurfaceCard>
+            </Reveal>
           </div>
         )}
       </PageShell>

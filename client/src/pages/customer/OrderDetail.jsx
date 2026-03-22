@@ -1,34 +1,25 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { Calendar, Check, FileText, Loader2, MapPin, Phone, ShoppingCart, User, X } from 'lucide-react';
+import { useParams } from 'react-router-dom';
+import { Calendar, FileText, Loader2, MapPin, Phone, ShoppingCart, User } from 'lucide-react';
 import CustomerShell from '../../components/customer/CustomerShell';
 import Loading from '../../components/Loading';
 import { getProductById } from '../../services/api';
 import { getMyOrderDetail } from '../../services/customerApi';
 import useCartStore from '../../store/cartStore';
-import { safeSetTimeout } from '../../utils/performance';
+import { showBulkAddSuccess } from '../../utils/addToCartFeedback';
 import { Badge, Button, SurfaceCard } from '../../components/ui/primitives';
 
 function OrderDetail() {
   const { orderNumber } = useParams();
-  const navigate = useNavigate();
   const addItem = useCartStore((state) => state.addItem);
   const [order, setOrder] = useState(null);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [reorderLoading, setReorderLoading] = useState(false);
-  const [showToast, setShowToast] = useState(false);
-  const [addedCount, setAddedCount] = useState(0);
 
   useEffect(() => {
     loadOrderDetail();
   }, [orderNumber]);
-
-  useEffect(() => {
-    if (!showToast) return undefined;
-    const timer = safeSetTimeout(() => setShowToast(false), 5000);
-    return () => clearTimeout(timer);
-  }, [showToast]);
 
   const loadOrderDetail = async () => {
     try {
@@ -90,8 +81,10 @@ function OrderDetail() {
         }
       }
 
-      setAddedCount(count);
-      setShowToast(true);
+      showBulkAddSuccess({
+        addedCount: count,
+        source: 'reorder',
+      });
     } catch (error) {
       console.error('Tekrar siparis hatasi:', error);
       alert('Urunler sepete eklenirken bir hata olustu');
@@ -102,7 +95,7 @@ function OrderDetail() {
 
   if (loading) {
     return (
-      <CustomerShell title="Siparis detayi" description="Siparis detaylari yukleniyor.">
+      <CustomerShell title="Siparis detayi" description="Siparis detaylari.">
         <SurfaceCard tone="muted" className="p-6">
           <Loading message="Siparis detaylari yukleniyor..." />
         </SurfaceCard>
@@ -112,7 +105,7 @@ function OrderDetail() {
 
   if (!order) {
     return (
-      <CustomerShell title="Siparis detayi" description="Bu siparis bulunamadi.">
+      <CustomerShell title="Siparis detayi" description="Siparis detaylari.">
         <SurfaceCard tone="muted" className="p-8 text-center">
           <p className="text-sm text-dark-lighter">Siparis bulunamadi.</p>
         </SurfaceCard>
@@ -123,34 +116,7 @@ function OrderDetail() {
   const statusInfo = getStatusInfo(order.Status);
 
   return (
-    <>
-      {showToast && (
-        <div className="fixed right-4 top-4 z-50 max-w-sm rounded-[24px] border border-white/70 bg-white/92 p-4 shadow-premium backdrop-blur-xl">
-          <div className="flex items-start gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-[18px] bg-secondary text-white shadow-lg shadow-secondary/20">
-              <Check className="h-4 w-4" strokeWidth={3} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h4 className="text-sm font-bold text-dark">Sepete eklendi</h4>
-              <p className="mt-1 text-xs text-dark-lighter">{addedCount} urun sepete eklendi</p>
-              <button
-                onClick={() => {
-                  setShowToast(false);
-                  safeSetTimeout(() => navigate('/cart'), 200);
-                }}
-                className="mt-3 text-xs font-bold text-primary"
-              >
-                Sepete git
-              </button>
-            </div>
-            <button onClick={() => setShowToast(false)} className="rounded-xl p-2 text-dark-lighter hover:bg-surface-muted" aria-label="Kapat">
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      <CustomerShell title={`Siparis ${order.OrderNumber}`} description="Siparis ozeti, teslimat ve urun kalemleri ayni ekranda.">
+    <CustomerShell title={`Siparis ${order.OrderNumber}`} description="Siparis detaylari.">
         <SurfaceCard className="p-4 sm:p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -229,7 +195,6 @@ function OrderDetail() {
           </SurfaceCard>
         </div>
       </CustomerShell>
-    </>
   );
 }
 

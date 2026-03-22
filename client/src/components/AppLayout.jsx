@@ -5,6 +5,7 @@ import useCustomerStore from '../store/customerStore';
 import Footer from './Footer';
 import Header from './Header';
 import ScrollToTop from './ScrollToTop';
+import AddToCartSuccessOverlay from './AddToCartSuccessOverlay';
 import { cn } from './ui/primitives';
 
 function AppLayout({ children }) {
@@ -12,9 +13,10 @@ function AppLayout({ children }) {
   const location = useLocation();
   const totalItems = useCartStore((state) => state.getTotalItems());
   const { isAuthenticated } = useCustomerStore();
+  const isCatalogMenu = /^\/menu\//.test(location.pathname);
 
   const showFooter = location.pathname === '/';
-  const showBottomNav = !/^\/(checkout|payment|order-success)/.test(location.pathname);
+  const showBottomNav = !isCatalogMenu && !/^\/(checkout|payment|order-success)/.test(location.pathname);
 
   const items = [
     { path: '/', label: 'Ana Sayfa', icon: Home },
@@ -32,7 +34,8 @@ function AppLayout({ children }) {
     <div className="relative flex min-h-screen flex-col overflow-x-clip">
       <div className="pointer-events-none absolute inset-0 gm-mesh opacity-90" />
       <ScrollToTop />
-      <Header />
+      <Header catalogMode={isCatalogMenu} />
+      <AddToCartSuccessOverlay />
 
       <main className={cn('relative z-10 flex-1 animate-pageEnter', showBottomNav ? 'pb-28 lg:pb-0' : 'pb-8')}>
         {children}

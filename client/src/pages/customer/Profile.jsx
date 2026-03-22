@@ -103,7 +103,7 @@ function Profile() {
     <>
       <CustomerShell
         title={customer?.fullName || 'Profil'}
-        description="Profil, siparisler ve favoriler tek akista yonetilir."
+        description="Hesap bilgileri."
         actions={
           <Button variant="secondary" onClick={logout}>
             <LogOut className="h-4 w-4" />

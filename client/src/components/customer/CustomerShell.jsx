@@ -15,7 +15,7 @@ function CustomerShell({ title, description, actions, children }) {
     <PageShell width="full" className="py-4 sm:py-6 lg:py-8">
       <div className="grid gap-4 lg:grid-cols-[220px,minmax(0,1fr)] lg:items-start">
         <div className="lg:sticky lg:top-24">
-          <div className="scrollbar-hide flex gap-2 overflow-x-auto pb-1 lg:grid lg:gap-2 lg:overflow-visible lg:pb-0">
+          <div className="scrollbar-hide scroll-touch snap-x flex gap-2 overflow-x-auto pb-1 pr-4 touch-pan-x lg:grid lg:gap-2 lg:overflow-visible lg:pb-0 lg:pr-0">
             {items.map((item) => {
               const Icon = item.icon;
               const active = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
@@ -25,7 +25,7 @@ function CustomerShell({ title, description, actions, children }) {
                   key={item.to}
                   to={item.to}
                   className={cn(
-                    'flex shrink-0 items-center gap-3 rounded-[20px] border px-4 py-3 text-sm font-semibold transition-all duration-200 lg:w-full',
+                    'snap-start flex shrink-0 items-center gap-3 rounded-[20px] border px-4 py-3 text-sm font-semibold transition-all duration-200 lg:w-full',
                     active
                       ? 'border-primary/25 bg-primary text-white shadow-lg shadow-primary/20'
                       : 'border-surface-border bg-white text-dark hover:border-primary/20',

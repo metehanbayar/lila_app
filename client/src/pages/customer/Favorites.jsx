@@ -43,7 +43,7 @@ function Favorites() {
   };
 
   return (
-    <CustomerShell title="Favoriler" description="Kaydettigin urunlere buradan hizla donebilirsin.">
+    <CustomerShell title="Favoriler" description="Kaydettigin urunler.">
       {loading ? (
         <SurfaceCard tone="muted" className="p-6">
           <Loading message="Favoriler yukleniyor..." />
@@ -56,7 +56,7 @@ function Favorites() {
         <EmptyState
           icon={Heart}
           title="Henuz favori urununuz yok"
-          message="Begendiginiz urunleri favorilere ekleyerek daha sonra kolayca bulabilirsiniz."
+          message="Favori urun bulunmuyor."
           actionText="Menuye git"
           actionPath="/"
         />

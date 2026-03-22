@@ -8,7 +8,6 @@ import AppLayout from './components/AppLayout';
 
 import Home from './pages/Home';
 import RestaurantMenu from './pages/RestaurantMenu';
-import ViewMenu from './pages/ViewMenu';
 import Search from './pages/Search';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
@@ -43,7 +42,7 @@ const Users = lazy(() => import('./pages/admin/Users'));
 const router = createBrowserRouter([
   { path: '/', element: <AppLayout><Home /></AppLayout> },
   { path: '/restaurant/:slug', element: <AppLayout><RestaurantMenu /></AppLayout> },
-  { path: '/menu/:slug', element: <ViewMenu /> },
+  { path: '/menu/:slug', element: <AppLayout><RestaurantMenu viewOnly /></AppLayout> },
   { path: '/search', element: <AppLayout><Search /></AppLayout> },
   { path: '/cart', element: <AppLayout><Cart /></AppLayout> },
   { path: '/checkout', element: <AppLayout><Checkout /></AppLayout> },

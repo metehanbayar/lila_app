@@ -43,6 +43,7 @@ function App() {
       {/* Public Routes */}
       <Route path="/" element={<AppLayout><Home /></AppLayout>} />
       <Route path="/restaurant/:slug" element={<AppLayout><RestaurantMenu /></AppLayout>} />
+      <Route path="/menu/:slug" element={<AppLayout><RestaurantMenu viewOnly /></AppLayout>} />
       <Route path="/search" element={<AppLayout><Search /></AppLayout>} />
       <Route path="/cart" element={<AppLayout><Cart /></AppLayout>} />
       <Route 
@@ -191,4 +192,3 @@ function App() {
 }
 
 export default App;
-

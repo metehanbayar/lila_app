@@ -1,10 +1,10 @@
-import { Check, Heart, Plus, Sparkles } from 'lucide-react';
-import { memo, useCallback, useEffect, useState } from 'react';
+import { Heart, Plus, Sparkles } from 'lucide-react';
+import { memo, useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { addToFavorites, removeFromFavorites } from '../services/customerApi';
 import useCartStore from '../store/cartStore';
 import useCustomerStore from '../store/customerStore';
-import { safeSetTimeout } from '../utils/performance';
+import { showSingleAddSuccess } from '../utils/addToCartFeedback';
 import { Badge, cn } from './ui/primitives';
 
 function ProductCard({ product, onProductClick }) {
@@ -15,7 +15,6 @@ function ProductCard({ product, onProductClick }) {
   const addToFavoritesLocal = useCustomerStore((state) => state.addToFavoritesLocal);
   const removeFromFavoritesLocal = useCustomerStore((state) => state.removeFromFavoritesLocal);
   const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
-  const [showToast, setShowToast] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
   const isActive = product.IsActive !== false;
@@ -29,17 +28,17 @@ function ProductCard({ product, onProductClick }) {
     (e) => {
       e.stopPropagation();
       if (!isActive) return;
+      const sourceElement = e.currentTarget.closest('[data-product-card]')?.querySelector('[data-add-to-cart-image="true"]');
       addItem(product);
-      setShowToast(true);
+      showSingleAddSuccess({
+        product,
+        quantity: 1,
+        source: 'grid-card',
+        sourceElement,
+      });
     },
     [product, addItem, isActive],
   );
-
-  useEffect(() => {
-    if (!showToast) return undefined;
-    const timer = safeSetTimeout(() => setShowToast(false), 5000);
-    return () => clearTimeout(timer);
-  }, [showToast]);
 
   const handleCardClick = useCallback(() => {
     onProductClick?.(product);
@@ -77,45 +76,17 @@ function ProductCard({ product, onProductClick }) {
   const favorite = isFavorite(product.Id);
 
   return (
-    <>
-      {showToast && (
-        <div className="fixed right-4 top-4 z-50 max-w-sm animate-slideInRight rounded-[28px] border border-white/70 bg-white/92 p-4 shadow-premium backdrop-blur-xl">
-          <div className="flex items-start gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-white shadow-lg shadow-secondary/20">
-              <Check className="h-5 w-5" strokeWidth={3} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-dark">Sepete eklendi</p>
-              <p className="mt-1 truncate text-xs text-dark-lighter">{product.Name}</p>
-              <button
-                onClick={() => {
-                  setShowToast(false);
-                  safeSetTimeout(() => navigate('/cart'), 200);
-                }}
-                className="mt-3 text-xs font-bold text-primary hover:text-primary-dark"
-              >
-                Sepete git
-              </button>
-            </div>
-            <button onClick={() => setShowToast(false)} className="rounded-xl p-2 text-dark-lighter hover:bg-surface-muted">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
+    <article
+      data-product-card="true"
+      onClick={handleCardClick}
+      className={cn(
+        'group relative flex h-full cursor-pointer flex-col overflow-hidden rounded-[30px] border transition-all duration-300',
+        isActive
+          ? 'border-white/70 bg-white shadow-card hover:-translate-y-1 hover:shadow-card-hover'
+          : 'border-surface-border bg-surface-muted opacity-75',
       )}
-
-      <article
-        onClick={handleCardClick}
-        className={cn(
-          'group relative flex h-full cursor-pointer flex-col overflow-hidden rounded-[30px] border transition-all duration-300',
-          isActive
-            ? 'border-white/70 bg-white shadow-card hover:-translate-y-1 hover:shadow-card-hover'
-            : 'border-surface-border bg-surface-muted opacity-75',
-        )}
-      >
-        <div className="relative aspect-[4/3] overflow-hidden">
+    >
+        <div data-add-to-cart-image="true" className="relative aspect-[4/3] overflow-hidden">
           {product.ImageUrl ? (
             <>
               {!imageLoaded && <div className="absolute inset-0 animate-pulse bg-[linear-gradient(135deg,#f2e6ef,#f2ede8)]" />}
@@ -202,8 +173,7 @@ function ProductCard({ product, onProductClick }) {
             <span className="rounded-full bg-dark px-4 py-2 text-xs font-bold text-white">Su an mevcut degil</span>
           </div>
         )}
-      </article>
-    </>
+    </article>
   );
 }
 

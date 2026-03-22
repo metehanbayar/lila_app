@@ -1,12 +1,11 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Check, ChevronDown, Clock3, MapPin, Sparkles, Star } from 'lucide-react';
+import { ArrowLeft, Clock3, MapPin, Sparkles, Star } from 'lucide-react';
 import ProductDetailModal from '../components/ProductDetailModal';
 import ProductRowCard from '../components/ProductRowCard';
+import Reveal from '../components/ui/Reveal';
 import { getProductsByRestaurant, getRestaurantBySlug } from '../services/api';
 import { Badge, Button, Chip, PageShell, SurfaceCard, cn } from '../components/ui/primitives';
-
-const INITIAL_PRODUCTS_PER_CATEGORY = 4;
 
 const HeaderSkeleton = memo(() => (
   <PageShell width="full" className="pt-4">
@@ -16,7 +15,7 @@ const HeaderSkeleton = memo(() => (
 
 const ProductSkeleton = memo(() => <div className="h-32 animate-pulse rounded-[28px] bg-white shadow-card" />);
 
-function RestaurantMenu() {
+function RestaurantMenu({ viewOnly = false }) {
   const { slug } = useParams();
   const navigate = useNavigate();
   const [restaurant, setRestaurant] = useState(null);
@@ -26,15 +25,28 @@ function RestaurantMenu() {
   const [error, setError] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [toast, setToast] = useState(null);
   const [activeCategory, setActiveCategory] = useState(null);
-  const [expandedCategories, setExpandedCategories] = useState({});
   const categoryRefs = useRef({});
   const navbarRef = useRef(null);
 
+  const getHeaderOffset = useCallback(() => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return 112;
+    }
+
+    const rawValue = window.getComputedStyle(document.documentElement).getPropertyValue('--gm-header-height');
+    const parsedValue = Number.parseFloat(rawValue);
+
+    if (Number.isFinite(parsedValue) && parsedValue > 0) {
+      return parsedValue;
+    }
+
+    return window.innerWidth >= 1024 ? 110 : 126;
+  }, []);
+
   useEffect(() => {
     loadRestaurantData();
-  }, [slug]);
+  }, [slug, viewOnly]);
 
   const productsByCategory = useMemo(
     () =>
@@ -68,6 +80,10 @@ function RestaurantMenu() {
   useEffect(() => {
     if (categoriesWithProducts.length === 0) return undefined;
 
+    const headerOffset = getHeaderOffset();
+    const navbarHeight = navbarRef.current?.getBoundingClientRect().height || 56;
+    const observerTopOffset = Math.round(headerOffset + navbarHeight + 20);
+
     const observer = new IntersectionObserver(
       (entries) => {
         const visibleEntries = entries
@@ -83,7 +99,7 @@ function RestaurantMenu() {
           button?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         }
       },
-      { rootMargin: '-120px 0px -65% 0px', threshold: 0 },
+      { rootMargin: `-${observerTopOffset}px 0px -65% 0px`, threshold: 0 },
     );
 
     Object.values(categoryRefs.current).forEach((ref) => {
@@ -91,23 +107,24 @@ function RestaurantMenu() {
     });
 
     return () => observer.disconnect();
-  }, [categoriesWithProducts, activeCategory]);
+  }, [activeCategory, categoriesWithProducts, getHeaderOffset]);
 
   const scrollToCategory = useCallback((categoryId) => {
     const element = categoryRefs.current[categoryId];
     if (!element) return;
 
-    const offset = window.innerWidth >= 1024 ? 154 : 160;
+    const headerOffset = getHeaderOffset();
+    const navbarHeight = navbarRef.current?.getBoundingClientRect().height || 56;
+    const offset = headerOffset + navbarHeight + 20;
     const top = element.getBoundingClientRect().top + window.pageYOffset - offset;
     window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
     setActiveCategory(categoryId);
-  }, []);
+  }, [getHeaderOffset]);
 
   const loadRestaurantData = async () => {
     try {
       setLoading(true);
       setError(null);
-      setExpandedCategories({});
       setActiveCategory(null);
 
       const restaurantResponse = await getRestaurantBySlug(slug);
@@ -119,7 +136,7 @@ function RestaurantMenu() {
 
       setRestaurant(restaurantResponse.data);
 
-      const productsResponse = await getProductsByRestaurant(restaurantResponse.data.Id, 'order');
+      const productsResponse = await getProductsByRestaurant(restaurantResponse.data.Id, viewOnly ? 'view' : 'order');
       if (!productsResponse.success) {
         setError('Menu yuklenirken bir hata olustu');
         return;
@@ -147,11 +164,6 @@ function RestaurantMenu() {
   const handleProductClick = useCallback((product) => {
     setSelectedProduct(product);
     setIsModalOpen(true);
-  }, []);
-
-  const handleAddToCartGlobal = useCallback((product) => {
-    setToast({ name: product.Name });
-    setTimeout(() => setToast(null), 2500);
   }, []);
 
   const handlePreviousProduct = useCallback(() => {
@@ -209,7 +221,7 @@ function RestaurantMenu() {
       <PageShell width="full" className="space-y-4">
         <SurfaceCard className="overflow-hidden p-0">
           <div className="grid gap-0 lg:grid-cols-[1.05fr_0.95fr]">
-            <div className="space-y-5 px-5 py-5 sm:px-6 sm:py-6">
+            <Reveal variant="section-enter" className="space-y-5 px-5 py-5 sm:px-6 sm:py-6">
               <div className="flex items-start gap-3">
                 <button
                   type="button"
@@ -257,13 +269,9 @@ function RestaurantMenu() {
                   </span>
                 )}
               </div>
+            </Reveal>
 
-              <div className="rounded-[24px] border border-surface-border bg-surface-muted/70 px-4 py-3 text-sm leading-7 text-dark-lighter">
-                Kategori bazli akis acik. Her bolum ilk etapta 4 urun gosterir, devamini ihtiyac halinde acarsin.
-              </div>
-            </div>
-
-            <div className="min-h-[220px] bg-surface-muted">
+            <Reveal variant="reveal-soft" delay={60} className="min-h-[220px] bg-surface-muted">
               {restaurant.ImageUrl ? (
                 <img src={restaurant.ImageUrl} alt={restaurant.Name} className="h-full w-full object-cover" />
               ) : (
@@ -271,13 +279,13 @@ function RestaurantMenu() {
                   <span className="font-display text-7xl text-white/45">{restaurant.Name?.charAt(0) || 'M'}</span>
                 </div>
               )}
-            </div>
+            </Reveal>
           </div>
         </SurfaceCard>
       </PageShell>
 
       {categoriesWithProducts.length > 0 && (
-        <div className="sticky top-[94px] z-30 mt-4">
+        <Reveal as="div" variant="bar-rise" className="sticky z-30 mt-4" style={{ top: 'calc(var(--gm-header-height, 112px) + 0.5rem)' }}>
           <PageShell width="full">
             <div ref={navbarRef} className="scrollbar-hide flex gap-2 overflow-x-auto rounded-[22px] border border-white/70 bg-white/92 p-2 shadow-card backdrop-blur-xl">
               {categoriesWithProducts.map((category) => (
@@ -293,7 +301,7 @@ function RestaurantMenu() {
               ))}
             </div>
           </PageShell>
-        </div>
+        </Reveal>
       )}
 
       <PageShell width="full" className="mt-4">
@@ -308,12 +316,8 @@ function RestaurantMenu() {
               const categoryProducts = productsByCategory[category.Id] || [];
               if (!categoryProducts.length) return null;
 
-              const isExpanded = Boolean(expandedCategories[category.Id]);
-              const visibleProducts = isExpanded ? categoryProducts : categoryProducts.slice(0, INITIAL_PRODUCTS_PER_CATEGORY);
-              const hasMoreProducts = categoryProducts.length > INITIAL_PRODUCTS_PER_CATEGORY;
-
               return (
-                <section key={category.Id} className="space-y-3">
+                <Reveal key={category.Id} as="section" variant="section-enter" className="space-y-3">
                   <div
                     ref={(element) => {
                       if (element) categoryRefs.current[category.Id] = element;
@@ -332,32 +336,17 @@ function RestaurantMenu() {
                   </div>
 
                   <div className="grid gap-3">
-                    {visibleProducts.map((product) => (
-                      <ProductRowCard
-                        key={product.Id}
-                        product={product}
-                        onProductClick={handleProductClick}
-                        onAddToCart={handleAddToCartGlobal}
-                      />
+                    {categoryProducts.map((product, index) => (
+                      <Reveal key={product.Id} variant="reveal-up" delay={Math.min(index, 5) * 45}>
+                        <ProductRowCard
+                          product={product}
+                          onProductClick={handleProductClick}
+                          isViewOnly={viewOnly}
+                        />
+                      </Reveal>
                     ))}
                   </div>
-
-                  {hasMoreProducts && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedCategories((current) => ({
-                          ...current,
-                          [category.Id]: !current[category.Id],
-                        }))
-                      }
-                      className="inline-flex items-center gap-2 rounded-full border border-surface-border bg-white px-4 py-3 text-sm font-bold text-primary shadow-card transition-all hover:-translate-y-0.5"
-                    >
-                      <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                      {isExpanded ? 'Daha az goster' : `Tumunu gor (${categoryProducts.length})`}
-                    </button>
-                  )}
-                </section>
+                </Reveal>
               );
             })
           )}
@@ -375,26 +364,8 @@ function RestaurantMenu() {
         onNext={handleNextProduct}
         canGoPrevious={canGoPrevious}
         canGoNext={canGoNext}
+        isViewOnly={viewOnly}
       />
-
-      {toast && (
-        <div className="fixed inset-x-4 bottom-24 z-50 animate-slideUp sm:left-auto sm:right-6 sm:w-[320px]">
-          <div className="rounded-[24px] border border-white/70 bg-white/92 p-4 shadow-premium backdrop-blur-xl">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-[16px] bg-secondary text-white shadow-lg shadow-secondary/20">
-                <Check className="h-4 w-4" strokeWidth={3} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-dark">Sepete eklendi</p>
-                <p className="truncate text-xs text-dark-lighter">{toast.name}</p>
-              </div>
-              <button type="button" onClick={() => navigate('/cart')} className="text-sm font-bold text-primary">
-                Sepet
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

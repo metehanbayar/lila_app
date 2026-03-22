@@ -197,9 +197,7 @@ function AddressManager({ isOpen, onClose, onSelectAddress }) {
                   <h3 className="gm-display text-3xl sm:text-4xl">
                     {showAddForm ? (editingId ? 'Adresi duzenle' : 'Yeni adres ekle') : onSelectAddress ? 'Adres secin' : 'Adreslerim'}
                   </h3>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-dark-lighter">
-                    Harita secimi ve kayitli adres yonetimi ayni mobil once modal yapisinda toplandi.
-                  </p>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-dark-lighter">Kayitli adreslerinizi yonetin.</p>
                 </div>
               </div>
 
@@ -284,7 +282,7 @@ function AddressManager({ isOpen, onClose, onSelectAddress }) {
                     </label>
 
                     <div className="rounded-[22px] border border-surface-border bg-white px-4 py-4 text-sm leading-6 text-dark-lighter">
-                      Harita secimi bu modalin icinde kalir. Kaydedildiginde sipariste kullanilabilir hale gelir.
+                      Kaydettiginiz adresler sipariste secilebilir.
                     </div>
                   </div>
                 </div>
@@ -334,9 +332,7 @@ function AddressManager({ isOpen, onClose, onSelectAddress }) {
                       <BookOpen className="h-9 w-9 text-primary" />
                     </div>
                     <h4 className="mt-6 text-2xl font-bold text-dark">Kayitli adres bulunmuyor</h4>
-                    <p className="mt-3 max-w-md text-sm leading-6 text-dark-lighter">
-                      Ilk adresinizi ekleyin. Sonraki checkout adimlari daha hizli ilerler.
-                    </p>
+                    <p className="mt-3 max-w-md text-sm leading-6 text-dark-lighter">Yeni bir adres ekleyin.</p>
                     <PrimaryButton type="button" className="mt-6" onClick={() => setShowAddForm(true)}>
                       <Plus className="h-4 w-4" />
                       Ilk adresi ekle
