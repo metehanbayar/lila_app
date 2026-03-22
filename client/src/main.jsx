@@ -5,71 +5,72 @@ import './index.css';
 import './utils/performance';
 
 import AppLayout from './components/AppLayout';
-
 import Home from './pages/Home';
-import RestaurantMenu from './pages/RestaurantMenu';
-import Search from './pages/Search';
-import Cart from './pages/Cart';
-import Checkout from './pages/Checkout';
-import PaymentSuccess from './pages/PaymentSuccess';
-import PaymentFailure from './pages/PaymentFailure';
-import OrderSuccess from './pages/OrderSuccess';
-import NotFound from './pages/NotFound';
 
 import ProtectedRoute from './components/admin/ProtectedRoute';
-import AdminLogin from './pages/admin/AdminLogin';
-import Dashboard from './pages/admin/Dashboard';
-import Restaurants from './pages/admin/Restaurants';
-import Categories from './pages/admin/Categories';
-import Products from './pages/admin/Products';
-import Orders from './pages/admin/Orders';
-import Coupons from './pages/admin/Coupons';
-import Media from './pages/admin/Media';
-import Import from './pages/admin/Import';
-import ReceiptTemplateEditor from './pages/admin/ReceiptTemplateEditor';
 import Loading from './components/Loading';
 
 import CustomerProtectedRoute from './components/customer/CustomerProtectedRoute';
-import Login from './pages/customer/Login';
-import Register from './pages/customer/Register';
-import Profile from './pages/customer/Profile';
-import OrderHistory from './pages/customer/OrderHistory';
-import OrderDetail from './pages/customer/OrderDetail';
-import Favorites from './pages/customer/Favorites';
 
+const RestaurantMenu = lazy(() => import('./pages/RestaurantMenu'));
+const Search = lazy(() => import('./pages/Search'));
+const Cart = lazy(() => import('./pages/Cart'));
+const Checkout = lazy(() => import('./pages/Checkout'));
+const PaymentSuccess = lazy(() => import('./pages/PaymentSuccess'));
+const PaymentFailure = lazy(() => import('./pages/PaymentFailure'));
+const OrderSuccess = lazy(() => import('./pages/OrderSuccess'));
+const NotFound = lazy(() => import('./pages/NotFound'));
+const AdminLogin = lazy(() => import('./pages/admin/AdminLogin'));
+const Dashboard = lazy(() => import('./pages/admin/Dashboard'));
+const Restaurants = lazy(() => import('./pages/admin/Restaurants'));
+const Categories = lazy(() => import('./pages/admin/Categories'));
+const Products = lazy(() => import('./pages/admin/Products'));
+const Orders = lazy(() => import('./pages/admin/Orders'));
+const Coupons = lazy(() => import('./pages/admin/Coupons'));
+const Media = lazy(() => import('./pages/admin/Media'));
+const Import = lazy(() => import('./pages/admin/Import'));
+const ReceiptTemplateEditor = lazy(() => import('./pages/admin/ReceiptTemplateEditor'));
 const Users = lazy(() => import('./pages/admin/Users'));
+const Login = lazy(() => import('./pages/customer/Login'));
+const Register = lazy(() => import('./pages/customer/Register'));
+const Profile = lazy(() => import('./pages/customer/Profile'));
+const OrderHistory = lazy(() => import('./pages/customer/OrderHistory'));
+const OrderDetail = lazy(() => import('./pages/customer/OrderDetail'));
+const Favorites = lazy(() => import('./pages/customer/Favorites'));
+
+const withSuspense = (element) => <Suspense fallback={<Loading />}>{element}</Suspense>;
 
 const router = createBrowserRouter([
   { path: '/', element: <AppLayout><Home /></AppLayout> },
-  { path: '/restaurant/:slug', element: <AppLayout><RestaurantMenu /></AppLayout> },
-  { path: '/menu/:slug', element: <AppLayout><RestaurantMenu viewOnly /></AppLayout> },
-  { path: '/search', element: <AppLayout><Search /></AppLayout> },
-  { path: '/cart', element: <AppLayout><Cart /></AppLayout> },
-  { path: '/checkout', element: <AppLayout><Checkout /></AppLayout> },
-  { path: '/payment/success', element: <AppLayout><PaymentSuccess /></AppLayout> },
-  { path: '/payment/failure', element: <AppLayout><PaymentFailure /></AppLayout> },
-  { path: '/order-success/:orderNumber', element: <AppLayout><OrderSuccess /></AppLayout> },
+  { path: '/restaurant/:slug', element: <AppLayout>{withSuspense(<RestaurantMenu />)}</AppLayout> },
+  { path: '/menu/:slug', element: <AppLayout>{withSuspense(<RestaurantMenu viewOnly />)}</AppLayout> },
+  { path: '/search', element: <AppLayout>{withSuspense(<Search />)}</AppLayout> },
+  { path: '/cart', element: <AppLayout>{withSuspense(<Cart />)}</AppLayout> },
+  { path: '/checkout', element: <AppLayout>{withSuspense(<Checkout />)}</AppLayout> },
+  { path: '/payment/success', element: <AppLayout>{withSuspense(<PaymentSuccess />)}</AppLayout> },
+  { path: '/payment/failure', element: <AppLayout>{withSuspense(<PaymentFailure />)}</AppLayout> },
+  { path: '/order-success/:orderNumber', element: <AppLayout>{withSuspense(<OrderSuccess />)}</AppLayout> },
 
-  { path: '/login', element: <Login /> },
-  { path: '/register', element: <Register /> },
-  { path: '/profile', element: <CustomerProtectedRoute><AppLayout><Profile /></AppLayout></CustomerProtectedRoute> },
-  { path: '/my-orders', element: <CustomerProtectedRoute><AppLayout><OrderHistory /></AppLayout></CustomerProtectedRoute> },
-  { path: '/my-orders/:orderNumber', element: <CustomerProtectedRoute><AppLayout><OrderDetail /></AppLayout></CustomerProtectedRoute> },
-  { path: '/favorites', element: <CustomerProtectedRoute><AppLayout><Favorites /></AppLayout></CustomerProtectedRoute> },
+  { path: '/login', element: withSuspense(<Login />) },
+  { path: '/register', element: withSuspense(<Register />) },
+  { path: '/profile', element: <CustomerProtectedRoute><AppLayout>{withSuspense(<Profile />)}</AppLayout></CustomerProtectedRoute> },
+  { path: '/my-orders', element: <CustomerProtectedRoute><AppLayout>{withSuspense(<OrderHistory />)}</AppLayout></CustomerProtectedRoute> },
+  { path: '/my-orders/:orderNumber', element: <CustomerProtectedRoute><AppLayout>{withSuspense(<OrderDetail />)}</AppLayout></CustomerProtectedRoute> },
+  { path: '/favorites', element: <CustomerProtectedRoute><AppLayout>{withSuspense(<Favorites />)}</AppLayout></CustomerProtectedRoute> },
 
-  { path: '/admin/login', element: <AdminLogin /> },
-  { path: '/admin/restaurants/:id/receipt-template', element: <ProtectedRoute><ReceiptTemplateEditor /></ProtectedRoute> },
-  { path: '/admin/restaurants', element: <ProtectedRoute><Restaurants /></ProtectedRoute> },
-  { path: '/admin/categories', element: <ProtectedRoute><Categories /></ProtectedRoute> },
-  { path: '/admin/products', element: <ProtectedRoute><Products /></ProtectedRoute> },
-  { path: '/admin/orders', element: <ProtectedRoute><Orders /></ProtectedRoute> },
-  { path: '/admin/coupons', element: <ProtectedRoute><Coupons /></ProtectedRoute> },
-  { path: '/admin/media', element: <ProtectedRoute><Media /></ProtectedRoute> },
-  { path: '/admin/import', element: <ProtectedRoute><Import /></ProtectedRoute> },
-  { path: '/admin/users', element: <ProtectedRoute><Suspense fallback={<Loading />}><Users /></Suspense></ProtectedRoute> },
-  { path: '/admin', element: <ProtectedRoute><Dashboard /></ProtectedRoute> },
+  { path: '/admin/login', element: withSuspense(<AdminLogin />) },
+  { path: '/admin/restaurants/:id/receipt-template', element: <ProtectedRoute>{withSuspense(<ReceiptTemplateEditor />)}</ProtectedRoute> },
+  { path: '/admin/restaurants', element: <ProtectedRoute>{withSuspense(<Restaurants />)}</ProtectedRoute> },
+  { path: '/admin/categories', element: <ProtectedRoute>{withSuspense(<Categories />)}</ProtectedRoute> },
+  { path: '/admin/products', element: <ProtectedRoute>{withSuspense(<Products />)}</ProtectedRoute> },
+  { path: '/admin/orders', element: <ProtectedRoute>{withSuspense(<Orders />)}</ProtectedRoute> },
+  { path: '/admin/coupons', element: <ProtectedRoute>{withSuspense(<Coupons />)}</ProtectedRoute> },
+  { path: '/admin/media', element: <ProtectedRoute>{withSuspense(<Media />)}</ProtectedRoute> },
+  { path: '/admin/import', element: <ProtectedRoute>{withSuspense(<Import />)}</ProtectedRoute> },
+  { path: '/admin/users', element: <ProtectedRoute>{withSuspense(<Users />)}</ProtectedRoute> },
+  { path: '/admin', element: <ProtectedRoute>{withSuspense(<Dashboard />)}</ProtectedRoute> },
 
-  { path: '*', element: <AppLayout><NotFound /></AppLayout> },
+  { path: '*', element: <AppLayout>{withSuspense(<NotFound />)}</AppLayout> },
 ]);
 
 ReactDOM.createRoot(document.getElementById('root')).render(

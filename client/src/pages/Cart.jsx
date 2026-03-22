@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, ArrowRight, Minus, Package, Plus, ShoppingCart, Store, Tag, Trash2 } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Minus, Package, Plus, ShoppingCart, Store, Tag } from 'lucide-react';
 import EmptyState from '../components/EmptyState';
+import Loading from '../components/Loading';
 import ProductDetailModal from '../components/ProductDetailModal';
 import Reveal from '../components/ui/Reveal';
 import { checkMinimumOrder, getActivePromotions, getCrossSellProducts } from '../services/api';
 import useCartStore from '../store/cartStore';
 import useCustomerStore from '../store/customerStore';
 import { showSingleAddSuccess } from '../utils/addToCartFeedback';
+import { preloadImages } from '../utils/pagePreload';
 import { Badge, Chip, PageShell, PrimaryButton, StickyActionBar, SurfaceCard, cn } from '../components/ui/primitives';
 
 const formatPrice = (value) => {
@@ -19,6 +21,65 @@ const toNum = (value) => {
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
 };
+
+function CartItemCard({ item, increaseQuantity, decreaseQuantity, removeItem }) {
+  return (
+    <article className="w-full max-w-full overflow-hidden rounded-[24px] border border-surface-border bg-surface-muted p-3 sm:p-4">
+      <div className="grid grid-cols-[80px_minmax(0,1fr)] gap-3 sm:grid-cols-[92px_minmax(0,1fr)] sm:gap-4">
+        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-[18px] bg-white shadow-sm sm:h-[92px] sm:w-[92px]">
+          {item.ImageUrl ? (
+            <img src={item.ImageUrl} alt={item.Name} className="h-full w-full object-cover" loading="eager" decoding="async" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#f1e4ec,#f2ece5)]">
+              <Package className="h-6 w-6 text-primary/40" />
+            </div>
+          )}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="space-y-1">
+            <h3 className="break-words text-sm font-bold leading-6 text-dark sm:text-base">{item.Name}</h3>
+            {item.selectedVariant?.Name && <p className="break-words text-sm leading-5 text-dark-lighter">{item.selectedVariant.Name}</p>}
+            <p className="text-sm font-medium text-dark-lighter">{formatPrice(item.effectivePrice)} TL / adet</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 grid w-full max-w-full gap-3 rounded-[20px] border border-surface-border/70 bg-white/72 px-3 py-3">
+        <div className="inline-flex w-fit max-w-full items-center gap-2 rounded-full border border-white/80 bg-white px-2 py-2 shadow-sm">
+            <button
+              type="button"
+              onClick={() => decreaseQuantity(item.Id, item.selectedVariant?.Id)}
+              disabled={item.quantity <= 1}
+              className="rounded-full p-1.5 text-dark disabled:opacity-30"
+            >
+              <Minus className="h-4 w-4" />
+            </button>
+            <span className="w-7 text-center text-sm font-black text-dark">{item.quantity}</span>
+            <button
+              type="button"
+              onClick={() => increaseQuantity(item.Id, item.selectedVariant?.Id)}
+              disabled={item.quantity >= 10}
+              className="rounded-full p-1.5 text-dark disabled:opacity-30"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+        </div>
+
+        <span className="text-xl font-black text-primary-dark">{formatPrice(item.effectivePrice * item.quantity)} TL</span>
+
+        <button
+          type="button"
+          onClick={() => removeItem(item.Id, item.selectedVariant?.Id)}
+          className="mt-3 inline-flex min-h-[46px] w-full items-center justify-center rounded-full bg-[#c84747] px-3 py-2.5 text-sm font-bold tracking-[0.01em] text-white transition-transform duration-200 hover:-translate-y-0.5"
+          style={{ WebkitTextFillColor: '#ffffff' }}
+        >
+          Sepetten kaldir
+        </button>
+      </div>
+    </article>
+  );
+}
 
 function SummaryPanel({
   totalAmount,
@@ -117,6 +178,9 @@ function Cart() {
   const [minimumOrderIssues, setMinimumOrderIssues] = useState([]);
   const [showProductModal, setShowProductModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [pageReady, setPageReady] = useState(() => items.length === 0);
+  const [crossSellResolved, setCrossSellResolved] = useState(() => items.length === 0);
+  const initialAssetsReadyRef = useRef(items.length === 0);
 
   const totalAmount = getTotalAmount();
 
@@ -167,16 +231,23 @@ function Cart() {
 
     const loadCrossSell = async () => {
       if (!primaryRestaurantId || productIds.length === 0) {
-        if (!isCancelled) setCrossSellProducts([]);
+        if (!isCancelled) {
+          setCrossSellProducts([]);
+          setCrossSellResolved(true);
+        }
         return;
       }
 
       const response = await getCrossSellProducts([primaryRestaurantId], productIds, categoryIds);
       if (!isCancelled) {
         setCrossSellProducts(response?.success && Array.isArray(response.data) ? response.data.slice(0, 6) : []);
+        setCrossSellResolved(true);
       }
     };
 
+    if (!isCancelled) {
+      setCrossSellResolved(false);
+    }
     loadMinimumOrders();
     loadCrossSell();
 
@@ -184,6 +255,45 @@ function Cart() {
       isCancelled = true;
     };
   }, [itemsHash, items]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (items.length === 0) {
+      setPageReady(true);
+      initialAssetsReadyRef.current = true;
+      return undefined;
+    }
+
+    if (!crossSellResolved) {
+      if (!initialAssetsReadyRef.current) {
+        setPageReady(false);
+      }
+      return undefined;
+    }
+
+    const preparePage = async () => {
+      if (!initialAssetsReadyRef.current) {
+        setPageReady(false);
+      }
+      await preloadImages([
+        ...items.map((item) => item.ImageUrl),
+        ...crossSellProducts.map((product) => product.ImageUrl),
+      ]);
+      if (!cancelled) {
+        if (!initialAssetsReadyRef.current) {
+          setPageReady(true);
+          initialAssetsReadyRef.current = true;
+        }
+      }
+    };
+
+    preparePage();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [crossSellProducts, crossSellResolved, items, itemsHash]);
 
   useEffect(() => {
     if (restaurants.length === 0 || items.length === 0) {
@@ -307,11 +417,23 @@ function Cart() {
     );
   }
 
+  if (!pageReady) {
+    return (
+      <div className="pb-8 pt-4 lg:pb-12">
+        <PageShell width="full">
+          <SurfaceCard tone="muted" className="p-6">
+            <Loading message="Sepet hazirlaniyor..." />
+          </SurfaceCard>
+        </PageShell>
+      </div>
+    );
+  }
+
   return (
     <div className="pb-[calc(8rem+env(safe-area-inset-bottom,0px))] pt-4 lg:pb-12">
       <PageShell width="full" className="space-y-4">
         <Reveal variant="section-enter">
-          <div className="flex items-end justify-between gap-3">
+          <div className="hidden items-end justify-between gap-3 sm:flex">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Sepet</p>
               <h1 className="mt-1 text-2xl font-black tracking-tight text-dark sm:text-3xl">Sepetinizi kontrol edin.</h1>
@@ -368,50 +490,14 @@ function Cart() {
                   <span className="text-sm font-medium text-dark-lighter">{formatPrice(finalAmount)} TL</span>
                 </div>
 
-                {items.map((item, index) => (
-                  <Reveal key={`${item.Id}:${item.selectedVariant?.Id ?? 0}`} variant="reveal-up" delay={Math.min(index, 5) * 45}>
-                    <article className="rounded-[24px] border border-surface-border bg-surface-muted p-3 sm:p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-[18px] bg-white shadow-sm">
-                          {item.ImageUrl ? (
-                            <img src={item.ImageUrl} alt={item.Name} className="h-full w-full object-cover" />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#f1e4ec,#f2ece5)]">
-                              <Package className="h-6 w-6 text-primary/40" />
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="min-w-0 flex-1 space-y-3">
-                          <div>
-                            <h3 className="line-clamp-2 text-sm font-bold text-dark sm:text-base">{item.Name}</h3>
-                            {item.selectedVariant?.Name && <p className="text-sm text-dark-lighter">{item.selectedVariant.Name}</p>}
-                            <p className="text-sm font-medium text-dark-lighter">{formatPrice(item.effectivePrice)} TL / adet</p>
-                          </div>
-
-                          <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white px-2 py-2 shadow-sm">
-                              <button type="button" onClick={() => decreaseQuantity(item.Id, item.selectedVariant?.Id)} disabled={item.quantity <= 1} className="rounded-full p-1.5 text-dark disabled:opacity-30">
-                                <Minus className="h-4 w-4" />
-                              </button>
-                              <span className="w-7 text-center text-sm font-black text-dark">{item.quantity}</span>
-                              <button type="button" onClick={() => increaseQuantity(item.Id, item.selectedVariant?.Id)} disabled={item.quantity >= 10} className="rounded-full p-1.5 text-dark disabled:opacity-30">
-                                <Plus className="h-4 w-4" />
-                              </button>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                              <span className="text-lg font-black text-primary-dark">{formatPrice(item.effectivePrice * item.quantity)} TL</span>
-                              <button type="button" onClick={() => removeItem(item.Id, item.selectedVariant?.Id)} className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700 transition-transform duration-200 hover:-translate-y-0.5">
-                                <Trash2 className="h-4 w-4" />
-                                Sil
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </article>
-                  </Reveal>
+                {items.map((item) => (
+                  <CartItemCard
+                    key={`${item.Id}:${item.selectedVariant?.Id ?? 0}`}
+                    item={item}
+                    increaseQuantity={increaseQuantity}
+                    decreaseQuantity={decreaseQuantity}
+                    removeItem={removeItem}
+                  />
                 ))}
               </SurfaceCard>
             </Reveal>
@@ -436,7 +522,7 @@ function Cart() {
                             <button type="button" onClick={() => handleCrossSellPreview(product)} className="block w-full text-left">
                               <div data-add-to-cart-image="true" className="relative h-28 overflow-hidden bg-surface-muted">
                                 {product.ImageUrl ? (
-                                  <img src={product.ImageUrl} alt={product.Name} className="gm-image-drift h-full w-full object-cover" loading="lazy" />
+                                  <img src={product.ImageUrl} alt={product.Name} className="gm-image-drift h-full w-full object-cover" loading="eager" decoding="async" />
                                 ) : (
                                   <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#f1e4ec,#f2ece5)]">
                                     <Package className="h-6 w-6 text-primary/40" />

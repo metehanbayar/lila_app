@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import {
   BookOpen,
   Check,
@@ -18,13 +18,14 @@ import {
   updateAddress,
 } from '../services/customerApi';
 import useCustomerStore from '../store/customerStore';
-import LocationPickerModal from './LocationPickerModal';
 import {
   Field,
   PrimaryButton,
   SecondaryButton,
   TextInput,
 } from './ui/primitives';
+
+const LocationPickerModal = lazy(() => import('./LocationPickerModal'));
 
 function AddressManager({ isOpen, onClose, onSelectAddress }) {
   const { isAuthenticated } = useCustomerStore();
@@ -427,11 +428,15 @@ function AddressManager({ isOpen, onClose, onSelectAddress }) {
         </div>
       </div>
 
-      <LocationPickerModal
-        isOpen={showLocationModal}
-        onClose={() => setShowLocationModal(false)}
-        onConfirm={handleLocationConfirm}
-      />
+      {showLocationModal && (
+        <Suspense fallback={null}>
+          <LocationPickerModal
+            isOpen={showLocationModal}
+            onClose={() => setShowLocationModal(false)}
+            onConfirm={handleLocationConfirm}
+          />
+        </Suspense>
+      )}
     </>
   );
 }

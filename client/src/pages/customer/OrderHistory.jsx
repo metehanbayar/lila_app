@@ -75,7 +75,7 @@ function OrderHistory() {
 
   return (
     <CustomerShell title="Siparis gecmisi" description="Tum siparislerin burada toplanir.">
-      {loading && orders.length === 0 ? (
+      {loading ? (
         <SurfaceCard tone="muted" className="p-6">
           <Loading message="Siparisler yukleniyor..." />
         </SurfaceCard>

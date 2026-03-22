@@ -12,12 +12,11 @@ const formatPrice = (value) => {
   return Number.isFinite(num) ? num.toFixed(2) : '0.00';
 };
 
-function ProductRowCard({ product, onProductClick, isViewOnly = false }) {
+function ProductRowCard({ product, onProductClick, isViewOnly = false, prioritizeImage = false, imageLoadingMode = 'lazy' }) {
   const navigate = useNavigate();
   const addItem = useCartStore((state) => state.addItem);
   const { isAuthenticated, isFavorite, addToFavoritesLocal, removeFromFavoritesLocal } = useCustomerStore();
   const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
 
   const hasVariants = product.variants && product.variants.length > 1;
   const isActive = product.IsActive !== false;
@@ -82,16 +81,14 @@ function ProductRowCard({ product, onProductClick, isViewOnly = false }) {
         <div className="flex flex-col gap-2">
           <div data-add-to-cart-image="true" className="relative aspect-square overflow-hidden rounded-[22px] bg-surface-muted sm:rounded-[24px]">
             {product.ImageUrl ? (
-              <>
-                {!imageLoaded && <div className="absolute inset-0 animate-pulse bg-[linear-gradient(135deg,#f2e6ef,#f2ede8)]" />}
-                <img
-                  src={product.ImageUrl}
-                  alt={product.Name}
-                  className={cn('gm-image-drift h-full w-full object-cover transition-opacity duration-300', imageLoaded ? 'opacity-100' : 'opacity-0')}
-                  loading="lazy"
-                  onLoad={() => setImageLoaded(true)}
-                />
-              </>
+              <img
+                src={product.ImageUrl}
+                alt={product.Name}
+                className="gm-image-drift h-full w-full object-cover"
+                decoding="async"
+                loading={imageLoadingMode}
+                fetchPriority={prioritizeImage ? 'high' : 'auto'}
+              />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#f6ecef,#f6eee8)]">
                 <span className="font-display text-4xl text-primary/30">{product.Name?.charAt(0) || 'U'}</span>

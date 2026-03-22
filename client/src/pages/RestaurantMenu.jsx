@@ -1,11 +1,11 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Clock3, MapPin, Sparkles, Star } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Clock3, MapPin, Sparkles, Star } from 'lucide-react';
 import ProductDetailModal from '../components/ProductDetailModal';
 import ProductRowCard from '../components/ProductRowCard';
-import Reveal from '../components/ui/Reveal';
 import { getProductsByRestaurant, getRestaurantBySlug } from '../services/api';
 import { Badge, Button, Chip, PageShell, SurfaceCard, cn } from '../components/ui/primitives';
+import { collectImageUrls, preloadImages } from '../utils/pagePreload';
 
 const HeaderSkeleton = memo(() => (
   <PageShell width="full" className="pt-4">
@@ -26,8 +26,38 @@ function RestaurantMenu({ viewOnly = false }) {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState(null);
+  const [showRestaurantDetails, setShowRestaurantDetails] = useState(false);
   const categoryRefs = useRef({});
   const navbarRef = useRef(null);
+  const activeCategoryRef = useRef(null);
+  const centerTimeoutRef = useRef(null);
+
+  const keepCategoryChipVisible = useCallback((categoryId, { forceCenter = false } = {}) => {
+    const container = navbarRef.current;
+    const button = container?.querySelector(`[data-cat="${categoryId}"]`);
+    if (!container || !button) return;
+
+    const maxScrollLeft = Math.max(0, container.scrollWidth - container.clientWidth);
+    const buttonLeft = button.offsetLeft;
+    const buttonRight = buttonLeft + button.offsetWidth;
+    const visibleLeft = container.scrollLeft + 12;
+    const visibleRight = container.scrollLeft + container.clientWidth - 12;
+
+    if (!forceCenter && buttonLeft >= visibleLeft && buttonRight <= visibleRight) {
+      return;
+    }
+
+    const nextScrollLeft = forceCenter
+      ? buttonLeft - (container.clientWidth - button.offsetWidth) / 2
+      : buttonLeft < visibleLeft
+        ? buttonLeft - 12
+        : buttonRight - container.clientWidth + 12;
+
+    container.scrollTo({
+      left: Math.min(maxScrollLeft, Math.max(0, nextScrollLeft)),
+      behavior: 'smooth',
+    });
+  }, []);
 
   const getHeaderOffset = useCallback(() => {
     if (typeof window === 'undefined' || typeof document === 'undefined') {
@@ -47,6 +77,14 @@ function RestaurantMenu({ viewOnly = false }) {
   useEffect(() => {
     loadRestaurantData();
   }, [slug, viewOnly]);
+
+  useEffect(() => {
+    setShowRestaurantDetails(false);
+  }, [slug, viewOnly]);
+
+  useEffect(() => {
+    activeCategoryRef.current = activeCategory;
+  }, [activeCategory]);
 
   const productsByCategory = useMemo(
     () =>
@@ -78,6 +116,23 @@ function RestaurantMenu({ viewOnly = false }) {
   }, [categoriesWithProducts, activeCategory]);
 
   useEffect(() => {
+    if (!activeCategory) return;
+    if (centerTimeoutRef.current) {
+      clearTimeout(centerTimeoutRef.current);
+    }
+    centerTimeoutRef.current = window.setTimeout(() => {
+      keepCategoryChipVisible(activeCategory, { forceCenter: true });
+    }, 90);
+
+    return () => {
+      if (centerTimeoutRef.current) {
+        clearTimeout(centerTimeoutRef.current);
+        centerTimeoutRef.current = null;
+      }
+    };
+  }, [activeCategory, keepCategoryChipVisible]);
+
+  useEffect(() => {
     if (categoriesWithProducts.length === 0) return undefined;
 
     const headerOffset = getHeaderOffset();
@@ -93,10 +148,8 @@ function RestaurantMenu({ viewOnly = false }) {
         if (visibleEntries.length === 0) return;
 
         const nextActiveCategory = Number(visibleEntries[0].target.dataset.categoryId);
-        if (nextActiveCategory !== activeCategory) {
+        if (nextActiveCategory !== activeCategoryRef.current) {
           setActiveCategory(nextActiveCategory);
-          const button = navbarRef.current?.querySelector(`[data-cat="${nextActiveCategory}"]`);
-          button?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         }
       },
       { rootMargin: `-${observerTopOffset}px 0px -65% 0px`, threshold: 0 },
@@ -107,7 +160,7 @@ function RestaurantMenu({ viewOnly = false }) {
     });
 
     return () => observer.disconnect();
-  }, [activeCategory, categoriesWithProducts, getHeaderOffset]);
+  }, [categoriesWithProducts, getHeaderOffset]);
 
   const scrollToCategory = useCallback((categoryId) => {
     const element = categoryRefs.current[categoryId];
@@ -117,9 +170,10 @@ function RestaurantMenu({ viewOnly = false }) {
     const navbarHeight = navbarRef.current?.getBoundingClientRect().height || 56;
     const offset = headerOffset + navbarHeight + 20;
     const top = element.getBoundingClientRect().top + window.pageYOffset - offset;
-    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    window.scrollTo(0, Math.max(0, top));
     setActiveCategory(categoryId);
-  }, [getHeaderOffset]);
+    keepCategoryChipVisible(categoryId, { forceCenter: true });
+  }, [getHeaderOffset, keepCategoryChipVisible]);
 
   const loadRestaurantData = async () => {
     try {
@@ -146,13 +200,16 @@ function RestaurantMenu({ viewOnly = false }) {
         (a, b) => (a.SortOrder || 0) - (b.SortOrder || 0) || a.Name.localeCompare(b.Name, 'tr'),
       );
 
+      const nextProducts = (productsResponse.data?.allProducts || []).map((product) => ({
+        ...product,
+        RestaurantName: restaurantResponse.data?.Name || 'Bilinmeyen magaza',
+      }));
+
+      const imageUrls = collectImageUrls(restaurantResponse.data?.ImageUrl, nextProducts.map((product) => product.ImageUrl));
+      await preloadImages(imageUrls);
+
       setCategories(nextCategories);
-      setProducts(
-        (productsResponse.data?.allProducts || []).map((product) => ({
-          ...product,
-          RestaurantName: restaurantResponse.data?.Name || 'Bilinmeyen magaza',
-        })),
-      );
+      setProducts(nextProducts);
     } catch (err) {
       console.error('Veri yuklenemedi:', err);
       setError('Menu yuklenirken bir hata olustu');
@@ -192,6 +249,9 @@ function RestaurantMenu({ viewOnly = false }) {
       <div className="pb-8">
         <HeaderSkeleton />
         <PageShell width="full" className="mt-4 grid gap-4">
+          <div className="rounded-[28px] border border-white/70 bg-white px-5 py-4 text-sm font-semibold text-dark-lighter shadow-card">
+            Menu hazirlaniyor. Tum urunler yukleniyor.
+          </div>
           {[1, 2, 3, 4].map((i) => (
             <ProductSkeleton key={i} />
           ))}
@@ -219,75 +279,136 @@ function RestaurantMenu({ viewOnly = false }) {
   return (
     <div className="pb-8 pt-4 lg:pb-12">
       <PageShell width="full" className="space-y-4">
-        <SurfaceCard className="overflow-hidden p-0">
-          <div className="grid gap-0 lg:grid-cols-[1.05fr_0.95fr]">
-            <Reveal variant="section-enter" className="space-y-5 px-5 py-5 sm:px-6 sm:py-6">
-              <div className="flex items-start gap-3">
+        <SurfaceCard className="relative overflow-hidden border border-white/15 p-0">
+          <div className="absolute inset-0">
+            {restaurant.ImageUrl ? (
+              <img src={restaurant.ImageUrl} alt={restaurant.Name} className="h-full w-full object-cover" />
+            ) : (
+              <div className="h-full w-full bg-[linear-gradient(135deg,#8c477c,#d16b53)]" />
+            )}
+          </div>
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(23,18,24,0.58)_0%,rgba(31,24,30,0.24)_42%,rgba(18,14,18,0.36)_100%)]" />
+          <div className="absolute inset-x-5 top-0 hidden h-20 rounded-full bg-white/18 blur-3xl sm:block" />
+
+          <div className="relative space-y-4 p-4 sm:p-5">
+            <div className="flex items-start gap-3">
+              {!viewOnly && (
                 <button
                   type="button"
                   onClick={() => navigate('/')}
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface-muted text-dark transition-all hover:bg-white hover:shadow-card"
+                  className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-white/14 text-white backdrop-blur-sm transition-all hover:bg-white/22 sm:backdrop-blur-md"
                   aria-label="Geri don"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </button>
-
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap gap-2">
-                    <Badge tone={restaurant.IsActive ? 'success' : 'danger'}>{restaurant.IsActive ? 'Acik' : 'Kapali'}</Badge>
-                    {restaurant.IsFeatured && (
-                      <Badge tone="warning">
-                        <Sparkles className="h-3 w-3" />
-                        One cikan
-                      </Badge>
-                    )}
-                  </div>
-
-                  <h1 className="mt-3 text-2xl font-black tracking-tight text-dark sm:text-3xl">{restaurant.Name}</h1>
-                  {restaurant.Description && <p className="mt-2 max-w-2xl text-sm leading-6 text-dark-lighter">{restaurant.Description}</p>}
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2 text-xs font-semibold text-dark-lighter sm:text-sm">
-                {restaurant.Rating && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted px-3 py-2">
-                    <Star className="h-3.5 w-3.5 fill-current text-amber-500" />
-                    {restaurant.Rating}
-                  </span>
-                )}
-                {restaurant.DeliveryTime && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted px-3 py-2">
-                    <Clock3 className="h-3.5 w-3.5 text-primary" />
-                    {restaurant.DeliveryTime}
-                  </span>
-                )}
-                {restaurant.MinOrder && <span className="rounded-full bg-surface-muted px-3 py-2">Min. {restaurant.MinOrder} TL</span>}
-                {restaurant.Address && (
-                  <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-surface-muted px-3 py-2">
-                    <MapPin className="h-3.5 w-3.5 text-primary" />
-                    <span className="truncate">{restaurant.Address}</span>
-                  </span>
-                )}
-              </div>
-            </Reveal>
-
-            <Reveal variant="reveal-soft" delay={60} className="min-h-[220px] bg-surface-muted">
-              {restaurant.ImageUrl ? (
-                <img src={restaurant.ImageUrl} alt={restaurant.Name} className="h-full w-full object-cover" />
-              ) : (
-                <div className="flex h-full min-h-[220px] w-full items-center justify-center bg-[linear-gradient(135deg,#8c477c,#d16b53)]">
-                  <span className="font-display text-7xl text-white/45">{restaurant.Name?.charAt(0) || 'M'}</span>
-                </div>
               )}
-            </Reveal>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap gap-2">
+                  <Badge tone={restaurant.IsActive ? 'success' : 'danger'}>{restaurant.IsActive ? 'Acik' : 'Kapali'}</Badge>
+                  {restaurant.IsFeatured && (
+                    <Badge tone="warning">
+                      <Sparkles className="h-3 w-3" />
+                      One cikan
+                    </Badge>
+                  )}
+                </div>
+
+                <h1 className="mt-2 line-clamp-2 text-xl font-black leading-tight tracking-tight text-white [text-shadow:0_2px_14px_rgba(0,0,0,0.3)] sm:text-2xl">
+                  {restaurant.Name}
+                </h1>
+
+                {restaurant.Rating && (
+                  <div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold text-white/90 sm:text-sm">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/12 px-3 py-2 backdrop-blur-md">
+                      <Star className="h-3.5 w-3.5 fill-current text-amber-300" />
+                      {restaurant.Rating}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowRestaurantDetails((current) => !current)}
+              className="inline-flex w-auto items-center gap-2 self-start rounded-full border border-white/45 bg-[linear-gradient(180deg,rgba(255,248,246,0.78)_0%,rgba(243,231,238,0.72)_100%)] px-3.5 py-2.5 text-left text-[12px] font-bold text-dark shadow-[0_10px_24px_rgba(67,36,56,0.12)] backdrop-blur-sm transition-all duration-200 hover:border-white/60 hover:bg-[linear-gradient(180deg,rgba(255,250,248,0.88)_0%,rgba(245,235,241,0.82)_100%)] sm:w-full sm:justify-between sm:gap-3 sm:rounded-[18px] sm:px-4 sm:py-3 sm:text-sm sm:backdrop-blur-xl"
+            >
+              <span>{showRestaurantDetails ? 'Gizle' : 'Detaylar'}</span>
+              <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 text-primary transition-transform duration-200 sm:h-4 sm:w-4', showRestaurantDetails && 'rotate-180')} />
+            </button>
+
+            <div
+              className={cn(
+                'grid overflow-hidden transition-[grid-template-rows,opacity,margin] duration-300 ease-out',
+                showRestaurantDetails ? 'mt-1 grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0',
+              )}
+            >
+              <div className="overflow-hidden">
+                <div className="relative overflow-hidden rounded-[24px] border border-white/50 bg-[linear-gradient(180deg,rgba(255,248,246,0.82)_0%,rgba(241,230,236,0.78)_100%)] p-4 text-dark shadow-[0_20px_60px_rgba(67,36,56,0.12)] backdrop-blur-md sm:p-5 sm:backdrop-blur-xl">
+                  <div className="absolute inset-x-4 top-0 hidden h-16 rounded-full bg-white/40 blur-3xl sm:block" />
+
+                  <div className="relative space-y-4">
+                    {restaurant.Description ? (
+                      <p className="text-sm leading-6 text-dark-lighter sm:text-[15px]">
+                        {restaurant.Description}
+                      </p>
+                    ) : (
+                      <p className="text-sm leading-6 text-dark-lighter sm:text-[15px]">
+                        Bu magazanin menusu ve teslimat bilgileri burada yer aliyor.
+                      </p>
+                    )}
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {!viewOnly && restaurant.DeliveryTime && (
+                        <div className="rounded-[20px] border border-white/55 bg-white/42 px-4 py-3 backdrop-blur-sm">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">Teslimat</p>
+                          <div className="mt-1.5 flex items-center gap-2 text-sm font-semibold text-dark sm:text-[15px]">
+                            <Clock3 className="h-4 w-4 text-primary" />
+                            <span>{restaurant.DeliveryTime}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {!viewOnly && restaurant.MinOrder && (
+                        <div className="rounded-[20px] border border-white/55 bg-white/42 px-4 py-3 backdrop-blur-sm">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">Minimum siparis</p>
+                          <div className="mt-1.5 text-sm font-semibold text-dark sm:text-[15px]">{restaurant.MinOrder} TL</div>
+                        </div>
+                      )}
+
+                      {restaurant.Address && (
+                        <div className="rounded-[20px] border border-white/55 bg-white/42 px-4 py-3 backdrop-blur-sm sm:col-span-2">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">Adres</p>
+                          <div className="mt-1.5 flex items-start gap-2 text-sm leading-6 text-dark-lighter sm:text-[15px]">
+                            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                            <span className="line-clamp-3">{restaurant.Address}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {restaurant.Rating && (
+                        <div className={cn('rounded-[20px] border border-white/55 bg-white/42 px-4 py-3 backdrop-blur-sm', restaurant.Address ? 'sm:col-span-2' : '')}>
+                          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">Puan</p>
+                          <div className="mt-1.5 flex items-center gap-2 text-sm font-semibold text-dark sm:text-[15px]">
+                            <Star className="h-4 w-4 fill-current text-amber-300" />
+                            <span>{restaurant.Rating}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </SurfaceCard>
       </PageShell>
 
       {categoriesWithProducts.length > 0 && (
-        <Reveal as="div" variant="bar-rise" className="sticky z-30" style={{ top: 'var(--gm-header-height, 112px)' }}>
+        <div className="sticky z-30" style={{ top: 'var(--gm-header-height, 112px)' }}>
           <PageShell width="full">
-            <div ref={navbarRef} className="scrollbar-hide flex gap-2 overflow-x-auto rounded-[22px] border border-white/70 bg-white/92 p-2 shadow-card backdrop-blur-xl">
+            <div ref={navbarRef} className="scrollbar-hide flex gap-2 overflow-x-auto rounded-[22px] border border-white/70 bg-white p-2 shadow-sm sm:bg-white/92 sm:shadow-card sm:backdrop-blur-xl">
               {categoriesWithProducts.map((category) => (
                 <Chip
                   key={category.Id}
@@ -301,7 +422,7 @@ function RestaurantMenu({ viewOnly = false }) {
               ))}
             </div>
           </PageShell>
-        </Reveal>
+        </div>
       )}
 
       <PageShell width="full" className="mt-4">
@@ -312,12 +433,12 @@ function RestaurantMenu({ viewOnly = false }) {
               <p className="mt-3 text-sm leading-7 text-dark-lighter">Bu magazada henuz urun bulunmuyor.</p>
             </SurfaceCard>
           ) : (
-            categoriesWithProducts.map((category) => {
+            categoriesWithProducts.map((category, categoryIndex) => {
               const categoryProducts = productsByCategory[category.Id] || [];
               if (!categoryProducts.length) return null;
 
               return (
-                <Reveal key={category.Id} as="section" variant="section-enter" className="space-y-3">
+                <section key={category.Id} className="space-y-3">
                   <div
                     ref={(element) => {
                       if (element) categoryRefs.current[category.Id] = element;
@@ -336,17 +457,19 @@ function RestaurantMenu({ viewOnly = false }) {
                   </div>
 
                   <div className="grid gap-3">
-                    {categoryProducts.map((product, index) => (
-                      <Reveal key={product.Id} variant="reveal-up" delay={Math.min(index, 5) * 45}>
+                    {categoryProducts.map((product, productIndex) => (
+                      <div key={product.Id}>
                         <ProductRowCard
                           product={product}
                           onProductClick={handleProductClick}
                           isViewOnly={viewOnly}
+                          prioritizeImage={categoryIndex === 0 && productIndex < 6}
+                          imageLoadingMode="eager"
                         />
-                      </Reveal>
+                      </div>
                     ))}
                   </div>
-                </Reveal>
+                </section>
               );
             })
           )}

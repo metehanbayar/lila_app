@@ -1,13 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Link, matchPath, useLocation, useNavigate } from 'react-router-dom';
 import { ChevronDown, MapPin, ShoppingBag, User2 } from 'lucide-react';
 import useCartStore from '../store/cartStore';
 import useCustomerStore from '../store/customerStore';
 import { getAddresses } from '../services/customerApi';
 import { getRestaurantBySlug } from '../services/api';
-import AddressManager from './AddressManager';
-import LocationPickerModal from './LocationPickerModal';
 import { Badge, Button, cn } from './ui/primitives';
+
+const AddressManager = lazy(() => import('./AddressManager'));
+const LocationPickerModal = lazy(() => import('./LocationPickerModal'));
 
 const desktopLinks = [
   { to: '/', label: 'Ana Sayfa' },
@@ -159,14 +160,14 @@ function Header({ catalogMode = false }) {
         <div className="mx-auto w-full max-w-[1440px] px-4 pt-2 sm:px-6 sm:pt-2.5 lg:px-8">
           <div
             className={cn(
-              'rounded-[28px] border border-white/70 bg-white/82 px-3 py-2.5 shadow-card backdrop-blur-xl transition-all duration-300 sm:px-4 sm:py-2.5',
-              isScrolled && 'shadow-premium',
+              'rounded-[28px] border border-white/70 bg-white/90 px-3 py-2.5 shadow-card backdrop-blur-md transition-all duration-300 sm:bg-white/82 sm:px-4 sm:py-2.5 sm:backdrop-blur-xl',
+              isScrolled && 'shadow-card sm:shadow-premium',
             )}
           >
             <div className="flex items-center justify-between gap-2.5">
               <button onClick={() => navigate('/')} className="flex min-w-0 items-center gap-2.5 text-left">
                 <div className="relative">
-                  <div className="absolute inset-0 rounded-[26px] bg-primary/20 blur-xl" />
+                  <div className="absolute inset-0 hidden rounded-[26px] bg-primary/20 blur-xl sm:block" />
                   <div className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-[22px] border border-white/70 bg-white shadow-lg shadow-primary/10">
                     <img src="/logo.png" alt="Globalmenu" className="h-full w-full object-cover" />
                   </div>
@@ -253,17 +254,25 @@ function Header({ catalogMode = false }) {
 
       {!catalogMode && (
         <>
-          <LocationPickerModal
-            isOpen={showLocationModal}
-            onClose={() => setShowLocationModal(false)}
-            onConfirm={handleLocationSelect}
-          />
+          {showLocationModal && (
+            <Suspense fallback={null}>
+              <LocationPickerModal
+                isOpen={showLocationModal}
+                onClose={() => setShowLocationModal(false)}
+                onConfirm={handleLocationSelect}
+              />
+            </Suspense>
+          )}
 
-          <AddressManager
-            isOpen={showAddressManager}
-            onClose={() => setShowAddressManager(false)}
-            onSelectAddress={handleAddressSelect}
-          />
+          {showAddressManager && (
+            <Suspense fallback={null}>
+              <AddressManager
+                isOpen={showAddressManager}
+                onClose={() => setShowAddressManager(false)}
+                onSelectAddress={handleAddressSelect}
+              />
+            </Suspense>
+          )}
         </>
       )}
     </>

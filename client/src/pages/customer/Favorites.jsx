@@ -8,6 +8,7 @@ import ProductRowCard from '../../components/ProductRowCard';
 import { getFavorites } from '../../services/customerApi';
 import useCustomerStore from '../../store/customerStore';
 import { SurfaceCard } from '../../components/ui/primitives';
+import { preloadImages } from '../../utils/pagePreload';
 
 function Favorites() {
   const { setFavorites } = useCustomerStore();
@@ -26,8 +27,10 @@ function Favorites() {
       setLoading(true);
       const response = await getFavorites();
       if (response.success) {
-        setFavoriteProducts(response.data);
-        setFavorites(response.data.map((product) => product.Id));
+        const nextProducts = response.data || [];
+        await preloadImages(nextProducts.map((product) => product.ImageUrl));
+        setFavoriteProducts(nextProducts);
+        setFavorites(nextProducts.map((product) => product.Id));
       }
     } catch (err) {
       console.error('Favoriler yuklenemedi:', err);
@@ -62,8 +65,14 @@ function Favorites() {
         />
       ) : (
         <div className="grid gap-3">
-          {favoriteProducts.map((product) => (
-            <ProductRowCard key={product.Id} product={product} onProductClick={handleProductClick} />
+          {favoriteProducts.map((product, index) => (
+            <ProductRowCard
+              key={product.Id}
+              product={product}
+              onProductClick={handleProductClick}
+              imageLoadingMode="eager"
+              prioritizeImage={index < 6}
+            />
           ))}
         </div>
       )}

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Heart, LogOut, Mail, MapPin, Phone, Save, Settings, ShoppingBag, User } from 'lucide-react';
 import AddressManager from '../../components/AddressManager';
 import CustomerShell from '../../components/customer/CustomerShell';
+import Loading from '../../components/Loading';
 import { getFavorites, getMyOrders, updateProfile } from '../../services/customerApi';
 import useCustomerStore from '../../store/customerStore';
 import { Badge, Button, Field, SelectField, SurfaceCard, TextInput } from '../../components/ui/primitives';
@@ -14,6 +15,7 @@ function Profile() {
   const [editing, setEditing] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
   const [showAddressManager, setShowAddressManager] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -40,6 +42,7 @@ function Profile() {
 
   const loadData = async () => {
     try {
+      setPageLoading(true);
       const [favoritesRes, ordersRes] = await Promise.all([getFavorites(), getMyOrders(1, 1)]);
 
       if (favoritesRes.success) {
@@ -52,6 +55,8 @@ function Profile() {
       }
     } catch (err) {
       console.error('Veriler yuklenemedi:', err);
+    } finally {
+      setPageLoading(false);
     }
   };
 
@@ -111,6 +116,12 @@ function Profile() {
           </Button>
         }
       >
+        {pageLoading ? (
+          <SurfaceCard tone="muted" className="p-6">
+            <Loading message="Profil hazirlaniyor..." />
+          </SurfaceCard>
+        ) : (
+          <>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-start gap-4">
             <div className="flex h-16 w-16 items-center justify-center rounded-[22px] bg-primary text-xl font-black text-white shadow-lg shadow-primary/20">
@@ -259,6 +270,8 @@ function Profile() {
             )}
           </div>
         </div>
+          </>
+        )}
       </CustomerShell>
 
       <AddressManager isOpen={showAddressManager} onClose={() => setShowAddressManager(false)} />

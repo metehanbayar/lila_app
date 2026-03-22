@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Clock3, Star } from 'lucide-react';
 import { Badge } from './ui/primitives';
 
@@ -13,8 +12,7 @@ function resolveRating(restaurant) {
   return numericRating.toFixed(1);
 }
 
-function StoreCard({ restaurant, onClick, className = '' }) {
-  const [imageLoaded, setImageLoaded] = useState(false);
+function StoreCard({ restaurant, onClick, className = '', imageLoadingMode = 'lazy', prioritizeImage = false }) {
   const rating = resolveRating(restaurant);
 
   return (
@@ -25,16 +23,14 @@ function StoreCard({ restaurant, onClick, className = '' }) {
     >
       <div className="relative h-40 overflow-hidden sm:h-44">
         {restaurant.ImageUrl ? (
-          <>
-            {!imageLoaded && <div className="absolute inset-0 animate-pulse bg-[linear-gradient(135deg,#f2e6ef,#f2ede8)]" />}
-            <img
-              src={restaurant.ImageUrl}
-              alt={restaurant.Name}
-              className={`gm-image-drift h-full w-full object-cover transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
-              loading="lazy"
-              onLoad={() => setImageLoaded(true)}
-            />
-          </>
+          <img
+            src={restaurant.ImageUrl}
+            alt={restaurant.Name}
+            className="gm-image-drift h-full w-full object-cover"
+            loading={imageLoadingMode}
+            decoding="async"
+            fetchPriority={prioritizeImage ? 'high' : 'auto'}
+          />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#8c477c,#d16b53)]">
             <span className="font-display text-6xl text-white/45">{restaurant.Name?.charAt(0) || 'M'}</span>

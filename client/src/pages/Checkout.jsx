@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
@@ -13,12 +13,13 @@ import {
   Wallet,
 } from 'lucide-react';
 import EmptyState from '../components/EmptyState';
-import LocationPickerModal from '../components/LocationPickerModal';
 import AddressManager from '../components/AddressManager';
+import Loading from '../components/Loading';
 import Reveal from '../components/ui/Reveal';
 import { createOrder, initializePayment, setOfflinePayment } from '../services/api';
 import useCartStore from '../store/cartStore';
 import useCustomerStore from '../store/customerStore';
+import { preloadImages } from '../utils/pagePreload';
 import {
   Badge,
   Field,
@@ -31,6 +32,8 @@ import {
   TextInput,
   cn,
 } from '../components/ui/primitives';
+
+const LocationPickerModal = lazy(() => import('../components/LocationPickerModal'));
 
 const toNum = (value) => {
   const num = Number(value);
@@ -180,6 +183,8 @@ function Checkout() {
   const [paymentErrors, setPaymentErrors] = useState({});
   const [paymentMethod, setPaymentMethod] = useState('cash_on_delivery');
   const [formErrors, setFormErrors] = useState({});
+  const [pageReady, setPageReady] = useState(() => items.length === 0);
+  const initialAssetsReadyRef = useRef(items.length === 0);
 
   useEffect(() => {
     if (isAuthenticated && customer) {
@@ -197,6 +202,35 @@ function Checkout() {
       window.scrollTo(0, 0);
     }
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (items.length === 0) {
+      setPageReady(true);
+      initialAssetsReadyRef.current = true;
+      return undefined;
+    }
+
+    const preparePage = async () => {
+      if (!initialAssetsReadyRef.current) {
+        setPageReady(false);
+      }
+      await preloadImages(items.map((item) => item.ImageUrl));
+      if (!cancelled) {
+        if (!initialAssetsReadyRef.current) {
+          setPageReady(true);
+          initialAssetsReadyRef.current = true;
+        }
+      }
+    };
+
+    preparePage();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [items]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -482,6 +516,18 @@ function Checkout() {
         actionText="Ana sayfaya don"
         actionPath="/"
       />
+    );
+  }
+
+  if (!pageReady) {
+    return (
+      <div className="pb-8 pt-4 lg:pb-12">
+        <PageShell width="full">
+          <SurfaceCard tone="muted" className="p-6">
+            <Loading message="Checkout hazirlaniyor..." />
+          </SurfaceCard>
+        </PageShell>
+      </div>
     );
   }
 
@@ -790,11 +836,15 @@ function Checkout() {
         </PageShell>
       </div>
 
-      <LocationPickerModal
-        isOpen={showLocationModal}
-        onClose={() => setShowLocationModal(false)}
-        onConfirm={handleLocationConfirm}
-      />
+      {showLocationModal && (
+        <Suspense fallback={null}>
+          <LocationPickerModal
+            isOpen={showLocationModal}
+            onClose={() => setShowLocationModal(false)}
+            onConfirm={handleLocationConfirm}
+          />
+        </Suspense>
+      )}
 
       {isAuthenticated && (
         <AddressManager

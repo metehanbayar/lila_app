@@ -117,31 +117,31 @@ function AddToCartSuccessOverlay() {
         className={cn(
           'absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.9),rgba(250,246,243,0.94)_42%,rgba(238,227,233,0.86)_100%)] transition-all duration-300',
           phase !== 'hidden' && 'animate-success-backdrop',
-          cardVisible && 'opacity-100 backdrop-blur-md',
+          cardVisible && 'opacity-100 backdrop-blur-sm sm:backdrop-blur-md',
           !cardVisible && !cardExiting && 'opacity-0 backdrop-blur-none',
           cardExiting && 'opacity-0 backdrop-blur-none',
         )}
       />
 
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="animate-success-orb absolute left-1/2 top-[14%] h-[360px] w-[360px] -translate-x-1/2 rounded-full bg-white/70 blur-[96px]" />
-        <div className="animate-success-orb absolute top-[20%] right-[8%] h-[260px] w-[260px] rounded-full bg-primary/12 blur-[88px]" style={{ animationDelay: '0.35s' }} />
-        <div className="animate-success-orb absolute bottom-[12%] right-[10%] h-[240px] w-[240px] rounded-full bg-accent/12 blur-[82px]" style={{ animationDelay: '0.7s' }} />
-        <div className="animate-success-orb absolute left-[6%] top-[58%] h-[220px] w-[220px] rounded-full bg-white/60 blur-[82px]" style={{ animationDelay: '1s' }} />
+        <div className="animate-success-orb absolute left-1/2 top-[14%] hidden h-[360px] w-[360px] -translate-x-1/2 rounded-full bg-white/70 blur-[96px] sm:block" />
+        <div className="animate-success-orb absolute top-[20%] right-[8%] hidden h-[260px] w-[260px] rounded-full bg-primary/12 blur-[88px] sm:block" style={{ animationDelay: '0.35s' }} />
+        <div className="animate-success-orb absolute bottom-[12%] right-[10%] hidden h-[240px] w-[240px] rounded-full bg-accent/12 blur-[82px] sm:block" style={{ animationDelay: '0.7s' }} />
+        <div className="animate-success-orb absolute left-[6%] top-[58%] hidden h-[220px] w-[220px] rounded-full bg-white/60 blur-[82px] sm:block" style={{ animationDelay: '1s' }} />
       </div>
 
       <div className="relative flex h-full items-center justify-center p-4 sm:p-6">
         <div
           key={renderedEntry.id}
           className={cn(
-            'relative w-full max-w-[440px] overflow-hidden rounded-[34px] border border-white/90 bg-white/97 p-5 shadow-premium backdrop-blur-2xl transition-all duration-300 sm:p-6',
+            'relative w-full max-w-[440px] overflow-hidden rounded-[34px] border border-white/90 bg-white/97 p-5 shadow-card backdrop-blur-md transition-all duration-300 sm:p-6 sm:shadow-premium sm:backdrop-blur-2xl',
             phase !== 'hidden' && 'animate-success-card',
             phase === 'prepare' && 'translate-y-4 scale-[0.96] opacity-0',
             cardVisible && 'translate-y-0 scale-100 opacity-100',
             cardExiting && 'animate-success-card-exit',
           )}
         >
-          <div className="pointer-events-none absolute inset-x-[-18%] top-0 h-[120px] animate-success-sheen bg-[linear-gradient(105deg,transparent_18%,rgba(255,255,255,0.72)_46%,transparent_74%)]" />
+          <div className="pointer-events-none absolute inset-x-[-18%] top-0 hidden h-[120px] animate-success-sheen bg-[linear-gradient(105deg,transparent_18%,rgba(255,255,255,0.72)_46%,transparent_74%)] sm:block" />
           <div className="pointer-events-none absolute inset-x-0 top-0 h-44 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.82),rgba(140,71,124,0.08)_42%,transparent_72%)]" />
 
           <div className="flex flex-col items-center text-center">
@@ -160,30 +160,33 @@ function AddToCartSuccessOverlay() {
               <p className="text-sm leading-6 text-dark-lighter sm:text-base">{subtitle}</p>
             </div>
 
-            <div className="animate-success-content mt-5 w-full rounded-[28px] border border-white/85 bg-white/92 p-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_18px_36px_-28px_rgba(36,27,29,0.18)] sm:p-5" style={{ animationDelay: '140ms' }}>
+            <div className="animate-success-content mt-5 w-full rounded-[28px] border border-white/55 bg-[linear-gradient(180deg,rgba(255,255,255,0.36),rgba(240,236,233,0.52))] p-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_18px_36px_-30px_rgba(36,27,29,0.12)] backdrop-blur-xl sm:p-5" style={{ animationDelay: '140ms' }}>
               {renderedEntry.mode === 'single' ? (
-                <div className="flex items-center gap-3">
-                  <div className="h-16 w-16 shrink-0 overflow-hidden rounded-[20px] border border-surface-border/70 bg-white shadow-sm sm:h-[72px] sm:w-[72px]">
+                <div className="space-y-3">
+                  <div className="relative h-36 overflow-hidden rounded-[24px] border border-white/45 bg-[linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,255,255,0.04))] shadow-sm">
                     {renderedEntry.imageUrl ? (
                       <img src={renderedEntry.imageUrl} alt={renderedEntry.productName} className="h-full w-full object-cover" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#f1e4ec,#f2ece5)]">
-                        <Package className="h-6 w-6 text-primary/40" />
+                        <Package className="h-8 w-8 text-primary/40" />
                       </div>
                     )}
+                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.12)_0%,rgba(255,255,255,0.02)_34%,rgba(24,18,24,0.42)_100%)]" />
+                    <div className="absolute left-3 top-3 inline-flex items-center rounded-full border border-white/22 bg-black/15 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-white backdrop-blur-md">
+                      Adet {renderedEntry.quantity}
+                    </div>
                   </div>
 
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 space-y-1 px-1">
                     <p className="line-clamp-2 text-sm font-bold leading-6 text-dark sm:text-base">{renderedEntry.productName}</p>
                     {renderedEntry.variantName && (
                       <p className="mt-1 text-xs font-medium text-dark-lighter sm:text-sm">{renderedEntry.variantName}</p>
                     )}
-                    <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">Adet {renderedEntry.quantity}</p>
                   </div>
                 </div>
               ) : (
                 <div className="flex items-center gap-3">
-                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[20px] border border-surface-border/70 bg-white text-primary shadow-sm">
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[20px] border border-white/55 bg-white/44 text-primary shadow-sm backdrop-blur-sm">
                     <ShoppingBag className="h-7 w-7" />
                   </div>
                   <div>
@@ -194,11 +197,11 @@ function AddToCartSuccessOverlay() {
               )}
 
               <div className="mt-4 grid grid-cols-2 gap-3">
-                <div className="rounded-[20px] border border-surface-border/60 bg-white px-4 py-3 shadow-sm">
+                <div className="rounded-[20px] border border-white/55 bg-white/42 px-4 py-3 shadow-sm backdrop-blur-sm">
                   <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-dark-lighter">Sepetteki urun</p>
                   <p className="mt-1 text-lg font-black text-dark">{renderedEntry.cartItemCount}</p>
                 </div>
-                <div className="rounded-[20px] border border-surface-border/60 bg-white px-4 py-3 shadow-sm">
+                <div className="rounded-[20px] border border-white/55 bg-white/42 px-4 py-3 shadow-sm backdrop-blur-sm">
                   <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-dark-lighter">Yeni toplam</p>
                   <p className="mt-1 text-lg font-black text-primary-dark">{formatCurrency(renderedEntry.cartTotal)}</p>
                 </div>

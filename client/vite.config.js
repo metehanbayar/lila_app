@@ -38,16 +38,6 @@ export default defineConfig(({ mode }) => {
       outDir: 'dist',
       sourcemap: false,
       minify: 'esbuild',
-      rollupOptions: {
-        output: {
-          manualChunks: {
-            vendor: ['react', 'react-dom', 'react-router-dom'],
-            ui: ['lucide-react', '@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
-            maps: ['leaflet', 'react-leaflet', '@react-google-maps/api'],
-            utils: ['axios', 'zustand'],
-          },
-        },
-      },
       chunkSizeWarningLimit: 1000,
     },
     optimizeDeps: {

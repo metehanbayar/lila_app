@@ -23,7 +23,10 @@ function Reveal({
       return undefined;
     }
 
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const touchOptimized = window.matchMedia?.('(hover: none) and (pointer: coarse) and (max-width: 1024px)').matches;
+
+    if (reduceMotion || touchOptimized) {
       setIsVisible(true);
       return undefined;
     }

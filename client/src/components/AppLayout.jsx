@@ -32,7 +32,7 @@ function AppLayout({ children }) {
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-x-clip">
-      <div className="pointer-events-none absolute inset-0 gm-mesh opacity-90" />
+      <div className="pointer-events-none absolute inset-0 hidden gm-mesh opacity-90 md:block" />
       <ScrollToTop />
       <Header catalogMode={isCatalogMenu} />
       <AddToCartSuccessOverlay />
@@ -45,7 +45,7 @@ function AppLayout({ children }) {
 
       {showBottomNav && (
         <nav className="fixed inset-x-0 bottom-0 z-50 lg:hidden">
-          <div className="mx-3 mb-3 rounded-[28px] border border-white/70 bg-white/88 p-2 shadow-premium backdrop-blur-xl safe-area-bottom">
+          <div className="mx-3 mb-3 rounded-[28px] border border-white/70 bg-white/92 p-2 shadow-card backdrop-blur-md safe-area-bottom sm:bg-white/88 sm:shadow-premium sm:backdrop-blur-xl">
             <div className="grid grid-cols-4 gap-1">
               {items.map((item) => {
                 const Icon = item.icon;

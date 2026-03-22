@@ -9,6 +9,7 @@ import ProductRowCard from '../components/ProductRowCard';
 import StoreCard from '../components/StoreCard';
 import Reveal from '../components/ui/Reveal';
 import { getCategories, getRestaurants, searchProducts } from '../services/api';
+import { preloadImages } from '../utils/pagePreload';
 import { debounce } from '../utils/performance';
 import { Badge, Button, Chip, PageShell, SurfaceCard, TextInput, cn } from '../components/ui/primitives';
 
@@ -55,6 +56,7 @@ function Search() {
   const [selectedCategory, setSelectedCategory] = useState(initialCategoryId);
   const [categoryName, setCategoryName] = useState(initialCategoryName);
   const [loading, setLoading] = useState(false);
+  const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -89,52 +91,81 @@ function Search() {
   );
 
   useEffect(() => {
-    window.scrollTo(0, 0);
-    loadRestaurants();
-    loadCategories();
+    let cancelled = false;
 
-    if (initialQuery && initialQuery.length >= 2) {
-      performSearch(initialQuery, null, initialCategoryId);
-    } else if (initialCategoryId) {
-      performSearch('', null, initialCategoryId);
-    }
+    const initialize = async () => {
+      window.scrollTo(0, 0);
+      setInitializing(true);
+
+      try {
+        await Promise.all([loadRestaurants(), loadCategories()]);
+
+        if (cancelled) return;
+
+        if (initialQuery && initialQuery.length >= 2) {
+          await performSearch(initialQuery, null, initialCategoryId);
+        } else if (initialCategoryId) {
+          await performSearch('', null, initialCategoryId);
+        }
+      } finally {
+        if (!cancelled) {
+          setInitializing(false);
+        }
+      }
+    };
+
+    initialize();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
+    if (initializing) {
+      return;
+    }
     debouncedSearch(searchQuery, selectedRestaurant, selectedCategory, categoryName);
-  }, [searchQuery, selectedRestaurant, selectedCategory, categoryName, debouncedSearch]);
+  }, [searchQuery, selectedRestaurant, selectedCategory, categoryName, debouncedSearch, initializing]);
 
   const loadRestaurants = async () => {
     try {
       const response = await getRestaurants();
       if (response.success) {
-        setRestaurants(response.data || []);
+        const nextRestaurants = response.data || [];
+        await preloadImages(nextRestaurants.map((restaurant) => restaurant.ImageUrl));
+        setRestaurants(nextRestaurants);
+        return nextRestaurants;
       }
     } catch (err) {
       console.error('Magazalar yuklenemedi:', err);
     }
+
+    return [];
   };
 
   const loadCategories = async () => {
     try {
       const response = await getCategories();
       if (response.success && response.data) {
-        setCategories(
-          response.data
-            .filter((category) => category.IsActive !== false)
-            .sort((a, b) => (a.SortOrder || 0) - (b.SortOrder || 0))
-            .map((category) => ({
-              ...category,
-              id: String(category.Id),
-              name: category.Name,
-              icon: category.Icon || 'Utensils',
-              color: category.Color || '#8C477C',
-            })),
-        );
+        const nextCategories = response.data
+          .filter((category) => category.IsActive !== false)
+          .sort((a, b) => (a.SortOrder || 0) - (b.SortOrder || 0))
+          .map((category) => ({
+            ...category,
+            id: String(category.Id),
+            name: category.Name,
+            icon: category.Icon || 'Utensils',
+            color: category.Color || '#8C477C',
+          }));
+        setCategories(nextCategories);
+        return nextCategories;
       }
     } catch (err) {
       console.error('Kategoriler yuklenemedi:', err);
     }
+
+    return [];
   };
 
   const performSearch = async (query, restaurantFilter = selectedRestaurant, categoryFilter = selectedCategory) => {
@@ -153,12 +184,12 @@ function Search() {
       const response = await searchProducts(searchTerm, restaurantFilter, categoryFilter);
 
       if (response.success) {
-        setResults(
-          (response.data || []).map((product) => ({
-            ...product,
-            RestaurantName: product.RestaurantName || 'Bilinmeyen magaza',
-          })),
-        );
+        const nextResults = (response.data || []).map((product) => ({
+          ...product,
+          RestaurantName: product.RestaurantName || 'Bilinmeyen magaza',
+        }));
+        await preloadImages(nextResults.map((product) => product.ImageUrl));
+        setResults(nextResults);
       } else {
         setError(response.message);
         setResults([]);
@@ -251,6 +282,18 @@ function Search() {
         matchingStores.push(restaurant);
       }
     });
+
+  if (initializing) {
+    return (
+      <div className="pb-8 pt-4 lg:pb-12">
+        <PageShell width="full">
+          <SurfaceCard tone="muted" className="p-6">
+            <Loading message="Arama sayfasi hazirlaniyor..." />
+          </SurfaceCard>
+        </PageShell>
+      </div>
+    );
+  }
 
   return (
     <div className="pb-8 pt-4 lg:pb-12">
@@ -436,7 +479,12 @@ function Search() {
                     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                       {matchingStores.map((restaurant, index) => (
                         <Reveal key={restaurant.Id} variant="reveal-up" delay={Math.min(index, 5) * 50}>
-                          <StoreCard restaurant={restaurant} onClick={() => navigate(`/restaurant/${restaurant.Slug}`)} />
+                          <StoreCard
+                            restaurant={restaurant}
+                            onClick={() => navigate(`/restaurant/${restaurant.Slug}`)}
+                            imageLoadingMode="eager"
+                            prioritizeImage={index < 6}
+                          />
                         </Reveal>
                       ))}
                     </div>
@@ -456,7 +504,7 @@ function Search() {
                     <div className="grid gap-3">
                       {results.map((product, index) => (
                         <Reveal key={product.Id} variant="reveal-up" delay={Math.min(index, 5) * 45}>
-                          <ProductRowCard product={product} onProductClick={handleProductClick} />
+                          <ProductRowCard product={product} onProductClick={handleProductClick} imageLoadingMode="eager" prioritizeImage={index < 6} />
                         </Reveal>
                       ))}
                     </div>
@@ -533,7 +581,12 @@ function Search() {
                   <div className="grid gap-4 md:grid-cols-2">
                     {emptyStateStores.map((restaurant, index) => (
                       <Reveal key={restaurant.Id} variant="reveal-up" delay={Math.min(index, 5) * 50}>
-                        <StoreCard restaurant={restaurant} onClick={() => navigate(`/restaurant/${restaurant.Slug}`)} />
+                        <StoreCard
+                          restaurant={restaurant}
+                          onClick={() => navigate(`/restaurant/${restaurant.Slug}`)}
+                          imageLoadingMode="eager"
+                          prioritizeImage={index < 4}
+                        />
                       </Reveal>
                     ))}
                   </div>

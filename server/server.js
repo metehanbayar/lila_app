@@ -28,14 +28,17 @@ import otpRouter from './routes/otp.js';
 import testEmailRouter from './routes/test-email.js';
 import paymentRouter from './routes/payment.js';
 import { initializeSocketIO } from './services/socket-service.js';
-import { createCorsOriginValidator } from './config/runtime.js';
+import { createCorsOriginValidator, isProduction } from './config/runtime.js';
 import { validateAuthTokenConfig } from './services/auth-token.js';
 import { validatePaymentConfig } from './config/payment.js';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const clientDistPath = path.resolve(__dirname, '../client/dist');
+const clientIndexPath = path.join(clientDistPath, 'index.html');
 
 dotenv.config();
 
@@ -45,7 +48,22 @@ const PORT = process.env.PORT || 3300;
 let server; // HTTP server referansı; graceful shutdown için
 
 // Middleware
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: isProduction()
+      ? undefined
+      : {
+          useDefaults: true,
+          directives: {
+            'upgrade-insecure-requests': null,
+          },
+        },
+    crossOriginEmbedderPolicy: isProduction(),
+    crossOriginOpenerPolicy: isProduction(),
+    crossOriginResourcePolicy: isProduction() ? { policy: 'same-origin' } : false,
+    originAgentCluster: isProduction(),
+  })
+);
 app.use(
   cors({
     origin: createCorsOriginValidator(),
@@ -121,6 +139,34 @@ app.use('/api/payment', paymentRouter);
 
 // Email Test Routes
 app.use('/api/test-email', testEmailRouter);
+
+// Built client'ı aynı origin'den servis et. Bu sayede mobil prod testinde
+// Vite proxy veya ayrık CORS ayarı gerekmiyor.
+if (fs.existsSync(clientIndexPath)) {
+  app.use(
+    express.static(clientDistPath, {
+      setHeaders: (res, filePath) => {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+      },
+    })
+  );
+
+  app.get('*', (req, res, next) => {
+    if (
+      req.method !== 'GET' ||
+      req.path === '/api' ||
+      req.path.startsWith('/api/') ||
+      req.path === '/uploads' ||
+      req.path.startsWith('/uploads/')
+    ) {
+      next();
+      return;
+    }
+
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.sendFile(clientIndexPath);
+  });
+}
 
 // 404 handler
 app.use((req, res) => {

@@ -5,6 +5,7 @@ import StoreCard from '../components/StoreCard';
 import Reveal from '../components/ui/Reveal';
 import { getActivePromotions, getRestaurants } from '../services/api';
 import { Badge, Button, PageShell, SurfaceCard } from '../components/ui/primitives';
+import { preloadImages } from '../utils/pagePreload';
 
 const StoreSkeleton = memo(() => (
   <div className="h-[220px] animate-pulse rounded-[28px] bg-white shadow-card" />
@@ -192,7 +193,9 @@ function Home() {
       ]);
 
       if (restaurantsRes.success) {
-        setRestaurants(restaurantsRes.data || []);
+        const nextRestaurants = restaurantsRes.data || [];
+        await preloadImages(nextRestaurants.map((restaurant) => restaurant.ImageUrl));
+        setRestaurants(nextRestaurants);
       } else {
         setError('Magazalar yuklenemedi');
       }
@@ -327,6 +330,9 @@ function Home() {
       <div className="pb-8 pt-4 lg:pb-12">
         <PageShell width="full" className="space-y-4">
           <div className="h-44 animate-pulse rounded-[32px] bg-[linear-gradient(135deg,#eadce7,#f3ebe6)]" />
+          <div className="rounded-[28px] border border-white/70 bg-white px-5 py-4 text-sm font-semibold text-dark-lighter shadow-card">
+            Ana sayfa hazirlaniyor. Magazalar yukleniyor.
+          </div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <StoreSkeleton key={i} />
@@ -472,7 +478,12 @@ function Home() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {restaurants.map((restaurant, index) => (
               <Reveal key={restaurant.Id} variant="reveal-up" delay={Math.min(index, 5) * 55}>
-                <StoreCard restaurant={restaurant} onClick={() => handleRestaurantClick(restaurant)} />
+                <StoreCard
+                  restaurant={restaurant}
+                  onClick={() => handleRestaurantClick(restaurant)}
+                  imageLoadingMode="eager"
+                  prioritizeImage={index < 6}
+                />
               </Reveal>
             ))}
           </div>

@@ -19,7 +19,8 @@ export function getAllowedCorsOrigins() {
 
 export function createCorsOriginValidator() {
   const allowedOrigins = getAllowedCorsOrigins();
-  const isLocalDevelopmentOrigin = (origin) => /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin || '');
+  const isLocalDevelopmentOrigin = (origin) =>
+    /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?$/i.test(origin || '');
 
   if (isProduction() && allowedOrigins.length === 0) {
     throw new Error('CORS_ORIGIN must be set in production.');
