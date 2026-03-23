@@ -1,0 +1,23 @@
+- generic [ref=e5]:
+  - generic [ref=e7]:
+    - generic [ref=e8]:
+      - paragraph [ref=e9]: Musteri girisi
+      - heading "Telefon numaranizi girin." [level=1] [ref=e10]
+      - paragraph [ref=e11]: SMS ile gelen kodla sifresiz giris yaparsiniz.
+    - link "Ana sayfa" [ref=e12] [cursor=pointer]:
+      - /url: /
+  - generic [ref=e17]:
+    - generic [ref=e18]:
+      - generic [ref=e19]: Telefon numarasi
+      - generic [ref=e20]:
+        - img
+        - textbox "Telefon numarasi" [ref=e21]:
+          - /placeholder: 0555 123 45 67
+      - paragraph [ref=e22]: Kod bu numaraya gonderilir.
+    - button "Kod gonder" [ref=e23] [cursor=pointer]:
+      - text: Kod gonder
+      - img [ref=e24]
+  - generic [ref=e27]:
+    - generic [ref=e28]: Hesabin yok mu?
+    - link "Kayit ol" [ref=e29] [cursor=pointer]:
+      - /url: /register

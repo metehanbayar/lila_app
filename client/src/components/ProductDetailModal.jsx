@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, ImageOff, Minus, Plus, ShoppingBag, ShoppingCart, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import useDialogBehavior from '../hooks/useDialogBehavior';
 import useCartStore from '../store/cartStore';
 import { showSingleAddSuccess } from '../utils/addToCartFeedback';
 import { getProductDetailImage } from '../utils/imageVariants';
@@ -23,16 +24,13 @@ function ProductDetailModal({
   const touchStartRef = useRef({ x: null, y: null });
   const mobileImagePanelRef = useRef(null);
   const desktopImagePanelRef = useRef(null);
+  const closeButtonRef = useRef(null);
   const hasSelectableVariants = product?.variants?.length > 1;
-
-  useEffect(() => {
-    if (!isOpen || typeof document === 'undefined') return undefined;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [isOpen]);
+  const { dialogRef, titleId } = useDialogBehavior({
+    isOpen,
+    onClose,
+    initialFocusRef: closeButtonRef,
+  });
 
   useEffect(() => {
     if (product?.variants?.length > 0) {
@@ -104,7 +102,6 @@ function ProductDetailModal({
   useEffect(() => {
     if (!isOpen || typeof document === 'undefined') return undefined;
     const handleKeyDown = (event) => {
-      if (event.key === 'Escape') onClose();
       if (event.key === 'ArrowLeft') handlePrevious();
       if (event.key === 'ArrowRight') handleNext();
     };
@@ -204,22 +201,27 @@ function ProductDetailModal({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[1000] flex items-stretch bg-dark/70 backdrop-blur-md sm:items-center sm:justify-center sm:p-5" role="dialog" aria-modal="true">
-      <button type="button" className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Urun modalini kapat" />
+    <div className="fixed inset-0 z-[1000] flex items-stretch bg-dark/70 backdrop-blur-md sm:items-center sm:justify-center sm:p-5">
+      <button type="button" tabIndex={-1} className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Urun modalini kapat" />
 
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
         className="relative flex h-[100dvh] w-full max-h-[100dvh] flex-col overflow-hidden rounded-none bg-[#f8f2ee] shadow-premium sm:h-[88vh] sm:max-h-[88vh] sm:max-w-3xl sm:rounded-[32px]"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchCancel}
       >
         <div className="flex items-center justify-between gap-2 border-b border-surface-border bg-white/92 px-4 py-3 backdrop-blur-xl sm:gap-3 sm:px-5 sm:py-4">
-          <button type="button" onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-2xl bg-surface-muted text-dark transition-all hover:bg-white hover:shadow-card sm:h-10 sm:w-10" aria-label="Kapat">
+          <button ref={closeButtonRef} type="button" onClick={onClose} className="flex h-11 w-11 items-center justify-center rounded-2xl bg-surface-muted text-dark transition-all hover:bg-white hover:shadow-card sm:h-10 sm:w-10" aria-label="Kapat">
             <X className="h-4 w-4" />
           </button>
 
           <div className="min-w-0 flex-1 text-center">
-            <p className="truncate text-[13px] font-bold text-dark sm:text-sm">{product.Name}</p>
+            <h2 id={titleId} className="truncate text-[13px] font-bold text-dark sm:text-sm">{product.Name}</h2>
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2">

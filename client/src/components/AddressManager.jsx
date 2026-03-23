@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import {
   BookOpen,
   Check,
@@ -10,6 +10,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import useDialogBehavior from '../hooks/useDialogBehavior';
 import {
   createAddress,
   deleteAddress,
@@ -40,21 +41,28 @@ function AddressManager({ isOpen, onClose, onSelectAddress }) {
     isDefault: false,
   });
   const [error, setError] = useState('');
+  const [feedback, setFeedback] = useState({ tone: '', message: '' });
   const [actionLoading, setActionLoading] = useState(false);
-
-  useEffect(() => {
-    if (typeof document === 'undefined') return undefined;
-    document.body.style.overflow = isOpen ? 'hidden' : '';
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
+  const [pendingDeleteId, setPendingDeleteId] = useState(null);
+  const closeButtonRef = useRef(null);
+  const { dialogRef, titleId } = useDialogBehavior({
+    isOpen,
+    onClose,
+    initialFocusRef: closeButtonRef,
+  });
 
   useEffect(() => {
     if (isOpen && isAuthenticated) {
       loadAddresses();
     }
   }, [isOpen, isAuthenticated]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setPendingDeleteId(null);
+      setFeedback({ tone: '', message: '' });
+    }
+  }, [isOpen]);
 
   const loadAddresses = async () => {
     if (!isAuthenticated) return;
@@ -83,10 +91,12 @@ function AddressManager({ isOpen, onClose, onSelectAddress }) {
     setEditingId(null);
     setShowAddForm(false);
     setError('');
+    setPendingDeleteId(null);
   };
 
   const handleLocationConfirm = (address) => {
     setFormData((prev) => ({ ...prev, fullAddress: address }));
+    setError('');
   };
 
   const handleSubmit = async (e) => {
@@ -110,12 +120,14 @@ function AddressManager({ isOpen, onClose, onSelectAddress }) {
         const response = await updateAddress(editingId, formData);
         if (response.success) {
           await loadAddresses();
+          setFeedback({ tone: 'success', message: 'Adres guncellendi.' });
           resetForm();
         }
       } else {
         const response = await createAddress(formData);
         if (response.success) {
           await loadAddresses();
+          setFeedback({ tone: 'success', message: 'Adres kaydedildi.' });
           resetForm();
         }
       }
@@ -136,22 +148,34 @@ function AddressManager({ isOpen, onClose, onSelectAddress }) {
     setEditingId(address.Id);
     setShowAddForm(true);
     setError('');
+    setPendingDeleteId(null);
+    setFeedback({ tone: '', message: '' });
+  };
+
+  const requestDelete = (id) => {
+    setPendingDeleteId(id);
+    setFeedback({ tone: '', message: '' });
+  };
+
+  const cancelDelete = () => {
+    setPendingDeleteId(null);
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Bu adresi silmek istediginize emin misiniz?')) {
-      return;
-    }
-
     setActionLoading(true);
     try {
       const response = await deleteAddress(id);
       if (response.success) {
         await loadAddresses();
+        setPendingDeleteId(null);
+        setFeedback({ tone: 'success', message: 'Adres silindi.' });
       }
     } catch (err) {
       console.error('Adres silinemedi:', err);
-      window.alert(err.response?.data?.message || 'Adres silinirken hata olustu');
+      setFeedback({
+        tone: 'error',
+        message: err.response?.data?.message || 'Adres silinirken hata olustu',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -163,10 +187,15 @@ function AddressManager({ isOpen, onClose, onSelectAddress }) {
       const response = await setDefaultAddress(id);
       if (response.success) {
         await loadAddresses();
+        setPendingDeleteId(null);
+        setFeedback({ tone: 'success', message: 'Varsayilan adres guncellendi.' });
       }
     } catch (err) {
       console.error('Varsayilan adres ayarlanamadi:', err);
-      window.alert(err.response?.data?.message || 'Varsayilan adres ayarlanirken hata olustu');
+      setFeedback({
+        tone: 'error',
+        message: err.response?.data?.message || 'Varsayilan adres ayarlanirken hata olustu',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -187,15 +216,22 @@ function AddressManager({ isOpen, onClose, onSelectAddress }) {
   return (
     <>
       <div className="fixed inset-0 z-[180] bg-dark/65 backdrop-blur-md">
-        <button className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Adres modali kapat" />
+        <button tabIndex={-1} className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Adres modali kapat" />
 
-        <div className="relative mx-auto flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-none border border-white/10 bg-[#f8f2ee] shadow-premium sm:mt-6 sm:h-[calc(100vh-3rem)] sm:rounded-[32px]">
+        <div
+          ref={dialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          tabIndex={-1}
+          className="relative mx-auto flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-none border border-white/10 bg-[#f8f2ee] shadow-premium sm:mt-6 sm:h-[calc(100vh-3rem)] sm:rounded-[32px]"
+        >
           <div className="border-b border-surface-border bg-white/86 px-5 py-4 backdrop-blur-xl sm:px-6 sm:py-5">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-2">
                 <span className="gm-eyebrow">{onSelectAddress ? 'Adres secimi' : 'Kayitli adresler'}</span>
                 <div>
-                  <h3 className="gm-display text-3xl sm:text-4xl">
+                  <h3 id={titleId} className="gm-display text-3xl sm:text-4xl">
                     {showAddForm ? (editingId ? 'Adresi duzenle' : 'Yeni adres ekle') : onSelectAddress ? 'Adres secin' : 'Adreslerim'}
                   </h3>
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-dark-lighter">Kayitli adreslerinizi yonetin.</p>
@@ -203,8 +239,9 @@ function AddressManager({ isOpen, onClose, onSelectAddress }) {
               </div>
 
               <button
+                ref={closeButtonRef}
                 onClick={onClose}
-                className="rounded-2xl bg-surface-muted p-3 text-dark transition-all hover:bg-white hover:shadow-card"
+                className="flex h-11 w-11 items-center justify-center rounded-2xl bg-surface-muted text-dark transition-all hover:bg-white hover:shadow-card"
                 aria-label="Kapat"
               >
                 <X className="h-5 w-5" />
@@ -230,6 +267,12 @@ function AddressManager({ isOpen, onClose, onSelectAddress }) {
                   </div>
                 )}
 
+                {feedback.message && (
+                  <div className={`rounded-[22px] px-4 py-3 text-sm font-medium ${feedback.tone === 'error' ? 'border border-red-200 bg-red-50 text-red-700' : 'border border-emerald-200 bg-emerald-50 text-emerald-700'}`}>
+                    {feedback.message}
+                  </div>
+                )}
+
                 <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr),320px]">
                   <div className="space-y-5">
                     <div className="gm-panel space-y-4">
@@ -239,6 +282,8 @@ function AddressManager({ isOpen, onClose, onSelectAddress }) {
                           onChange={(e) => setFormData({ ...formData, addressName: e.target.value })}
                           placeholder="Orn: Ev, Ofis, Yazlik"
                           maxLength={50}
+                          autoComplete="address-line1"
+                          enterKeyHint="next"
                         />
                       </Field>
 
@@ -313,6 +358,12 @@ function AddressManager({ isOpen, onClose, onSelectAddress }) {
                 {error && (
                   <div className="rounded-[22px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                     {error}
+                  </div>
+                )}
+
+                {feedback.message && (
+                  <div className={`rounded-[22px] px-4 py-3 text-sm font-medium ${feedback.tone === 'error' ? 'border border-red-200 bg-red-50 text-red-700' : 'border border-emerald-200 bg-emerald-50 text-emerald-700'}`}>
+                    {feedback.message}
                   </div>
                 )}
 
@@ -398,22 +449,44 @@ function AddressManager({ isOpen, onClose, onSelectAddress }) {
                                 )}
                                 <button
                                   type="button"
-                                  className="inline-flex items-center gap-2 rounded-2xl border border-surface-border bg-surface-muted px-4 py-3 text-sm font-bold text-dark transition-all hover:bg-white"
+                                  className="inline-flex min-h-[46px] items-center gap-2 rounded-2xl border border-surface-border bg-surface-muted px-4 py-3 text-sm font-bold text-dark transition-all hover:bg-white"
                                   onClick={() => handleEdit(address)}
                                   disabled={actionLoading}
                                 >
                                   <Edit2 className="h-4 w-4" />
                                   Duzenle
                                 </button>
-                                <button
-                                  type="button"
-                                  className="inline-flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700 transition-all hover:bg-red-100"
-                                  onClick={() => handleDelete(address.Id)}
-                                  disabled={actionLoading}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                  Sil
-                                </button>
+                                {pendingDeleteId === address.Id ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="inline-flex min-h-[46px] items-center gap-2 rounded-2xl border border-surface-border bg-white px-4 py-3 text-sm font-bold text-dark transition-all hover:bg-surface-muted"
+                                      onClick={cancelDelete}
+                                      disabled={actionLoading}
+                                    >
+                                      Iptal
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="inline-flex min-h-[46px] items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700 transition-all hover:bg-red-100"
+                                      onClick={() => handleDelete(address.Id)}
+                                      disabled={actionLoading}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                      Silmeyi onayla
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="inline-flex min-h-[46px] items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700 transition-all hover:bg-red-100"
+                                    onClick={() => requestDelete(address.Id)}
+                                    disabled={actionLoading}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                    Sil
+                                  </button>
+                                )}
                               </>
                             )}
                           </div>

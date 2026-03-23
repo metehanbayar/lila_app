@@ -131,11 +131,11 @@ function OrderHistory() {
               <p className="text-sm text-dark-lighter">
                 Toplam {pagination.total} siparis ({pagination.page} / {pagination.totalPages})
               </p>
-              <div className="flex gap-3">
-                <Button variant="secondary" onClick={() => setPagination({ ...pagination, page: pagination.page - 1 })} disabled={pagination.page === 1}>
+              <div className="grid grid-cols-2 gap-3 sm:flex">
+                <Button variant="secondary" className="w-full justify-center" onClick={() => setPagination({ ...pagination, page: pagination.page - 1 })} disabled={pagination.page === 1}>
                   Onceki
                 </Button>
-                <Button variant="secondary" onClick={() => setPagination({ ...pagination, page: pagination.page + 1 })} disabled={pagination.page === pagination.totalPages}>
+                <Button variant="secondary" className="w-full justify-center" onClick={() => setPagination({ ...pagination, page: pagination.page + 1 })} disabled={pagination.page === pagination.totalPages}>
                   Sonraki
                 </Button>
               </div>

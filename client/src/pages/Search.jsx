@@ -331,25 +331,35 @@ function Search() {
         <Reveal variant="section-enter" delay={60}>
           <SurfaceCard className="space-y-3 p-4 sm:p-5">
           <form onSubmit={handleSearchSubmit} className="space-y-3">
-            <div className="relative">
-              <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-dark-lighter" />
-              <TextInput
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Magaza, urun veya menude ara..."
-                className="pl-12 pr-28"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={handleClearSearch}
-                  className="absolute right-14 top-1/2 -translate-y-1/2 rounded-xl p-2 text-dark-lighter hover:bg-surface-muted"
-                  aria-label="Aramayi temizle"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-              <Button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-2">
+            <div className="space-y-3 sm:block">
+              <div className="relative">
+                <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-dark-lighter" />
+                <TextInput
+                  type="search"
+                  inputMode="search"
+                  autoComplete="off"
+                  enterKeyHint="search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Magaza, urun veya menude ara..."
+                  className="pl-12 pr-14 sm:pr-28"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={handleClearSearch}
+                    className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl text-dark-lighter hover:bg-surface-muted sm:right-20"
+                    aria-label="Aramayi temizle"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+                <Button type="submit" className="absolute right-2 top-1/2 hidden -translate-y-1/2 px-4 py-2 sm:inline-flex">
+                  Ara
+                </Button>
+              </div>
+
+              <Button type="submit" className="w-full justify-center sm:hidden">
                 Ara
               </Button>
             </div>

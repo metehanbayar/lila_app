@@ -1,15 +1,14 @@
-import { useEffect } from 'react';
+import { useRef } from 'react';
 import { X } from 'lucide-react';
+import useDialogBehavior from '../../hooks/useDialogBehavior';
 
 function Modal({ isOpen, onClose, title, children, size = 'md' }) {
-  useEffect(() => {
-    if (typeof document === 'undefined') return undefined;
-
-    document.body.style.overflow = isOpen ? 'hidden' : 'unset';
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isOpen]);
+  const closeButtonRef = useRef(null);
+  const { dialogRef, titleId } = useDialogBehavior({
+    isOpen,
+    onClose,
+    initialFocusRef: closeButtonRef,
+  });
 
   if (!isOpen) return null;
 
@@ -22,14 +21,14 @@ function Modal({ isOpen, onClose, title, children, size = 'md' }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-dark/55 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <button className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Modal kapat" />
-      <div className={`admin-modal-shell relative flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-[32px] border border-white/70 bg-white shadow-premium sm:rounded-[32px] ${sizeClasses[size] || sizeClasses.md}`}>
+      <button tabIndex={-1} className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Modal kapat" />
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className={`admin-modal-shell relative flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-[32px] border border-white/70 bg-white shadow-premium sm:rounded-[32px] ${sizeClasses[size] || sizeClasses.md}`}>
         <div className="flex items-center justify-between border-b border-surface-border bg-white/92 px-5 py-4 backdrop-blur-xl sm:px-6">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Duzenleme paneli</p>
-            <h3 className="mt-1 text-xl font-bold text-dark">{title}</h3>
+            <h3 id={titleId} className="mt-1 text-xl font-bold text-dark">{title}</h3>
           </div>
-          <button onClick={onClose} className="rounded-2xl bg-surface-muted p-3 text-dark transition-all hover:bg-white hover:shadow-card">
+          <button ref={closeButtonRef} onClick={onClose} className="flex h-11 w-11 items-center justify-center rounded-2xl bg-surface-muted text-dark transition-all hover:bg-white hover:shadow-card">
             <X className="h-5 w-5" />
           </button>
         </div>

@@ -1,0 +1,33 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e7]:
+      - button "Globalmenu" [ref=e8] [cursor=pointer]:
+        - img "Globalmenu" [ref=e11]
+      - button "Konum sec" [ref=e12] [cursor=pointer]:
+        - img [ref=e13]
+        - generic [ref=e16]: Konum sec
+        - img [ref=e17]
+      - button "Sepete git" [ref=e20] [cursor=pointer]:
+        - img [ref=e21]
+  - main [ref=e24]:
+    - generic [ref=e27]:
+      - generic [ref=e28]:
+        - img [ref=e31]
+        - img [ref=e37]
+      - generic [ref=e39]:
+        - heading "Birazdan hazir" [level=3] [ref=e40]
+        - paragraph [ref=e41]: Yukleniyor...
+  - navigation [ref=e42]:
+    - generic [ref=e44]:
+      - button "Ana Sayfa" [ref=e45] [cursor=pointer]:
+        - img [ref=e47]
+        - generic [ref=e50]: Ana Sayfa
+      - button "Ara" [ref=e51] [cursor=pointer]:
+        - img [ref=e53]
+        - generic [ref=e56]: Ara
+      - button "Sepet" [ref=e57] [cursor=pointer]:
+        - img [ref=e59]
+        - generic [ref=e62]: Sepet
+      - button "Giris" [ref=e63] [cursor=pointer]:
+        - img [ref=e65]
+        - generic [ref=e68]: Giris

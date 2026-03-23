@@ -1,0 +1,47 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e7]:
+      - button "Globalmenu" [ref=e8] [cursor=pointer]:
+        - img "Globalmenu" [ref=e11]
+      - button "Konum sec" [ref=e12] [cursor=pointer]:
+        - img [ref=e13]
+        - generic [ref=e16]: Konum sec
+        - img [ref=e17]
+      - button "Sepete git" [ref=e20] [cursor=pointer]:
+        - img [ref=e21]
+  - main [ref=e24]:
+    - generic [ref=e28]:
+      - img [ref=e30]
+      - heading "Bir sorun olustu" [level=2] [ref=e35]
+      - paragraph [ref=e36]: Baglanti hatasi olustu
+      - button "Tekrar dene" [ref=e37] [cursor=pointer]
+  - contentinfo [ref=e38]:
+    - generic [ref=e40]:
+      - generic [ref=e41]:
+        - generic [ref=e42]:
+          - img "Globalmenu" [ref=e44]
+          - generic [ref=e45]:
+            - paragraph [ref=e46]: Globalmenu
+            - paragraph [ref=e47]: Online Siparis
+        - generic [ref=e48]:
+          - link "Telefon" [ref=e49] [cursor=pointer]:
+            - /url: tel:+905551234567
+            - img [ref=e50]
+          - link "E-posta" [ref=e52] [cursor=pointer]:
+            - /url: mailto:info@globalmenu.com
+            - img [ref=e53]
+      - paragraph [ref=e56]: 2026 Globalmenu. Tum haklari saklidir.
+  - navigation [ref=e57]:
+    - generic [ref=e59]:
+      - button "Ana Sayfa" [ref=e60] [cursor=pointer]:
+        - img [ref=e62]
+        - generic [ref=e65]: Ana Sayfa
+      - button "Ara" [ref=e66] [cursor=pointer]:
+        - img [ref=e68]
+        - generic [ref=e71]: Ara
+      - button "Sepet" [ref=e72] [cursor=pointer]:
+        - img [ref=e74]
+        - generic [ref=e77]: Sepet
+      - button "Giris" [ref=e78] [cursor=pointer]:
+        - img [ref=e80]
+        - generic [ref=e83]: Giris

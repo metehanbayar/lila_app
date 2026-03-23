@@ -1,0 +1,59 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e7]:
+      - button "Globalmenu" [ref=e8] [cursor=pointer]:
+        - img "Globalmenu" [ref=e12]
+      - navigation [ref=e13]:
+        - link "Ana Sayfa" [ref=e14] [cursor=pointer]:
+          - /url: /
+        - link "Ara" [ref=e15] [cursor=pointer]:
+          - /url: /search
+      - generic [ref=e16]:
+        - button "Teslimat konumu secin" [ref=e17] [cursor=pointer]:
+          - img [ref=e18]
+          - generic [ref=e21]: Teslimat konumu secin
+          - img [ref=e22]
+        - button "Sepete git" [ref=e24] [cursor=pointer]:
+          - img [ref=e25]
+        - button "Giris" [ref=e28] [cursor=pointer]:
+          - img [ref=e29]
+          - text: Giris
+  - main [ref=e32]:
+    - generic [ref=e36]: Ana sayfa hazirlaniyor. Magazalar yukleniyor.
+  - contentinfo [ref=e44]:
+    - generic [ref=e46]:
+      - generic [ref=e47]:
+        - generic [ref=e48]:
+          - generic [ref=e49]:
+            - img "Globalmenu" [ref=e51]
+            - generic [ref=e52]:
+              - paragraph [ref=e53]: Globalmenu
+              - heading "Online Siparis" [level=3] [ref=e54]
+          - paragraph [ref=e55]: Magaza ve urun siparislerini tek yerden yonetin.
+          - generic [ref=e57]:
+            - img [ref=e58]
+            - generic [ref=e61]: Her gun 10:00 - 23:00
+        - generic [ref=e62]:
+          - heading "Iletisim" [level=4] [ref=e63]
+          - generic [ref=e64]:
+            - link "+90 555 123 45 67" [ref=e65] [cursor=pointer]:
+              - /url: tel:+905551234567
+              - img [ref=e67]
+              - generic [ref=e69]: +90 555 123 45 67
+            - link "info@globalmenu.com" [ref=e70] [cursor=pointer]:
+              - /url: mailto:info@globalmenu.com
+              - img [ref=e72]
+              - generic [ref=e75]: info@globalmenu.com
+        - generic [ref=e76]:
+          - heading "Takip Et" [level=4] [ref=e77]
+          - generic [ref=e78]:
+            - link "Instagram" [ref=e79] [cursor=pointer]:
+              - /url: https://instagram.com
+              - img [ref=e80]
+            - link "Facebook" [ref=e83] [cursor=pointer]:
+              - /url: https://facebook.com
+              - img [ref=e84]
+            - link "X" [ref=e86] [cursor=pointer]:
+              - /url: https://twitter.com
+              - img [ref=e87]
+      - paragraph [ref=e90]: 2026 Globalmenu. Tum haklari saklidir.

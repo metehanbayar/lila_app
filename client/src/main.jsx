@@ -46,7 +46,7 @@ const router = createBrowserRouter([
   { path: '/menu/:slug', element: <AppLayout>{withSuspense(<RestaurantMenu viewOnly />)}</AppLayout> },
   { path: '/search', element: <AppLayout>{withSuspense(<Search />)}</AppLayout> },
   { path: '/cart', element: <AppLayout>{withSuspense(<Cart />)}</AppLayout> },
-  { path: '/checkout', element: <AppLayout>{withSuspense(<Checkout />)}</AppLayout> },
+  { path: '/checkout', element: <CustomerProtectedRoute><AppLayout>{withSuspense(<Checkout />)}</AppLayout></CustomerProtectedRoute> },
   { path: '/payment/success', element: <AppLayout>{withSuspense(<PaymentSuccess />)}</AppLayout> },
   { path: '/payment/failure', element: <AppLayout>{withSuspense(<PaymentFailure />)}</AppLayout> },
   { path: '/order-success/:orderNumber', element: <AppLayout>{withSuspense(<OrderSuccess />)}</AppLayout> },

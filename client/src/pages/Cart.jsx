@@ -54,7 +54,7 @@ function CartItemCard({ item, increaseQuantity, decreaseQuantity, removeItem }) 
               type="button"
               onClick={() => decreaseQuantity(item.Id, item.selectedVariant?.Id)}
               disabled={item.quantity <= 1}
-              className="rounded-full p-1.5 text-dark disabled:opacity-30"
+              className="flex h-10 w-10 items-center justify-center rounded-full text-dark disabled:opacity-30"
             >
               <Minus className="h-4 w-4" />
             </button>
@@ -63,7 +63,7 @@ function CartItemCard({ item, increaseQuantity, decreaseQuantity, removeItem }) 
               type="button"
               onClick={() => increaseQuantity(item.Id, item.selectedVariant?.Id)}
               disabled={item.quantity >= 10}
-              className="rounded-full p-1.5 text-dark disabled:opacity-30"
+              className="flex h-10 w-10 items-center justify-center rounded-full text-dark disabled:opacity-30"
             >
               <Plus className="h-4 w-4" />
             </button>
@@ -436,7 +436,7 @@ function Cart() {
     <div className="pb-[calc(8rem+env(safe-area-inset-bottom,0px))] pt-4 lg:pb-12">
       <PageShell width="full" className="space-y-4">
         <Reveal variant="section-enter">
-          <div className="hidden items-end justify-between gap-3 sm:flex">
+          <div className="flex items-end justify-between gap-3">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Sepet</p>
               <h1 className="mt-1 text-2xl font-black tracking-tight text-dark sm:text-3xl">Sepetinizi kontrol edin.</h1>

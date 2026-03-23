@@ -21,6 +21,7 @@ import useCartStore from '../store/cartStore';
 import useCustomerStore from '../store/customerStore';
 import { getProductListImage } from '../utils/imageVariants';
 import { preloadImages } from '../utils/pagePreload';
+import { TURKISH_PHONE_PLACEHOLDER, formatTurkishPhoneInput, isValidTurkishMobilePhone, toOrderPhone } from '../utils/phone';
 import {
   Badge,
   Field,
@@ -39,13 +40,6 @@ const LocationPickerModal = lazy(() => import('../components/LocationPickerModal
 const toNum = (value) => {
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
-};
-
-const normalizePhone = (phone) => {
-  let normalized = (phone || '').replace(/[^\d]/g, '');
-  if (normalized.startsWith('90') && normalized.length === 12) normalized = normalized.slice(2);
-  if (normalized.startsWith('0') && normalized.length === 11) normalized = normalized.slice(1);
-  return normalized;
 };
 
 const formatPrice = (value) => `${Number(value || 0).toFixed(2)} TL`;
@@ -191,7 +185,7 @@ function Checkout() {
     if (isAuthenticated && customer) {
       setFormData({
         customerName: customer.fullName || '',
-        customerPhone: customer.phone || '',
+        customerPhone: formatTurkishPhoneInput(customer.phone || ''),
         customerAddress: customer.address || '',
         notes: '',
       });
@@ -235,7 +229,10 @@ function Checkout() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === 'customerPhone' ? formatTurkishPhoneInput(value) : value,
+    }));
     if (formErrors[name]) {
       setFormErrors((prev) => ({ ...prev, [name]: '' }));
     }
@@ -248,10 +245,10 @@ function Checkout() {
       errors.customerName = 'Ad soyad gereklidir';
     }
 
-    const phone = normalizePhone(formData.customerPhone);
+    const phone = toOrderPhone(formData.customerPhone);
     if (!phone) {
       errors.customerPhone = 'Telefon numarasi gereklidir';
-    } else if (!/^\d{10}$/.test(phone)) {
+    } else if (!isValidTurkishMobilePhone(formData.customerPhone) || !/^\d{10}$/.test(phone)) {
       errors.customerPhone = 'Gecerli bir telefon numarasi girin';
     }
 
@@ -375,7 +372,10 @@ function Checkout() {
 
     try {
       if (!isAuthenticated || !customer) {
-        navigate('/login', { state: { from: '/checkout' } });
+        navigate('/login?redirect=%2Fcheckout&message=Checkout%20icin%20once%20giris%20yapin', {
+          replace: true,
+          state: { from: '/checkout', message: 'Checkout icin once giris yapin' },
+        });
         return;
       }
 
@@ -387,7 +387,7 @@ function Checkout() {
         typeof formData.customerAddress === 'string'
           ? formData.customerAddress
           : formData.customerAddress?.fullAddress || formData.customerAddress?.FullAddress || '';
-      const normalizedPhone = normalizePhone(formData.customerPhone);
+      const normalizedPhone = toOrderPhone(formData.customerPhone);
 
       const orderData = {
         ...formData,
@@ -600,15 +600,23 @@ function Checkout() {
                       value={formData.customerName}
                       onChange={handleChange}
                       placeholder="Adiniz ve soyadiniz"
+                      autoComplete="name"
+                      enterKeyHint="next"
                     />
                   </Field>
 
                   <Field label="Telefon" error={formErrors.customerPhone}>
-                    <TextInput
-                      name="customerPhone"
-                      value={formData.customerPhone}
+                  <TextInput
+                    type="tel"
+                    inputMode="numeric"
+                    autoComplete="tel-national"
+                    pattern="[0-9 ]*"
+                    enterKeyHint="next"
+                    name="customerPhone"
+                    value={formData.customerPhone}
                       onChange={handleChange}
-                      placeholder="0555 123 45 67"
+                      placeholder={TURKISH_PHONE_PLACEHOLDER}
+                      maxLength={14}
                     />
                   </Field>
                 </div>
@@ -661,6 +669,8 @@ function Checkout() {
                     value={formData.notes}
                     onChange={handleChange}
                     placeholder="Kurye icin ek yonlendirme yazabilirsiniz."
+                    autoComplete="off"
+                    enterKeyHint="done"
                   />
                 </Field>
               </SurfaceCard>
@@ -728,11 +738,17 @@ function Checkout() {
                           value={paymentData.cardHolderName}
                           onChange={handlePaymentChange}
                           placeholder="Kart uzerindeki isim"
+                          autoComplete="cc-name"
+                          enterKeyHint="next"
                         />
                       </Field>
 
                       <Field label="Kart numarasi" error={paymentErrors.cardNumber}>
                         <TextInput
+                          type="tel"
+                          inputMode="numeric"
+                          autoComplete="cc-number"
+                          enterKeyHint="next"
                           name="cardNumber"
                           value={paymentData.cardNumber}
                           onChange={handlePaymentChange}
@@ -745,6 +761,10 @@ function Checkout() {
                     <div className="grid gap-4 sm:grid-cols-3">
                       <Field label="Ay" error={paymentErrors.expiryMonth}>
                         <TextInput
+                          type="tel"
+                          inputMode="numeric"
+                          autoComplete="cc-exp-month"
+                          enterKeyHint="next"
                           name="expiryMonth"
                           value={paymentData.expiryMonth}
                           onChange={handlePaymentChange}
@@ -755,6 +775,10 @@ function Checkout() {
 
                       <Field label="Yil" error={paymentErrors.expiryYear}>
                         <TextInput
+                          type="tel"
+                          inputMode="numeric"
+                          autoComplete="cc-exp-year"
+                          enterKeyHint="next"
                           name="expiryYear"
                           value={paymentData.expiryYear}
                           onChange={handlePaymentChange}
@@ -765,6 +789,10 @@ function Checkout() {
 
                       <Field label="CVV" error={paymentErrors.cvv}>
                         <TextInput
+                          type="tel"
+                          inputMode="numeric"
+                          autoComplete="cc-csc"
+                          enterKeyHint="done"
                           name="cvv"
                           value={paymentData.cvv}
                           onChange={handlePaymentChange}

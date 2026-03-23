@@ -16,6 +16,7 @@ function OrderDetail() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [reorderLoading, setReorderLoading] = useState(false);
+  const [feedback, setFeedback] = useState({ tone: '', message: '' });
 
   useEffect(() => {
     loadOrderDetail();
@@ -85,9 +86,10 @@ function OrderDetail() {
         addedCount: count,
         source: 'reorder',
       });
+      setFeedback({ tone: '', message: '' });
     } catch (error) {
       console.error('Tekrar siparis hatasi:', error);
-      alert('Urunler sepete eklenirken bir hata olustu');
+      setFeedback({ tone: 'error', message: 'Urunler sepete eklenirken bir hata olustu' });
     } finally {
       setReorderLoading(false);
     }
@@ -118,6 +120,12 @@ function OrderDetail() {
   return (
     <CustomerShell title={`Siparis ${order.OrderNumber}`} description="Siparis detaylari.">
         <SurfaceCard className="p-4 sm:p-5">
+          {feedback.message && (
+            <div className={`mb-4 rounded-[22px] px-4 py-3 text-sm font-medium ${feedback.tone === 'error' ? 'border border-red-200 bg-red-50 text-red-700' : 'border border-emerald-200 bg-emerald-50 text-emerald-700'}`}>
+              {feedback.message}
+            </div>
+          )}
+
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div className="flex flex-wrap items-center gap-2">
@@ -127,7 +135,7 @@ function OrderDetail() {
               <p className="mt-2 text-lg font-bold text-dark">{statusInfo.description}</p>
             </div>
 
-            <Button onClick={handleReorder} disabled={reorderLoading}>
+            <Button onClick={handleReorder} disabled={reorderLoading} className="w-full sm:w-auto">
               {reorderLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />

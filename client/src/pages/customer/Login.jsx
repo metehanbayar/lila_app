@@ -6,6 +6,7 @@ import ScrollToTop from '../../components/ScrollToTop';
 import { customerLogin } from '../../services/customerApi';
 import { sendOTP, verifyOTP } from '../../services/otpApi';
 import useCustomerStore from '../../store/customerStore';
+import { TURKISH_PHONE_PLACEHOLDER, formatTurkishPhoneInput, isValidTurkishMobilePhone, normalizeTurkishPhone } from '../../utils/phone';
 import { safeClearTimeout, safeSetTimeout } from '../../utils/performance';
 import { Badge, Button, Field, PageShell, SurfaceCard, TextInput } from '../../components/ui/primitives';
 
@@ -21,8 +22,19 @@ function Login() {
   const [devOtp, setDevOtp] = useState('');
 
   const searchParams = new URLSearchParams(location.search);
-  const redirectUrl = searchParams.get('redirect') || '/profile';
-  const redirectMessage = searchParams.get('message');
+  const redirectUrl = location.state?.from || searchParams.get('redirect') || '/profile';
+  const redirectMessage = location.state?.message || searchParams.get('message');
+  const hasRedirectContext = Boolean(location.state?.from || searchParams.get('redirect') || redirectMessage);
+  const registerSearch = new URLSearchParams();
+
+  if (hasRedirectContext) {
+    registerSearch.set('redirect', redirectUrl);
+    if (redirectMessage) {
+      registerSearch.set('message', redirectMessage);
+    }
+  }
+
+  const registerHref = registerSearch.toString() ? `/register?${registerSearch.toString()}` : '/register';
 
   useEffect(() => {
     if (countdown > 0) {
@@ -36,11 +48,10 @@ function Login() {
     e.preventDefault();
     setError(null);
 
-    const cleanPhone = phone.replace(/\s/g, '');
-    const phoneRegex = /^(05|5)[0-9]{9}$/;
+    const cleanPhone = normalizeTurkishPhone(phone);
 
-    if (!phoneRegex.test(cleanPhone)) {
-      setError('Gecerli bir telefon numarasi girin (05xxxxxxxxx)');
+    if (!isValidTurkishMobilePhone(cleanPhone)) {
+      setError('Gecerli bir telefon numarasi girin');
       return;
     }
 
@@ -65,7 +76,7 @@ function Login() {
     setLoading(true);
 
     try {
-      const cleanPhone = phone.replace(/\s/g, '');
+      const cleanPhone = normalizeTurkishPhone(phone);
       const verifyResponse = await verifyOTP(cleanPhone, otpCode, 'login');
 
       if (verifyResponse.success) {
@@ -137,11 +148,15 @@ function Login() {
                     <Phone className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-dark-lighter" />
                     <TextInput
                       type="tel"
+                      inputMode="numeric"
+                      autoComplete="tel-national"
+                      pattern="[0-9 ]*"
+                      enterKeyHint="send"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="05XX XXX XX XX"
+                      onChange={(e) => setPhone(formatTurkishPhoneInput(e.target.value))}
+                      placeholder={TURKISH_PHONE_PLACEHOLDER}
                       className="pl-12"
-                      maxLength={11}
+                      maxLength={14}
                       required
                     />
                   </div>
@@ -196,7 +211,7 @@ function Login() {
           <SurfaceCard className="p-4 text-sm">
             <div className="flex items-center justify-between gap-3">
               <span className="text-dark-lighter">Hesabin yok mu?</span>
-              <Link to="/register" className="font-bold text-primary">
+              <Link to={registerHref} state={hasRedirectContext ? { from: redirectUrl, message: redirectMessage } : null} className="font-bold text-primary">
                 Kayit ol
               </Link>
             </div>

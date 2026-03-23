@@ -705,7 +705,7 @@
   }
 
   .gm-chip {
-    @apply inline-flex items-center gap-2 rounded-full border border-surface-border bg-white px-3 py-1.5 text-xs font-semibold text-dark shadow-sm;
+    @apply inline-flex min-h-[44px] items-center gap-2 whitespace-nowrap rounded-full border border-surface-border bg-white px-4 py-2 text-xs font-semibold text-dark shadow-sm outline-none transition-all focus-visible:border-primary/30 focus-visible:ring-4 focus-visible:ring-primary/10;
   }
 
   .gm-badge {
@@ -733,7 +733,7 @@
   }
 
   .gm-button {
-    @apply inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold outline-none transition-all duration-200 focus-visible:ring-4 focus-visible:ring-primary/10 disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .gm-button-primary {
@@ -757,6 +757,11 @@
   .gm-select,
   .gm-textarea {
     @apply w-full rounded-2xl border border-surface-border bg-white px-4 py-3 text-sm text-dark outline-none transition-all placeholder:text-dark-lighter/70 focus:border-primary/40 focus:ring-4 focus:ring-primary/10;
+  }
+
+  .gm-input,
+  .gm-select {
+    min-height: 52px;
   }
 
   .gm-textarea {
@@ -860,6 +865,30 @@
 
 .modal-content-safe-bottom {
   padding-bottom: calc(112px + env(safe-area-inset-bottom));
+}
+
+.mobile-bottom-nav-offset {
+  padding-bottom: 132px;
+}
+
+@supports (padding: env(safe-area-inset-bottom)) {
+  .mobile-bottom-nav-offset {
+    padding-bottom: calc(132px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (min-width: 640px) {
+  .mobile-bottom-nav-offset {
+    padding-bottom: 124px;
+  }
+}
+
+@supports (padding: env(safe-area-inset-bottom)) {
+  @media (min-width: 640px) {
+    .mobile-bottom-nav-offset {
+      padding-bottom: calc(124px + env(safe-area-inset-bottom));
+    }
+  }
 }
 
 @media (min-width: 1024px) {

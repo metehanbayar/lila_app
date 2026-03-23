@@ -48,7 +48,7 @@ function CustomerShell({ title, description, actions, children }) {
                 {title && <h1 className="text-2xl font-black tracking-tight text-dark sm:text-3xl">{title}</h1>}
                 {description && <p className="mt-2 max-w-2xl text-sm leading-6 text-dark-lighter">{description}</p>}
               </div>
-              {actions && <div className="shrink-0">{actions}</div>}
+              {actions && <div className="shrink-0 [&>*]:w-full sm:[&>*]:w-auto">{actions}</div>}
             </div>
           )}
 

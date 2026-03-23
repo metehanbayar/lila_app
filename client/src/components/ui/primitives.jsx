@@ -1,3 +1,5 @@
+import { createContext, forwardRef, useContext, useId, useMemo } from 'react';
+
 export function cn(...parts) {
   return parts.filter(Boolean).join(' ');
 }
@@ -21,6 +23,19 @@ const buttonVariantMap = {
   ghost: 'gm-button gm-button-ghost',
   danger: 'gm-button gm-button-danger',
 };
+
+const FieldContext = createContext(null);
+
+function useFieldProps(props = {}) {
+  const context = useContext(FieldContext);
+  const describedBy = [props['aria-describedby'], context?.describedBy].filter(Boolean).join(' ') || undefined;
+
+  return {
+    id: props.id || context?.inputId,
+    'aria-describedby': describedBy,
+    'aria-invalid': props['aria-invalid'] ?? (context?.invalid || undefined),
+  };
+}
 
 export function PageShell({ children, width = 'wide', className = '' }) {
   return <div className={cn('mx-auto w-full px-4 sm:px-6 lg:px-8', widthMap[width] || widthMap.wide, className)}>{children}</div>;
@@ -90,31 +105,81 @@ export function DangerButton(props) {
   return <Button variant="danger" {...props} />;
 }
 
-export function Field({ label, hint, error, className = '', children }) {
+export function Field({ label, hint, error, className = '', children, id, inputId }) {
+  const generatedId = useId().replace(/:/g, '');
+  const fieldId = id || `gm-field-${generatedId}`;
+  const resolvedInputId = inputId || `${fieldId}-control`;
+  const hintId = hint ? `${fieldId}-hint` : undefined;
+  const errorId = error ? `${fieldId}-error` : undefined;
+  const describedBy = error ? errorId : hint ? hintId : undefined;
+  const contextValue = useMemo(
+    () => ({
+      describedBy,
+      inputId: resolvedInputId,
+      invalid: Boolean(error),
+    }),
+    [describedBy, error, resolvedInputId],
+  );
+
   return (
-    <div className={cn('gm-field', className)}>
-      {label && <label className="gm-field-label">{label}</label>}
-      {children}
-      {error ? <p className="gm-field-error">{error}</p> : hint ? <p className="gm-field-hint">{hint}</p> : null}
-    </div>
+    <FieldContext.Provider value={contextValue}>
+      <div className={cn('gm-field', className)}>
+        {label && (
+          <label htmlFor={resolvedInputId} className="gm-field-label">
+            {label}
+          </label>
+        )}
+        {children}
+        {error ? (
+          <p id={errorId} role="alert" className="gm-field-error">
+            {error}
+          </p>
+        ) : hint ? (
+          <p id={hintId} className="gm-field-hint">
+            {hint}
+          </p>
+        ) : null}
+      </div>
+    </FieldContext.Provider>
   );
 }
 
-export function TextInput({ className = '', ...props }) {
-  return <input className={cn('gm-input', className)} {...props} />;
-}
+export const TextInput = forwardRef(function TextInput({ className = '', ...props }, ref) {
+  const { id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid, ...restProps } = props;
+  const fieldProps = useFieldProps({
+    id,
+    'aria-describedby': ariaDescribedBy,
+    'aria-invalid': ariaInvalid,
+  });
 
-export function SelectField({ className = '', children, ...props }) {
+  return <input ref={ref} className={cn('gm-input', className)} {...restProps} {...fieldProps} />;
+});
+
+export const SelectField = forwardRef(function SelectField({ className = '', children, ...props }, ref) {
+  const { id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid, ...restProps } = props;
+  const fieldProps = useFieldProps({
+    id,
+    'aria-describedby': ariaDescribedBy,
+    'aria-invalid': ariaInvalid,
+  });
+
   return (
-    <select className={cn('gm-select', className)} {...props}>
+    <select ref={ref} className={cn('gm-select', className)} {...restProps} {...fieldProps}>
       {children}
     </select>
   );
-}
+});
 
-export function TextAreaField({ className = '', ...props }) {
-  return <textarea className={cn('gm-textarea', className)} {...props} />;
-}
+export const TextAreaField = forwardRef(function TextAreaField({ className = '', ...props }, ref) {
+  const { id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid, ...restProps } = props;
+  const fieldProps = useFieldProps({
+    id,
+    'aria-describedby': ariaDescribedBy,
+    'aria-invalid': ariaInvalid,
+  });
+
+  return <textarea ref={ref} className={cn('gm-textarea', className)} {...restProps} {...fieldProps} />;
+});
 
 export function Chip({ active = false, className = '', children, ...props }) {
   return (

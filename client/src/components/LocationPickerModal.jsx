@@ -9,6 +9,7 @@ import {
   Search,
   X,
 } from 'lucide-react';
+import useDialogBehavior from '../hooks/useDialogBehavior';
 import { debounce, safeClearTimeout, safeSetTimeout } from '../utils/performance';
 import {
   Field,
@@ -85,14 +86,12 @@ function LocationPickerModal({ isOpen, onClose, onConfirm }) {
   const autocompleteServiceRef = useRef(null);
   const placesServiceRef = useRef(null);
   const markerRef = useRef(null);
-
-  useEffect(() => {
-    if (typeof document === 'undefined') return undefined;
-    document.body.style.overflow = isOpen ? 'hidden' : '';
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
+  const closeButtonRef = useRef(null);
+  const { dialogRef, titleId } = useDialogBehavior({
+    isOpen,
+    onClose,
+    initialFocusRef: closeButtonRef,
+  });
 
   useEffect(() => {
     if (isOpen) {
@@ -630,14 +629,21 @@ function LocationPickerModal({ isOpen, onClose, onConfirm }) {
 
   return (
     <div className="fixed inset-0 z-[190] bg-dark/70 backdrop-blur-md">
-      <button className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Konum modali kapat" />
+      <button tabIndex={-1} className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Konum modali kapat" />
 
-      <div className="relative mx-auto flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-none bg-[#f8f2ee] shadow-premium sm:mt-6 sm:h-[calc(100vh-3rem)] sm:rounded-[28px]">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className="relative mx-auto flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-none bg-[#f8f2ee] shadow-premium sm:mt-6 sm:h-[calc(100vh-3rem)] sm:rounded-[28px]"
+      >
         <div className="border-b border-surface-border bg-white/90 px-4 py-4 backdrop-blur-xl sm:px-5">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Teslimat noktasi</p>
-              <h3 className="mt-1 text-2xl font-black tracking-tight text-dark sm:text-3xl">Konumu secin ve adresi tamamlayin.</h3>
+              <h3 id={titleId} className="mt-1 text-2xl font-black tracking-tight text-dark sm:text-3xl">Konumu secin ve adresi tamamlayin.</h3>
             </div>
 
             <div className="flex items-center gap-2">
@@ -649,6 +655,7 @@ function LocationPickerModal({ isOpen, onClose, onConfirm }) {
                 <RefreshCw className="h-5 w-5" />
               </button>
               <button
+                ref={closeButtonRef}
                 onClick={onClose}
                 className="rounded-2xl bg-surface-muted p-3 text-dark transition-all hover:bg-white hover:shadow-card"
                 aria-label="Kapat"
@@ -694,10 +701,13 @@ function LocationPickerModal({ isOpen, onClose, onConfirm }) {
                     <div className="relative">
                       <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-dark-lighter" />
                       <TextInput
+                        type="search"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         placeholder="Adres ara (en az 3 karakter)"
                         className="pl-11 pr-4"
+                        autoComplete="off"
+                        enterKeyHint="search"
                       />
                     </div>
 
@@ -781,6 +791,8 @@ function LocationPickerModal({ isOpen, onClose, onConfirm }) {
                           value={addressDetails.street}
                           onChange={(e) => setAddressDetails({ ...addressDetails, street: e.target.value })}
                           placeholder="Sokak veya cadde"
+                          autoComplete="address-line1"
+                          enterKeyHint="next"
                         />
                       </Field>
 
@@ -790,6 +802,8 @@ function LocationPickerModal({ isOpen, onClose, onConfirm }) {
                             value={addressDetails.buildingNo}
                             onChange={(e) => setAddressDetails({ ...addressDetails, buildingNo: e.target.value })}
                             placeholder="No"
+                            inputMode="numeric"
+                            enterKeyHint="next"
                           />
                         </Field>
 
@@ -798,6 +812,8 @@ function LocationPickerModal({ isOpen, onClose, onConfirm }) {
                             value={addressDetails.apartmentNo}
                             onChange={(e) => setAddressDetails({ ...addressDetails, apartmentNo: e.target.value })}
                             placeholder="Daire"
+                            inputMode="numeric"
+                            enterKeyHint="next"
                           />
                         </Field>
                       </div>
@@ -808,6 +824,8 @@ function LocationPickerModal({ isOpen, onClose, onConfirm }) {
                             value={addressDetails.neighbourhood}
                             onChange={(e) => setAddressDetails({ ...addressDetails, neighbourhood: e.target.value })}
                             placeholder="Mahalle"
+                            autoComplete="address-level3"
+                            enterKeyHint="next"
                           />
                         </Field>
 
@@ -816,6 +834,8 @@ function LocationPickerModal({ isOpen, onClose, onConfirm }) {
                             value={addressDetails.district}
                             onChange={(e) => setAddressDetails({ ...addressDetails, district: e.target.value })}
                             placeholder="Ilce"
+                            autoComplete="address-level2"
+                            enterKeyHint="next"
                           />
                         </Field>
                       </div>
@@ -826,6 +846,8 @@ function LocationPickerModal({ isOpen, onClose, onConfirm }) {
                             value={addressDetails.city}
                             onChange={(e) => setAddressDetails({ ...addressDetails, city: e.target.value })}
                             placeholder="Il"
+                            autoComplete="address-level1"
+                            enterKeyHint="next"
                           />
                         </Field>
 
@@ -834,6 +856,9 @@ function LocationPickerModal({ isOpen, onClose, onConfirm }) {
                             value={addressDetails.postcode}
                             onChange={(e) => setAddressDetails({ ...addressDetails, postcode: e.target.value })}
                             placeholder="Posta kodu"
+                            inputMode="numeric"
+                            autoComplete="postal-code"
+                            enterKeyHint="next"
                           />
                         </Field>
                       </div>
@@ -844,6 +869,8 @@ function LocationPickerModal({ isOpen, onClose, onConfirm }) {
                           value={addressDetails.notes}
                           onChange={(e) => setAddressDetails({ ...addressDetails, notes: e.target.value })}
                           placeholder="Orn: Yesil binanin yani, guvenlikten sola"
+                          autoComplete="street-address"
+                          enterKeyHint="done"
                         />
                       </Field>
                     </div>

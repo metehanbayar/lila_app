@@ -6,6 +6,7 @@ import CustomerShell from '../../components/customer/CustomerShell';
 import Loading from '../../components/Loading';
 import { getFavorites, getMyOrders, updateProfile } from '../../services/customerApi';
 import useCustomerStore from '../../store/customerStore';
+import { formatTurkishPhoneInput } from '../../utils/phone';
 import { Badge, Button, Field, SelectField, SurfaceCard, TextInput } from '../../components/ui/primitives';
 
 function Profile() {
@@ -16,6 +17,7 @@ function Profile() {
   const [saveLoading, setSaveLoading] = useState(false);
   const [showAddressManager, setShowAddressManager] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
+  const [feedback, setFeedback] = useState({ tone: '', message: '' });
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -30,11 +32,23 @@ function Profile() {
       firstName: customer?.fullName?.split(' ')[0] || '',
       lastName: customer?.fullName?.split(' ').slice(1).join(' ') || '',
       email: customer?.email || '',
-      phone: customer?.phone || '',
+      phone: formatTurkishPhoneInput(customer?.phone || ''),
       dateOfBirth: customer?.dateOfBirth || '',
       gender: customer?.gender || '',
     });
   }, [customer]);
+
+  useEffect(() => {
+    if (!feedback.message) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      setFeedback({ tone: '', message: '' });
+    }, 2600);
+
+    return () => window.clearTimeout(timer);
+  }, [feedback]);
 
   useEffect(() => {
     loadData();
@@ -65,7 +79,7 @@ function Profile() {
       firstName: customer?.fullName?.split(' ')[0] || '',
       lastName: customer?.fullName?.split(' ').slice(1).join(' ') || '',
       email: customer?.email || '',
-      phone: customer?.phone || '',
+      phone: formatTurkishPhoneInput(customer?.phone || ''),
       dateOfBirth: customer?.dateOfBirth || '',
       gender: customer?.gender || '',
     });
@@ -87,10 +101,14 @@ function Profile() {
       if (response.success) {
         updateStoreProfile(response.data);
         setEditing(false);
+        setFeedback({ tone: 'success', message: 'Profil guncellendi.' });
       }
     } catch (err) {
       console.error('Profil guncellenemedi:', err);
-      alert(err.response?.data?.message || 'Profil guncellenirken bir hata olustu');
+      setFeedback({
+        tone: 'error',
+        message: err.response?.data?.message || 'Profil guncellenirken bir hata olustu',
+      });
     } finally {
       setSaveLoading(false);
     }
@@ -134,7 +152,7 @@ function Profile() {
               </div>
               <p className="mt-2 text-lg font-black text-dark sm:text-xl">{customer?.fullName || 'Misafir'}</p>
               <div className="mt-2 flex flex-wrap gap-2 text-sm text-dark-lighter">
-                {customer?.phone && <span className="rounded-full bg-surface-muted px-3 py-2">{customer.phone}</span>}
+                {customer?.phone && <span className="rounded-full bg-surface-muted px-3 py-2">{formatTurkishPhoneInput(customer.phone)}</span>}
                 {customer?.email && <span className="rounded-full bg-surface-muted px-3 py-2">{customer.email}</span>}
               </div>
             </div>
@@ -154,13 +172,22 @@ function Profile() {
 
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr),minmax(0,0.9fr)]">
           <SurfaceCard className="p-5 sm:p-6">
+            {feedback.message && (
+              <div className={`mb-4 rounded-[22px] px-4 py-3 text-sm font-medium ${feedback.tone === 'error' ? 'border border-red-200 bg-red-50 text-red-700' : 'border border-emerald-200 bg-emerald-50 text-emerald-700'}`}>
+                {feedback.message}
+              </div>
+            )}
+
             <div className="mb-5 flex items-center justify-between gap-3">
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Profil</p>
                 <h2 className="mt-1 text-xl font-bold text-dark">{editing ? 'Bilgileri duzenle' : 'Hesap bilgileri'}</h2>
               </div>
               {!editing && (
-                <Button variant="secondary" onClick={() => setEditing(true)}>
+                <Button variant="secondary" onClick={() => {
+                  setFeedback({ tone: '', message: '' });
+                  setEditing(true);
+                }}>
                   Duzenle
                 </Button>
               )}
@@ -170,24 +197,24 @@ function Profile() {
               <form onSubmit={handleSaveProfile} className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Ad">
-                    <TextInput value={formData.firstName} onChange={(e) => setFormData({ ...formData, firstName: e.target.value })} />
+                    <TextInput autoComplete="given-name" enterKeyHint="next" value={formData.firstName} onChange={(e) => setFormData({ ...formData, firstName: e.target.value })} />
                   </Field>
                   <Field label="Soyad">
-                    <TextInput value={formData.lastName} onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} />
+                    <TextInput autoComplete="family-name" enterKeyHint="next" value={formData.lastName} onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} />
                   </Field>
                 </div>
 
                 <Field label="Telefon" hint="Giris icin kullanilir.">
-                  <TextInput value={formData.phone} disabled />
+                  <TextInput type="tel" inputMode="tel" autoComplete="tel-national" value={formData.phone} disabled />
                 </Field>
 
                 <Field label="E-posta">
-                  <TextInput type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+                  <TextInput type="email" autoComplete="email" enterKeyHint="next" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
                 </Field>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Dogum tarihi">
-                    <TextInput type="date" value={formData.dateOfBirth} onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })} />
+                    <TextInput type="date" autoComplete="bday" value={formData.dateOfBirth} onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })} />
                   </Field>
                   <Field label="Cinsiyet">
                     <SelectField value={formData.gender} onChange={(e) => setFormData({ ...formData, gender: e.target.value })}>
@@ -209,6 +236,7 @@ function Profile() {
                     variant="secondary"
                     className="sm:flex-1"
                     onClick={() => {
+                      setFeedback({ tone: '', message: '' });
                       setEditing(false);
                       resetForm();
                     }}
@@ -258,9 +286,13 @@ function Profile() {
                   <code className="text-lg font-black tracking-[0.14em] text-primary-dark">{customer.referralCode}</code>
                   <Button
                     variant="secondary"
-                    onClick={() => {
-                      navigator.clipboard.writeText(customer.referralCode);
-                      alert('Davet kodu kopyalandi');
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(customer.referralCode);
+                        setFeedback({ tone: 'success', message: 'Davet kodu kopyalandi.' });
+                      } catch {
+                        setFeedback({ tone: 'error', message: 'Davet kodu kopyalanamadi.' });
+                      }
                     }}
                   >
                     Kopyala

@@ -5,7 +5,7 @@ import useCartStore from '../store/cartStore';
 import useCustomerStore from '../store/customerStore';
 import { getAddresses } from '../services/customerApi';
 import { getRestaurantBySlug } from '../services/api';
-import { Badge, Button, cn } from './ui/primitives';
+import { Button, cn } from './ui/primitives';
 
 const AddressManager = lazy(() => import('./AddressManager'));
 const LocationPickerModal = lazy(() => import('./LocationPickerModal'));
@@ -157,30 +157,39 @@ function Header({ catalogMode = false }) {
   return (
     <>
       <header ref={headerRef} className="sticky top-0 z-40">
-        <div className="mx-auto w-full max-w-[1440px] px-4 pt-2 sm:px-6 sm:pt-2.5 lg:px-8">
+        <div className="mx-auto w-full max-w-[1440px] px-4 pt-1 sm:px-6 sm:pt-2.5 lg:px-8">
           <div
             className={cn(
-              'rounded-[28px] border border-white/70 bg-white/90 px-3 py-2.5 shadow-card backdrop-blur-md transition-all duration-300 sm:bg-white/82 sm:px-4 sm:py-2.5 sm:backdrop-blur-xl',
+              'rounded-[22px] border border-white/70 bg-white/90 px-2.5 py-1.5 shadow-card backdrop-blur-md transition-all duration-300 sm:rounded-[28px] sm:bg-white/82 sm:px-4 sm:py-2.5 sm:backdrop-blur-xl',
               isScrolled && 'shadow-card sm:shadow-premium',
             )}
           >
-            <div className="flex items-center justify-between gap-2.5">
-              <button onClick={() => navigate('/')} className="flex min-w-0 items-center gap-2.5 text-left">
+            <div className="flex items-center justify-between gap-1.5 sm:gap-2">
+              <button onClick={() => navigate('/')} className="flex min-w-0 flex-1 items-center gap-1.5 text-left sm:gap-2.5">
                 <div className="relative">
                   <div className="absolute inset-0 hidden rounded-[26px] bg-primary/20 blur-xl sm:block" />
-                  <div className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-[22px] border border-white/70 bg-white shadow-lg shadow-primary/10">
+                  <div className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-[16px] border border-white/70 bg-white shadow-lg shadow-primary/10 sm:h-14 sm:w-14 sm:rounded-[22px]">
                     <img src="/logo.png" alt="Globalmenu" className="h-full w-full object-cover" />
                   </div>
                 </div>
                 {activeRestaurantName && (
                   <div className="min-w-0">
-                    <h1 className="truncate text-base font-black tracking-tight text-dark sm:text-lg">{activeRestaurantName}</h1>
+                    <h1 className="truncate text-[13px] font-black leading-4 tracking-tight text-dark sm:text-lg sm:leading-none">{activeRestaurantName}</h1>
                   </div>
                 )}
               </button>
 
               {!catalogMode && (
                 <>
+                  <button
+                    onClick={openLocation}
+                    className="flex min-h-[44px] min-w-0 max-w-[138px] items-center gap-1 rounded-[16px] border border-surface-border bg-surface-muted px-2.5 py-1.5 text-left text-[11px] font-medium text-dark transition-all duration-200 hover:border-primary/20 hover:bg-white lg:hidden"
+                  >
+                    <MapPin className="h-4 w-4 shrink-0 text-primary" />
+                    <span className="truncate">{selectedAddress?.formatted_address || 'Konum sec'}</span>
+                    <ChevronDown className="h-4 w-4 shrink-0 text-dark-lighter" />
+                  </button>
+
                   <nav className="hidden items-center gap-2 lg:flex">
                     {desktopLinks.map((link) => (
                       <Link
@@ -211,7 +220,7 @@ function Header({ catalogMode = false }) {
                     <button
                       onClick={() => navigate('/cart')}
                       data-cart-target="header"
-                      className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-muted text-dark transition-all duration-200 hover:bg-white hover:shadow-card"
+                      className="relative flex h-11 w-11 items-center justify-center rounded-[18px] bg-surface-muted text-dark transition-all duration-200 hover:bg-white hover:shadow-card sm:h-12 sm:w-12 sm:rounded-2xl"
                       aria-label="Sepete git"
                     >
                       <ShoppingBag data-cart-icon="true" className="h-5 w-5" />
@@ -234,20 +243,6 @@ function Header({ catalogMode = false }) {
                 </>
               )}
             </div>
-
-            {!catalogMode && (
-              <button
-                onClick={openLocation}
-                className="mt-2 flex w-full items-center gap-2 rounded-[18px] border border-surface-border bg-surface-muted px-3.5 py-2 text-left text-[13px] font-medium text-dark transition-all duration-200 hover:border-primary/20 hover:bg-white lg:hidden"
-              >
-                <MapPin className="h-4 w-4 shrink-0 text-primary" />
-                <span className="flex-1 truncate">{selectedAddress?.formatted_address || 'Teslimat konumu secin'}</span>
-                <Badge tone="primary" className="hidden sm:inline-flex">
-                  Lokasyon
-                </Badge>
-                <ChevronDown className="h-4 w-4 shrink-0 text-dark-lighter" />
-              </button>
-            )}
           </div>
         </div>
       </header>

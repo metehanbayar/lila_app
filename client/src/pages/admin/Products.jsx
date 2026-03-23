@@ -4,7 +4,7 @@ import DataTable from '../../components/admin/DataTable';
 import Modal from '../../components/admin/Modal';
 import Loading from '../../components/Loading';
 import ImagePicker from '../../components/admin/ImagePicker';
-import { Plus, Trash2, GripVertical, ArrowUpDown, Power, PowerOff } from 'lucide-react';
+import { AlertTriangle, ArrowUpDown, CheckCircle2, GripVertical, Plus, Trash2, X } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -135,6 +135,9 @@ function Products() {
     oldPrice: '',
   });
   const [variants, setVariants] = useState([]);
+  const [feedback, setFeedback] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -167,6 +170,7 @@ function Products() {
       }
     } catch (err) {
       console.error('Veri yükleme hatası:', err);
+      setFeedback({ tone: 'error', message: 'Urunler yuklenemedi. Lutfen tekrar deneyin.' });
     } finally {
       setLoading(false);
     }
@@ -250,6 +254,8 @@ function Products() {
     setVariants([]);
   };
 
+  const dismissFeedback = () => setFeedback(null);
+
   const handleAddVariant = () => {
     setVariants([...variants, createEmptyVariant()]);
   };
@@ -281,6 +287,7 @@ function Products() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const isEditing = Boolean(editingProduct);
       const data = {
         ...formData,
         categoryId: formData.categoryId || null,
@@ -320,10 +327,14 @@ function Products() {
       }
 
       handleCloseModal();
-      loadData();
+      await loadData();
+      setFeedback({
+        tone: 'success',
+        message: isEditing ? 'Urun guncellendi.' : 'Urun olusturuldu.',
+      });
     } catch (err) {
       console.error('Kaydetme hatası:', err);
-      alert(err.response?.data?.message || 'Bir hata oluştu');
+      setFeedback({ tone: 'error', message: err.response?.data?.message || 'Bir hata olustu.' });
     }
   };
 
@@ -336,21 +347,39 @@ function Products() {
       setProducts(products.map(p =>
         p.Id === product.Id ? { ...p, IsActive: newStatus } : p
       ));
+      setFeedback({
+        tone: 'success',
+        message: `${product.Name} ${newStatus ? 'aktif' : 'pasif'} duruma alindi.`,
+      });
     } catch (err) {
       console.error('Durum güncelleme hatası:', err);
-      alert(err.response?.data?.message || 'Durum güncellenirken bir hata oluştu');
+      setFeedback({
+        tone: 'error',
+        message: err.response?.data?.message || 'Durum guncellenirken bir hata olustu.',
+      });
     }
   };
 
   const handleDelete = async (product) => {
-    if (window.confirm(`${product.Name} ürününü silmek istediğinizden emin misiniz?`)) {
-      try {
-        await deleteProduct(product.Id);
-        loadData();
-      } catch (err) {
-        console.error('Silme hatası:', err);
-        alert(err.response?.data?.message || 'Bir hata oluştu');
-      }
+    setDeleteTarget(product);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) {
+      return;
+    }
+
+    try {
+      setDeleteLoading(true);
+      await deleteProduct(deleteTarget.Id);
+      setDeleteTarget(null);
+      await loadData();
+      setFeedback({ tone: 'success', message: `${deleteTarget.Name} silindi.` });
+    } catch (err) {
+      console.error('Silme hatası:', err);
+      setFeedback({ tone: 'error', message: err.response?.data?.message || 'Bir hata olustu.' });
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -405,7 +434,7 @@ function Products() {
       await reorderProducts(productOrders);
     } catch (err) {
       console.error('Ürün sıralama hatası:', err);
-      alert('Sıralama kaydedilemedi');
+      setFeedback({ tone: 'error', message: 'Siralama kaydedilemedi.' });
       await loadData();
     }
   };
@@ -464,28 +493,55 @@ function Products() {
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-800">Ürünler</h1>
             <p className="text-gray-600 mt-1">Ürün yönetimi ve düzenleme</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row">
             <button
               onClick={() => setSortModeOpen(true)}
-              className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors"
+              className="flex items-center justify-center gap-2 rounded-lg bg-gray-100 px-4 py-2 text-gray-700 transition-colors hover:bg-gray-200"
             >
               <ArrowUpDown size={20} />
               Sırala
             </button>
             <button
               onClick={() => handleOpenModal()}
-              className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg transition-colors"
+              className="flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-white transition-colors hover:bg-primary-dark"
             >
               <Plus size={20} />
               Yeni Ürün
             </button>
           </div>
         </div>
+
+        {feedback && (
+          <div
+            className={`flex flex-col gap-3 rounded-2xl border px-4 py-3 sm:flex-row sm:items-start sm:justify-between ${
+              feedback.tone === 'success'
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                : 'border-red-200 bg-red-50 text-red-800'
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              {feedback.tone === 'success' ? (
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
+              ) : (
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+              )}
+              <p className="text-sm font-medium">{feedback.message}</p>
+            </div>
+            <button
+              type="button"
+              onClick={dismissFeedback}
+              className="inline-flex items-center justify-center self-end rounded-xl p-1 text-current/70 transition-colors hover:bg-white/60 hover:text-current sm:self-start"
+              aria-label="Mesaji kapat"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
 
         {/* Table */}
         <DataTable
@@ -526,7 +582,7 @@ function Products() {
             </p>
 
             {/* Filtreler */}
-            <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+            <div className="grid grid-cols-1 gap-4 rounded-lg bg-gray-50 p-4 sm:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Restoran Filtresi
@@ -611,8 +667,8 @@ function Products() {
           title={editingProduct ? 'Ürün Düzenle' : 'Yeni Ürün'}
           size="lg"
         >
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Restoran *
@@ -680,7 +736,7 @@ function Products() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Fiyat (₺) *
@@ -710,7 +766,7 @@ function Products() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Sıralama
@@ -734,7 +790,7 @@ function Products() {
 
             {/* Varyant Yönetimi */}
             <div className="border-t pt-4">
-              <div className="flex items-center justify-between mb-3">
+              <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
                     Porsiyon/Varyant Seçenekleri
@@ -746,7 +802,7 @@ function Products() {
                 <button
                   type="button"
                   onClick={handleAddVariant}
-                  className="flex items-center space-x-1 px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary-dark text-sm transition-colors"
+                  className="flex w-full items-center justify-center space-x-1 rounded-lg bg-primary px-3 py-2 text-sm text-white transition-colors hover:bg-primary-dark sm:w-auto"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Varyant Ekle</span>
@@ -755,8 +811,8 @@ function Products() {
 
               <div className="space-y-2">
                 {variants.map((variant, index) => (
-                  <div key={index} className="flex items-center space-x-2 bg-gray-50 p-3 rounded-lg">
-                    <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2">
+                  <div key={index} className="flex flex-col gap-3 rounded-lg bg-gray-50 p-3 sm:flex-row sm:items-center sm:gap-2">
+                    <div className="grid flex-1 grid-cols-1 gap-2 md:grid-cols-3">
                       {/* Varyant Adı */}
                       <input
                         type="text"
@@ -797,7 +853,7 @@ function Products() {
                       type="button"
                       onClick={() => handleRemoveVariant(index)}
                       disabled={variants.length === 1}
-                      className="p-2 text-red-500 hover:text-red-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      className="self-end p-2 text-red-500 transition-colors hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-30 sm:self-auto"
                       title="Varyantı Sil"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -807,7 +863,7 @@ function Products() {
               </div>
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
               <div className="flex items-center">
                 <input
                   type="checkbox"
@@ -870,7 +926,7 @@ function Products() {
               </div>
             </div>
 
-            <div className="flex gap-3 pt-4">
+            <div className="flex flex-col-reverse gap-3 pt-4 sm:flex-row">
               <button
                 type="button"
                 onClick={handleCloseModal}
@@ -887,10 +943,42 @@ function Products() {
             </div>
           </form>
         </Modal>
+
+        <Modal
+          isOpen={Boolean(deleteTarget)}
+          onClose={() => !deleteLoading && setDeleteTarget(null)}
+          title="Urunu sil"
+          size="sm"
+        >
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+              <p className="font-semibold">{deleteTarget?.Name}</p>
+              <p className="mt-1">Bu urun kalici olarak silinecek. Bu islem geri alinmaz.</p>
+            </div>
+
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleteLoading}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Vazgec
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={deleteLoading}
+                className="rounded-lg bg-red-600 px-4 py-2 text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {deleteLoading ? 'Siliniyor...' : 'Urunu sil'}
+              </button>
+            </div>
+          </div>
+        </Modal>
       </div>
     </AdminLayout>
   );
 }
 
 export default Products;
-

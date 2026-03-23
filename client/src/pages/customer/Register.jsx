@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, ArrowRight, Mail, Phone, Shield, User } from 'lucide-react';
 import OTPInput from '../../components/OTPInput';
 import ScrollToTop from '../../components/ScrollToTop';
 import { customerRegister } from '../../services/customerApi';
 import { sendOTP, verifyOTP } from '../../services/otpApi';
 import useCustomerStore from '../../store/customerStore';
+import { TURKISH_PHONE_PLACEHOLDER, formatTurkishPhoneInput, isValidTurkishMobilePhone, normalizeTurkishPhone } from '../../utils/phone';
 import { safeClearTimeout, safeSetTimeout } from '../../utils/performance';
 import { Badge, Button, Field, PageShell, SelectField, SurfaceCard, TextInput } from '../../components/ui/primitives';
 
 function Register() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useCustomerStore();
   const [step, setStep] = useState('info');
   const [formData, setFormData] = useState({
@@ -26,6 +28,20 @@ function Register() {
   const [error, setError] = useState(null);
   const [countdown, setCountdown] = useState(0);
   const [devOtp, setDevOtp] = useState('');
+  const searchParams = new URLSearchParams(location.search);
+  const redirectUrl = location.state?.from || searchParams.get('redirect') || '/profile';
+  const redirectMessage = location.state?.message || searchParams.get('message');
+  const hasRedirectContext = Boolean(location.state?.from || searchParams.get('redirect') || redirectMessage);
+  const loginSearch = new URLSearchParams();
+
+  if (hasRedirectContext) {
+    loginSearch.set('redirect', redirectUrl);
+    if (redirectMessage) {
+      loginSearch.set('message', redirectMessage);
+    }
+  }
+
+  const loginHref = loginSearch.toString() ? `/login?${loginSearch.toString()}` : '/login';
 
   useEffect(() => {
     if (countdown > 0) {
@@ -36,18 +52,21 @@ function Register() {
   }, [countdown]);
 
   const handleChange = (e) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === 'phone' ? formatTurkishPhoneInput(value) : value,
+    }));
   };
 
   const handleSendOTP = async (e) => {
     e.preventDefault();
     setError(null);
 
-    const cleanPhone = formData.phone.replace(/\s/g, '');
-    const phoneRegex = /^(05|5)[0-9]{9}$/;
+    const cleanPhone = normalizeTurkishPhone(formData.phone);
 
-    if (!phoneRegex.test(cleanPhone)) {
-      setError('Gecerli bir telefon numarasi girin (05xxxxxxxxx)');
+    if (!isValidTurkishMobilePhone(cleanPhone)) {
+      setError('Gecerli bir telefon numarasi girin');
       return;
     }
 
@@ -79,7 +98,7 @@ function Register() {
     setLoading(true);
 
     try {
-      const cleanPhone = formData.phone.replace(/\s/g, '');
+      const cleanPhone = normalizeTurkishPhone(formData.phone);
       const verifyResponse = await verifyOTP(cleanPhone, code, 'register');
 
       if (verifyResponse.success) {
@@ -96,7 +115,7 @@ function Register() {
 
         if (registerResponse.success) {
           login(registerResponse.data.customer, registerResponse.data.token);
-          navigate('/profile');
+          navigate(redirectUrl, { replace: true });
         }
       }
     } catch (err) {
@@ -173,7 +192,20 @@ function Register() {
                 <Field label="Telefon">
                   <div className="relative">
                     <Phone className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-dark-lighter" />
-                    <TextInput type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="05XX XXX XX XX" className="pl-12" maxLength={11} required />
+                    <TextInput
+                      type="tel"
+                      inputMode="numeric"
+                      autoComplete="tel-national"
+                      pattern="[0-9 ]*"
+                      enterKeyHint="next"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      placeholder={TURKISH_PHONE_PLACEHOLDER}
+                      className="pl-12"
+                      maxLength={14}
+                      required
+                    />
                   </div>
                 </Field>
 
@@ -254,7 +286,7 @@ function Register() {
           <SurfaceCard className="p-4 text-sm">
             <div className="flex items-center justify-between gap-3">
               <span className="text-dark-lighter">Zaten hesabin var mi?</span>
-              <Link to="/login" className="font-bold text-primary">
+              <Link to={loginHref} state={hasRedirectContext ? { from: redirectUrl, message: redirectMessage } : null} className="font-bold text-primary">
                 Giris yap
               </Link>
             </div>

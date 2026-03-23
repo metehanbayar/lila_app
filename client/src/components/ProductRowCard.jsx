@@ -73,13 +73,13 @@ function ProductRowCard({ product, onProductClick, isViewOnly = false, prioritiz
       data-product-card="true"
       onClick={() => onProductClick?.(product)}
       className={cn(
-        'group cursor-pointer relative overflow-hidden rounded-[28px] border p-3 transition-all duration-300 sm:p-4',
+        'group relative cursor-pointer overflow-hidden rounded-[28px] border p-3.5 transition-all duration-300 sm:p-4',
         isActive
-          ? 'border-white/70 bg-white shadow-card hover:-translate-y-1 hover:shadow-card-hover'
+          ? 'border-white/70 bg-white shadow-card md:hover:-translate-y-1 md:hover:shadow-card-hover'
           : 'border-surface-border bg-surface-muted opacity-75',
       )}
     >
-      <div className="grid grid-cols-[120px,minmax(0,1fr)] gap-3 sm:grid-cols-[144px,minmax(0,1fr)] sm:gap-4">
+      <div className="grid grid-cols-[96px,minmax(0,1fr)] items-start gap-3.5 sm:grid-cols-[136px,minmax(0,1fr)] sm:gap-4">
         <div className="flex flex-col gap-2">
           <div data-add-to-cart-image="true" className="relative aspect-square overflow-hidden rounded-[22px] bg-surface-muted sm:rounded-[24px]">
             {productImageUrl ? (
@@ -114,7 +114,7 @@ function ProductRowCard({ product, onProductClick, isViewOnly = false, prioritiz
                 onClick={handleFavoriteToggle}
                 disabled={isFavoriteLoading}
                 className={cn(
-                  'absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-2xl border transition-all duration-200',
+                  'absolute right-2 top-2 flex h-10 w-10 items-center justify-center rounded-[18px] border transition-all duration-200 sm:h-11 sm:w-11 sm:rounded-2xl',
                   favorite ? 'border-primary/20 bg-primary text-white' : 'border-white/60 bg-white/88 text-dark hover:text-primary',
                 )}
               >
@@ -132,49 +132,51 @@ function ProductRowCard({ product, onProductClick, isViewOnly = false, prioritiz
           )}
         </div>
 
-        <div className="flex min-w-0 flex-col justify-between gap-2.5 sm:gap-3">
-          <div className="gm-content-settle space-y-2">
+        <div className="flex min-w-0 flex-col justify-between gap-3.5">
+          <div className="gm-content-settle space-y-2.5">
             <h3 className="line-clamp-2 text-[15px] font-bold leading-5 text-dark sm:text-lg sm:leading-6">{product.Name}</h3>
-            {product.Description && <p className="line-clamp-2 text-xs leading-5 text-dark-lighter sm:text-sm sm:leading-6">{product.Description}</p>}
+            {product.Description && <p className="line-clamp-2 text-[12px] leading-5 text-dark-lighter sm:text-sm sm:leading-6">{product.Description}</p>}
           </div>
 
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2.5 sm:flex sm:items-end sm:justify-between sm:gap-3">
-            <div className="gm-price-settle space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="text-xl font-black text-primary-dark sm:text-2xl">{formatPrice(product.Price)} TL</span>
+          <div className="rounded-[20px] bg-surface-muted/78 p-2.5 sm:rounded-none sm:bg-transparent sm:p-0">
+            <div className="space-y-2.5 sm:flex sm:items-end sm:justify-between sm:gap-3 sm:space-y-0">
+              <div className="gm-price-settle space-y-1">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 leading-none">
+                  <span className="text-[1.05rem] font-black text-primary-dark sm:text-2xl">{formatPrice(product.Price)} TL</span>
                 {product.OldPrice && product.OldPrice > product.Price && (
                   <span className="text-sm text-dark-lighter line-through">{formatPrice(product.OldPrice)} TL</span>
                 )}
+                </div>
+                {hasVariants && <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-dark-lighter">Baslayan fiyat</p>}
               </div>
-              {hasVariants && <p className="text-xs font-medium uppercase tracking-[0.18em] text-dark-lighter">baslayan fiyat</p>}
-            </div>
 
-            {!isViewOnly && (
-              <button
-                onClick={handleAddToCart}
-                disabled={!isActive}
-                className={cn(
-                  'inline-flex min-h-[42px] shrink-0 items-center justify-center gap-1.5 rounded-[18px] px-3.5 py-2.5 text-[13px] font-bold transition-all duration-200 sm:min-h-[46px] sm:min-w-[132px] sm:gap-2 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm',
-                  isActive ? 'bg-primary text-white shadow-lg shadow-primary/20 hover:-translate-y-0.5' : 'bg-white text-dark-lighter',
-                )}
-              >
-                {isActive ? (
-                  hasVariants ? (
-                    <>
-                      Sec
-                      <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={3} />
-                    </>
+              {!isViewOnly && (
+                <button
+                  onClick={handleAddToCart}
+                  disabled={!isActive}
+                  className={cn(
+                    'inline-flex min-h-[46px] w-full shrink-0 items-center justify-center gap-1.5 rounded-2xl px-3.5 py-2.5 text-[13px] font-bold transition-all duration-200 sm:min-w-[132px] sm:w-auto sm:gap-2 sm:px-4 sm:py-3 sm:text-sm',
+                    isActive ? 'bg-primary text-white shadow-lg shadow-primary/20 md:hover:-translate-y-0.5' : 'bg-white text-dark-lighter',
+                  )}
+                >
+                  {isActive ? (
+                    hasVariants ? (
+                      <>
+                        Sec
+                        <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={3} />
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={3} />
+                        Ekle
+                      </>
+                    )
                   ) : (
-                    <>
-                      <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={3} />
-                      Ekle
-                    </>
-                  )
-                ) : (
-                  'Mevcut degil'
-                )}
-              </button>
-            )}
+                    'Mevcut degil'
+                  )}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

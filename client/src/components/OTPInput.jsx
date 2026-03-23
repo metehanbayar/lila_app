@@ -62,7 +62,7 @@ function OTPInput({ length = 6, onComplete, disabled = false }) {
   };
 
   return (
-    <div className="flex justify-center gap-2 sm:gap-3">
+    <div className="flex justify-center gap-2 sm:gap-3" role="group" aria-label="Dogrulama kodu">
       {otp.map((digit, index) => (
         <input
           key={index}
@@ -78,7 +78,9 @@ function OTPInput({ length = 6, onComplete, disabled = false }) {
           onPaste={handlePaste}
           disabled={disabled}
           className="h-14 w-11 rounded-[20px] border border-surface-border bg-white text-center text-xl font-black text-dark shadow-sm outline-none transition-all focus:-translate-y-0.5 focus:border-primary/40 focus:ring-4 focus:ring-primary/10 disabled:bg-surface-muted disabled:text-dark-lighter sm:h-16 sm:w-12 sm:text-2xl"
-          autoComplete="off"
+          autoComplete={index === 0 ? 'one-time-code' : 'off'}
+          enterKeyHint={index === length - 1 ? 'done' : 'next'}
+          aria-label={`${index + 1}. kod hanesi`}
         />
       ))}
     </div>
